@@ -48,6 +48,23 @@ demo/
 ├── scripts/          # Database scripts
 └── docker-compose.yml # ClickHouse setup
 ```
+## 📁 Project Style
+
+Single Next.js App
+├── Frontend (Client-Side React)
+│   ├── Dashboard
+│   ├── Tracking Links
+│   └── API Docs
+│
+├── Backend (API Routes)
+│   ├── GET /api/analytics
+│   ├── POST /api/tracking/generate
+│   ├── GET /api/tracking/links
+│   └── DELETE /api/tracking/links/:id
+│
+└── Database Layer
+    └── ClickHouse (Docker container)
+
 
 ## 🔧 Configuration
 
