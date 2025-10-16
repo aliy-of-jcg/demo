@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import clickhouse from "@/lib/clickhouse";
 import { parseUserAgent } from "@/lib/user-agent";
+import { parseReferrer, getGeoLocation } from "@/lib/url-parser";
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,11 @@ export async function GET(request: NextRequest) {
         const userAgent = request.headers.get("user-agent") || "";
         const referrer = request.headers.get("referer") || "";
         const ip = request.headers.get("x-forwarded-for") || "unknown";
-        const { deviceType, browser, os } = parseUserAgent(userAgent);
+        
+        // Enhanced parsing
+        const parsedUA = parseUserAgent(userAgent);
+        const parsedReferrer = parseReferrer(referrer);
+        const geoLocation = getGeoLocation(ip);
         
         await clickhouse.insert({
           table: "analytics.tracking_events",
@@ -86,24 +91,56 @@ export async function GET(request: NextRequest) {
             id: nanoid(),
             tracking_code: trackingCode,
             campaign_name: utmCampaign || "Unknown",
+            
+            // UTM Parameters
             utm_source: utmSource,
             utm_medium: utmMedium,
             utm_campaign: utmCampaign,
             utm_content: utmContent,
             utm_term: utmTerm,
+            
+            // Referrer Data
             referrer,
+            referrer_domain: parsedReferrer.domain,
+            referrer_source: parsedReferrer.source,
+            referrer_is_known: parsedReferrer.isKnownPlatform ? 1 : 0,
+            
+            // User Data
             ip_address: ip,
             user_agent: userAgent,
-            device_type: deviceType,
-            browser,
-            os,
-            country: "Unknown",
-            city: "Unknown",
+            
+            // Device Info (Enhanced)
+            device_type: parsedUA.deviceType,
+            device_vendor: parsedUA.deviceVendor,
+            device_model: parsedUA.deviceModel,
+            
+            // Browser Info (Enhanced)
+            browser: parsedUA.browser,
+            browser_version: parsedUA.browserVersion,
+            
+            // OS Info (Enhanced)
+            os: parsedUA.os,
+            os_version: parsedUA.osVersion,
+            
+            // Engine
+            engine: parsedUA.engine,
+            
+            // App Detection
+            is_mobile_app: parsedUA.isMobileApp ? 1 : 0,
+            app_name: parsedUA.appName || '',
+            is_bot: parsedUA.isBot ? 1 : 0,
+            
+            // Location
+            country: geoLocation.country,
+            city: geoLocation.city,
+            region: geoLocation.region || '',
+            timezone: geoLocation.timezone || '',
           }],
           format: "JSONEachRow",
         });
       } catch (e) {
         // Silently fail if ClickHouse is not available
+        console.error("Failed to insert tracking event:", e);
       }
     });
     

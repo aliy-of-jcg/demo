@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, ExternalLink, Trash2, Check } from "lucide-react";
+import { Copy, ExternalLink, Trash2, Check, RefreshCw } from "lucide-react";
 
 interface TrackingLink {
   id: string;
@@ -23,6 +23,7 @@ export default function TrackingPage() {
   const [trackingLinks, setTrackingLinks] = useState<TrackingLink[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [formData, setFormData] = useState({
     campaignName: "",
@@ -33,6 +34,27 @@ export default function TrackingPage() {
     utmContent: "",
     utmTerm: "",
   });
+
+  // Fetch stored links from database
+  const fetchTrackingLinks = async () => {
+    try {
+      const response = await fetch("/api/tracking/links?limit=50");
+      const data = await response.json();
+      
+      if (data.success && data.links) {
+        setTrackingLinks(data.links);
+      }
+    } catch (error) {
+      console.error("Error fetching tracking links:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load links on component mount
+  useEffect(() => {
+    fetchTrackingLinks();
+  }, []);
 
   const generateTrackingLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,8 +95,28 @@ export default function TrackingPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const deleteLink = (id: string) => {
+  const deleteLink = async (id: string) => {
+    // Optimistic update - remove from UI immediately
     setTrackingLinks(trackingLinks.filter(link => link.id !== id));
+    
+    try {
+      // Delete from database
+      const response = await fetch(`/api/tracking/links/${id}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.error('Failed to delete link from database');
+        // Optionally: Show error message to user
+        // Optionally: Reload links from database to revert optimistic update
+        alert('Failed to delete link. It may reappear on refresh.');
+      }
+    } catch (error) {
+      console.error('Error deleting link:', error);
+      alert('Error deleting link. It may reappear on refresh.');
+    }
   };
 
   return (
@@ -179,11 +221,34 @@ export default function TrackingPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Generated Links</CardTitle>
-            <CardDescription>Your recently created tracking URLs</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Generated Links</CardTitle>
+                <CardDescription>Your recently created tracking URLs (stored in ClickHouse)</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsLoading(true);
+                  fetchTrackingLinks();
+                }}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            {trackingLinks.length === 0 ? (
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-blue-500" />
+                  <p className="text-gray-500">Loading tracking links...</p>
+                </div>
+              </div>
+            ) : trackingLinks.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <p>No tracking links generated yet.</p>
                 <p className="text-sm mt-2">Fill out the form to create your first tracking link.</p>
