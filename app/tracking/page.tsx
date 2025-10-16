@@ -89,10 +89,37 @@ export default function TrackingPage() {
     }
   };
 
-  const copyToClipboard = (url: string, id: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const copyToClipboard = async (url: string, id: string) => {
+    try {
+      // Try modern clipboard API first (works on localhost and HTTPS)
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      } else {
+        // Fallback for non-secure contexts (HTTP with IP address)
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        
+        try {
+          document.execCommand('copy');
+          setCopiedId(id);
+          setTimeout(() => setCopiedId(null), 2000);
+        } catch (err) {
+          console.error('Copy failed:', err);
+          alert('Failed to copy. Please copy manually.');
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
+    } catch (err) {
+      console.error('Clipboard error:', err);
+      alert('Failed to copy. Please copy manually.');
+    }
   };
 
   const deleteLink = async (id: string) => {
