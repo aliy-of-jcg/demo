@@ -1,32 +1,92 @@
-export function parseUserAgent(userAgent: string) {
+const UAParser = require('ua-parser-js');
+
+export interface ParsedUserAgent {
+  // Device info
+  deviceType: string;      // Mobile, Tablet, Desktop
+  deviceVendor: string;    // Apple, Samsung, Google, etc.
+  deviceModel: string;     // iPhone 14 Pro, Galaxy S23, etc.
+  
+  // Browser info
+  browser: string;         // Chrome, Safari, Firefox
+  browserVersion: string;  // 120.0.0
+  
+  // OS info
+  os: string;             // iOS, Android, Windows, macOS
+  osVersion: string;      // 17.2, 14.0, 11, 13.6
+  
+  // Engine
+  engine: string;         // Blink, WebKit, Gecko
+  
+  // Platform detection
+  isBot: boolean;
+  isMobileApp: boolean;   // Telegram, Kakao, Line apps
+  appName?: string;       // "Telegram", "KakaoTalk", etc.
+}
+
+export function parseUserAgent(userAgent: string): ParsedUserAgent {
+  const parser = UAParser(userAgent);
+  const result = parser;
+  
+  // Determine device type with better accuracy
+  let deviceType = 'Desktop';
+  if (result.device.type === 'mobile') deviceType = 'Mobile';
+  else if (result.device.type === 'tablet') deviceType = 'Tablet';
+  else if (result.device.type === 'wearable') deviceType = 'Wearable';
+  else if (result.device.type === 'smarttv') deviceType = 'Smart TV';
+  else if (result.device.type === 'console') deviceType = 'Console';
+  
+  // Detect mobile apps (Telegram, Kakao, Line, etc.)
   const ua = userAgent.toLowerCase();
-
-  let deviceType = "Desktop";
-  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(userAgent)) {
-    deviceType = "Tablet";
-  } else if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(userAgent)) {
-    deviceType = "Mobile";
+  let isMobileApp = false;
+  let appName: string | undefined;
+  
+  if (ua.includes('telegram')) {
+    isMobileApp = true;
+    appName = 'Telegram';
+  } else if (ua.includes('kakaotalk')) {
+    isMobileApp = true;
+    appName = 'KakaoTalk';
+  } else if (ua.includes('line/')) {
+    isMobileApp = true;
+    appName = 'LINE';
+  } else if (ua.includes('whatsapp')) {
+    isMobileApp = true;
+    appName = 'WhatsApp';
+  } else if (ua.includes('fbav') || ua.includes('fban')) {
+    isMobileApp = true;
+    appName = 'Facebook';
+  } else if (ua.includes('instagram')) {
+    isMobileApp = true;
+    appName = 'Instagram';
+  } else if (ua.includes('twitter')) {
+    isMobileApp = true;
+    appName = 'Twitter';
+  } else if (ua.includes('wechat')) {
+    isMobileApp = true;
+    appName = 'WeChat';
   }
-
-  let browser = "Unknown";
-  if (ua.includes("edg/")) browser = "Edge";
-  else if (ua.includes("chrome/")) browser = "Chrome";
-  else if (ua.includes("safari/") && !ua.includes("chrome")) browser = "Safari";
-  else if (ua.includes("firefox/")) browser = "Firefox";
-  else if (ua.includes("msie") || ua.includes("trident/")) browser = "Internet Explorer";
-  else if (ua.includes("opera") || ua.includes("opr/")) browser = "Opera";
-
-  let os = "Unknown";
-  if (ua.includes("windows nt 10.0")) os = "Windows 10";
-  else if (ua.includes("windows nt 6.3")) os = "Windows 8.1";
-  else if (ua.includes("windows nt 6.2")) os = "Windows 8";
-  else if (ua.includes("windows nt 6.1")) os = "Windows 7";
-  else if (ua.includes("windows")) os = "Windows";
-  else if (ua.includes("mac os x")) os = "macOS";
-  else if (ua.includes("android")) os = "Android";
-  else if (ua.includes("iphone") || ua.includes("ipad")) os = "iOS";
-  else if (ua.includes("linux")) os = "Linux";
-
-  return { deviceType, browser, os };
+  
+  // Detect bots
+  const isBot = !!(result.device.type === undefined && 
+    (ua.includes('bot') || ua.includes('crawler') || ua.includes('spider') || 
+     ua.includes('slurp') || ua.includes('googlebot')));
+  
+  return {
+    deviceType,
+    deviceVendor: result.device.vendor || 'Unknown',
+    deviceModel: result.device.model || 'Unknown',
+    
+    browser: result.browser.name || 'Unknown',
+    browserVersion: result.browser.version || 'Unknown',
+    
+    os: result.os.name || 'Unknown',
+    osVersion: result.os.version || 'Unknown',
+    
+    engine: result.engine.name || 'Unknown',
+    
+    isBot,
+    isMobileApp,
+    appName,
+  };
 }
 

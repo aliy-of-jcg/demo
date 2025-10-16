@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Link2, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Link2, BarChart3, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Tracking Links", href: "/tracking", icon: Link2 },
+  { name: "API Docs", href: "/api-docs", icon: BookOpen },
 ];
 
 export function Sidebar() {

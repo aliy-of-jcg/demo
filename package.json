@@ -8,31 +8,39 @@
     "start": "next start",
     "lint": "next lint",
     "clickhouse:init": "node scripts/init-clickhouse.js",
-    "clickhouse:seed": "node scripts/seed-data.js"
+    "clickhouse:seed": "node scripts/seed-data.js",
+    "clickhouse:migrate": "node scripts/migrate-clickhouse.js"
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "@clickhouse/client": "^1.5.0",
-    "recharts": "^2.12.7",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "dotenv": "^16.4.5",
+    "geoip-lite": "^1.4.10",
     "lucide-react": "^0.400.0",
     "nanoid": "^5.0.7",
-    "clsx": "^2.1.1",
+    "next": "14.2.5",
+    "next-swagger-doc": "^0.4.1",
+    "query-string": "^9.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7",
+    "swagger-ui-react": "^5.29.4",
     "tailwind-merge": "^2.4.0",
-    "class-variance-authority": "^0.7.0",
-    "dotenv": "^16.4.5"
+    "ua-parser-js": "^2.0.6"
   },
   "devDependencies": {
+    "@types/geoip-lite": "^1.4.4",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "typescript": "^5",
+    "@types/swagger-ui-react": "^5.18.0",
+    "@types/ua-parser-js": "^0.7.39",
+    "autoprefixer": "^10.4.19",
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
-    "tailwindcss": "^3.4.1",
     "postcss": "^8",
-    "autoprefixer": "^10.4.19"
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
   }
 }
-

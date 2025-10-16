@@ -20,19 +20,52 @@ export const initClickHouseSchema = async () => {
         id String,
         tracking_code String,
         campaign_name String,
+        
+        -- UTM Parameters
         utm_source String,
         utm_medium String,
         utm_campaign String,
         utm_content String,
         utm_term String,
+        
+        -- Referrer Data
         referrer String,
+        referrer_domain String,
+        referrer_source String,
+        referrer_is_known UInt8,
+        
+        -- User Data
         ip_address String,
         user_agent String,
+        
+        -- Device Info (Enhanced)
         device_type String,
+        device_vendor String,
+        device_model String,
+        
+        -- Browser Info (Enhanced)
         browser String,
+        browser_version String,
+        
+        -- OS Info (Enhanced)
         os String,
+        os_version String,
+        
+        -- Engine
+        engine String,
+        
+        -- App Detection
+        is_mobile_app UInt8,
+        app_name String,
+        is_bot UInt8,
+        
+        -- Location
         country String,
         city String,
+        region String,
+        timezone String,
+        
+        -- Timestamps
         timestamp DateTime DEFAULT now(),
         created_date Date DEFAULT toDate(timestamp)
       ) ENGINE = MergeTree()
@@ -66,19 +99,50 @@ export interface TrackingEvent {
   id: string;
   tracking_code: string;
   campaign_name: string;
+  
+  // UTM Parameters
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
   utm_content?: string;
   utm_term?: string;
+  
+  // Referrer Data
   referrer?: string;
+  referrer_domain?: string;
+  referrer_source?: string;
+  referrer_is_known?: number;
+  
+  // User Data
   ip_address?: string;
   user_agent?: string;
+  
+  // Device Info
   device_type?: string;
+  device_vendor?: string;
+  device_model?: string;
+  
+  // Browser Info
   browser?: string;
+  browser_version?: string;
+  
+  // OS Info
   os?: string;
+  os_version?: string;
+  
+  // Engine
+  engine?: string;
+  
+  // App Detection
+  is_mobile_app?: number;
+  app_name?: string;
+  is_bot?: number;
+  
+  // Location
   country?: string;
   city?: string;
+  region?: string;
+  timezone?: string;
 }
 
 export interface TrackingCode {
