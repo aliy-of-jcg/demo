@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import clickhouse from "@/lib/clickhouse";
 import { parseUserAgent } from "@/lib/user-agent";
 import { parseReferrer, getGeoLocation } from "@/lib/url-parser";
+import { decrypt } from "@/lib/encryption";
 
 export const dynamic = 'force-dynamic';
 
@@ -35,22 +36,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    // Support both base64 (for messaging apps) and URL-encoded (for HTML links/ads)
+    // Decrypt the redirect URL
     let finalRedirectUrl: string;
     
     if (base64Redirect) {
-      // Base64 approach - for messaging apps
+      // Encrypted URL (new method)
       try {
-        finalRedirectUrl = Buffer.from(base64Redirect, 'base64').toString('utf-8');
-        console.log("- Decoded from base64:", finalRedirectUrl);
+        finalRedirectUrl = decrypt(base64Redirect);
+        console.log("- Decrypted redirect URL:", finalRedirectUrl);
       } catch (error) {
-        console.error("❌ Failed to decode base64");
-        return NextResponse.json({ error: "Invalid redirect parameter" }, { status: 400 });
+        console.error("❌ Failed to decrypt redirect URL:", error);
+        return NextResponse.json({ error: "Invalid or corrupted redirect parameter" }, { status: 400 });
       }
     } else if (urlEncodedRedirect) {
-      // URL-encoded approach - for HTML links, ads, emails
+      // Fallback: URL-encoded approach (for backward compatibility)
       finalRedirectUrl = urlEncodedRedirect;
-      console.log("- Using URL-encoded redirect:", finalRedirectUrl);
+      console.log("- Using URL-encoded redirect (fallback):", finalRedirectUrl);
     } else {
       return NextResponse.json({ error: "No redirect parameter provided" }, { status: 400 });
     }
@@ -156,11 +157,11 @@ export async function GET(request: NextRequest) {
     
     if (base64Redirect) {
       try {
-        const fallbackUrl = Buffer.from(base64Redirect, 'base64').toString('utf-8');
-        console.log("Attempting fallback redirect (base64) to:", fallbackUrl);
+        const fallbackUrl = decrypt(base64Redirect);
+        console.log("Attempting fallback redirect (decrypted) to:", fallbackUrl);
         return NextResponse.redirect(fallbackUrl, 302);
       } catch (e) {
-        console.error("Fallback base64 decode failed:", e);
+        console.error("Fallback decrypt failed:", e);
       }
     }
     

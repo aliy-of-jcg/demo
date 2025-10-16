@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import clickhouse from "@/lib/clickhouse";
+import { encrypt } from "@/lib/encryption";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,17 +27,11 @@ export async function POST(request: NextRequest) {
     const id = nanoid();
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const trackingUrl = new URL(`${appUrl}/track`);
-    trackingUrl.searchParams.set("code", trackingCode);
-    trackingUrl.searchParams.set("utm_source", utmSource);
-    trackingUrl.searchParams.set("utm_medium", utmMedium);
-    trackingUrl.searchParams.set("utm_campaign", utmCampaign);
-    if (utmContent) trackingUrl.searchParams.set("utm_content", utmContent);
-    if (utmTerm) trackingUrl.searchParams.set("utm_term", utmTerm);
     
-    // Use base64 encoding to prevent Telegram from corrupting the URL
-    const base64Url = Buffer.from(targetUrl).toString('base64');
-    trackingUrl.searchParams.set("r", base64Url);
+    // Create clean short URL: /t/<code>
+    // All data is stored in database and looked up by code
+    // No sensitive information exposed in URL
+    const trackingUrl = `${appUrl}/t/${trackingCode}`;
 
     try {
       await clickhouse.insert({
@@ -68,7 +63,7 @@ export async function POST(request: NextRequest) {
         utmSource,
         utmMedium,
         utmCampaign,
-        fullUrl: trackingUrl.toString(),
+        fullUrl: trackingUrl,
         createdAt: new Date().toISOString(),
       },
     });

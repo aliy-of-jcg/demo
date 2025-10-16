@@ -9,7 +9,8 @@
     "lint": "next lint",
     "clickhouse:init": "node scripts/init-clickhouse.js",
     "clickhouse:seed": "node scripts/seed-data.js",
-    "clickhouse:migrate": "node scripts/migrate-clickhouse.js"
+    "clickhouse:migrate": "node scripts/migrate-clickhouse.js",
+    "generate:secret": "node scripts/generate-secret.js"
   },
   "dependencies": {
     "@clickhouse/client": "^1.5.0",

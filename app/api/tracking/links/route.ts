@@ -34,15 +34,9 @@ export async function GET(request: NextRequest) {
       // Extract UTM params from description (format: "source - medium - campaign")
       const [utmSource, utmMedium, utmCampaign] = link.description?.split(' - ') || ['', '', ''];
       
-      // Reconstruct tracking URL
-      const trackingUrl = new URL(`${appUrl}/track`);
-      trackingUrl.searchParams.set("code", link.tracking_code);
-      trackingUrl.searchParams.set("utm_source", utmSource);
-      trackingUrl.searchParams.set("utm_medium", utmMedium);
-      trackingUrl.searchParams.set("utm_campaign", utmCampaign);
-      
-      const base64Url = Buffer.from(link.target_url).toString('base64');
-      trackingUrl.searchParams.set("r", base64Url);
+      // Create clean short URL: /t/<code>
+      // All data is looked up from database, nothing exposed
+      const trackingUrl = `${appUrl}/t/${link.tracking_code}`;
 
       return {
         id: link.id,
@@ -52,7 +46,7 @@ export async function GET(request: NextRequest) {
         utmSource,
         utmMedium,
         utmCampaign,
-        fullUrl: trackingUrl.toString(),
+        fullUrl: trackingUrl,
         createdAt: link.created_at,
       };
     });
