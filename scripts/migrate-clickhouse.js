@@ -10,7 +10,12 @@ const clickhouse = createClient({
 
 async function migrateSchema() {
   try {
-    console.log('🔄 Starting ClickHouse schema migration...\n');
+    console.log('\n' + '='.repeat(60));
+    console.log('🔄 CLICKHOUSE SCHEMA MIGRATION');
+    console.log('='.repeat(60));
+    console.log('\n⚠️  This will DROP and RECREATE tables with the latest schema');
+    console.log('⚠️  All existing data will be DELETED!\n');
+    console.log('💡 Tip: Use "npm run clickhouse:clean" if you only want to drop tables\n');
 
     // Drop old table if it exists (WARNING: This will delete all data)
     console.log('⚠️  Dropping old tracking_events table...');
