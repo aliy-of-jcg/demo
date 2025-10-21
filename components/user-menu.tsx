@@ -75,7 +75,7 @@ export function UserMenu() {
   };
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative z-50" ref={menuRef}>
       {/* User Avatar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -85,61 +85,67 @@ export function UserMenu() {
         <User className="h-5 w-5" />
       </button>
 
-      {/* Dropdown Menu */}
+      {/* Dropdown Menu - Positioned to open downward within sidebar */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 rounded-lg bg-white shadow-2xl border border-gray-200 z-50 overflow-hidden">
-          {/* User Info Header */}
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-4 text-white">
-            <div className="flex items-start gap-3">
-              <div className="rounded-full bg-white/20 p-2">
-                <User className="h-6 w-6" />
+        <>
+          {/* Backdrop for mobile */}
+          <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
+          
+          {/* Dropdown - Opens below and slightly to the left to stay within sidebar */}
+          <div className="absolute right-0 top-full mt-2 w-56 rounded-lg bg-white shadow-2xl border border-gray-200 z-50 overflow-hidden">
+            {/* User Info Header */}
+            <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-3 text-white">
+              <div className="flex items-start gap-2">
+                <div className="rounded-full bg-white/20 p-1.5 flex-shrink-0">
+                  <User className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-xs truncate" title={user.email}>
+                    {user.email}
+                  </p>
+                  <p className="text-xs text-white/80 mt-0.5 flex items-center gap-1 truncate" title={user.company_name}>
+                    <Building2 className="h-3 w-3 flex-shrink-0" />
+                    <span className="truncate">{user.company_name}</span>
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm truncate">{user.email}</p>
-                <p className="text-xs text-white/80 mt-1 flex items-center gap-1">
-                  <Building2 className="h-3 w-3" />
-                  {user.company_name}
-                </p>
+              <div className="mt-2">
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getUserTypeColor(
+                    user.user_type
+                  )}`}
+                >
+                  {user.user_type.charAt(0).toUpperCase() + user.user_type.slice(1)}
+                </span>
               </div>
             </div>
-            <div className="mt-3">
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getUserTypeColor(
-                  user.user_type
-                )}`}
+
+            {/* Menu Items */}
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  router.push("/settings");
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                {user.user_type.charAt(0).toUpperCase() + user.user_type.slice(1)}
-              </span>
+                <Settings className="h-4 w-4 text-gray-400" />
+                Settings
+              </button>
+
+              <div className="border-t border-gray-100 my-1"></div>
+
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </button>
             </div>
           </div>
-
-          {/* Menu Items */}
-          <div className="py-2">
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                // Navigate to settings page (to be created)
-                router.push("/settings");
-              }}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <Settings className="h-4 w-4 text-gray-400" />
-              Settings
-            </button>
-
-            <div className="border-t border-gray-100 my-1"></div>
-
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </button>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
 }
-

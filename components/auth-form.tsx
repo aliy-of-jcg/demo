@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Shield, Eye, EyeOff, User, Mail, Lock, CheckCircle2, Building2, Phone, Loader2 } from "lucide-react";
 import type { UserType } from "@/lib/types";
+import { ForgotPasswordForm } from "@/components/forgot-password-form";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot-password";
 
 export function AuthForm() {
   const router = useRouter();
@@ -160,6 +161,11 @@ export function AuthForm() {
       });
     }
   };
+
+  // Show forgot password form
+  if (mode === "forgot-password") {
+    return <ForgotPasswordForm onBack={() => setMode("login")} />;
+  }
 
   return (
     <Card className="w-full max-w-md backdrop-blur-lg bg-white/95 shadow-2xl border-white/20">
@@ -404,6 +410,7 @@ export function AuthForm() {
         {mode === "login" && (
           <button
             type="button"
+            onClick={() => setMode("forgot-password")}
             className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
           >
             Forgot password?
@@ -422,7 +429,7 @@ export function AuthForm() {
                 Sign up
               </button>
             </>
-          ) : (
+          ) : mode === "signup" ? (
             <>
               Already have an account?{" "}
               <button
@@ -433,7 +440,7 @@ export function AuthForm() {
                 Sign in
               </button>
             </>
-          )}
+          ) : null}
         </div>
       </CardFooter>
     </Card>
