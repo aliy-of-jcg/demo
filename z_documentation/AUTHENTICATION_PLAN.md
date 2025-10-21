@@ -316,3 +316,4 @@ INITIAL_ADMIN_PASSWORD=change-this-password
 - Consider 2FA for admin accounts in future
 - Plan for horizontal scaling with session storage (Redis)
 
+

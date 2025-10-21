@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Link2, BarChart3, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UserMenu } from "./user-menu";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -16,9 +17,12 @@ export function Sidebar() {
 
   return (
     <div className="flex flex-col w-64 bg-gray-900">
-      <div className="flex items-center justify-center h-16 bg-gray-800">
-        <BarChart3 className="w-8 h-8 text-blue-500" />
-        <span className="ml-2 text-xl font-bold text-white">Admin Panel</span>
+      <div className="flex items-center justify-between h-16 bg-gray-800 px-4">
+        <div className="flex items-center">
+          <BarChart3 className="w-8 h-8 text-blue-500" />
+          <span className="ml-2 text-xl font-bold text-white">Admin Panel</span>
+        </div>
+        <UserMenu />
       </div>
       <nav className="flex-1 px-2 py-4 space-y-2">
         {navigation.map((item) => {
@@ -48,4 +52,3 @@ export function Sidebar() {
     </div>
   );
 }
-

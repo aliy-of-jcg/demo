@@ -1,0 +1,145 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { User, LogOut, Settings, Building2 } from "lucide-react";
+
+interface UserData {
+  id: number;
+  uuid: string;
+  email: string;
+  company_name: string;
+  user_type: string;
+}
+
+export function UserMenu() {
+  const router = useRouter();
+  const [user, setUser] = useState<UserData | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Load user from localStorage
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error("Failed to parse user data:", error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    // Close menu when clicking outside
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+      router.push("/auth");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Still clear local storage and redirect
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+      router.push("/auth");
+    }
+  };
+
+  if (!user) return null;
+
+  const getUserTypeColor = (type: string) => {
+    switch (type) {
+      case "owner":
+        return "bg-amber-100 text-amber-800 border-amber-200";
+      case "admin":
+        return "bg-indigo-100 text-indigo-800 border-indigo-200";
+      case "observer":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "regular":
+        return "bg-green-100 text-green-800 border-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  return (
+    <div className="relative" ref={menuRef}>
+      {/* User Avatar Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 p-2 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
+        aria-label="User menu"
+      >
+        <User className="h-5 w-5" />
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-72 rounded-lg bg-white shadow-2xl border border-gray-200 z-50 overflow-hidden">
+          {/* User Info Header */}
+          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-4 text-white">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-white/20 p-2">
+                <User className="h-6 w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm truncate">{user.email}</p>
+                <p className="text-xs text-white/80 mt-1 flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  {user.company_name}
+                </p>
+              </div>
+            </div>
+            <div className="mt-3">
+              <span
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getUserTypeColor(
+                  user.user_type
+                )}`}
+              >
+                {user.user_type.charAt(0).toUpperCase() + user.user_type.slice(1)}
+              </span>
+            </div>
+          </div>
+
+          {/* Menu Items */}
+          <div className="py-2">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                // Navigate to settings page (to be created)
+                router.push("/settings");
+              }}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <Settings className="h-4 w-4 text-gray-400" />
+              Settings
+            </button>
+
+            <div className="border-t border-gray-100 my-1"></div>
+
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
