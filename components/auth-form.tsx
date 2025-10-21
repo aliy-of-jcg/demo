@@ -1,40 +1,39 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Shield, Eye, EyeOff, User, Mail, Lock, CheckCircle2, Key } from "lucide-react";
+import { Shield, Eye, EyeOff, User, Mail, Lock, CheckCircle2, Building2, Phone, Loader2 } from "lucide-react";
+import type { UserType } from "@/lib/types";
 
 type AuthMode = "login" | "signup";
-type UserRole = "admin" | "observer" | null;
 
 export function AuthForm() {
+  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
-  const [selectedRole, setSelectedRole] = useState<UserRole>(null);
+  const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
+    company_name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    inviteCode: "",
+    contact_number: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  // This should be stored securely in your backend
-  // For now, it's here for demonstration purposes
-  const VALID_INVITE_CODE = "ADMIN2025";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
     // Basic validation
-    if (mode === "signup" && !formData.name.trim()) {
-      newErrors.name = "Name is required";
+    if (mode === "signup" && !formData.company_name.trim()) {
+      newErrors.company_name = "Company name is required";
     }
 
     if (!formData.email.trim()) {
@@ -50,43 +49,98 @@ export function AuthForm() {
     }
 
     if (mode === "signup") {
-      if (!selectedRole) {
-        newErrors.role = "Please select a role";
+      if (!formData.contact_number.trim()) {
+        newErrors.contact_number = "Contact number is required";
+      }
+      if (!selectedUserType) {
+        newErrors.user_type = "Please select a user type";
       }
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = "Passwords do not match";
-      }
-      if (!formData.inviteCode.trim()) {
-        newErrors.inviteCode = "Invite code is required";
-      } else if (formData.inviteCode !== VALID_INVITE_CODE) {
-        newErrors.inviteCode = "Invalid invite code";
       }
     }
 
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      // Handle authentication (not connected to server yet)
-      console.log("Form submitted:", {
-        mode,
-        role: selectedRole,
-        ...formData,
+      setIsSubmitting(true);
+      try {
+        if (mode === "login") {
+          await handleLogin();
+        } else {
+          await handleSignup();
+        }
+      } catch (error) {
+        console.error("Authentication error:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
-      alert(`${mode === "login" ? "Login" : "Signup"} successful! (Not connected to server yet)`);
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem("auth_token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        router.push("/");
+      } else {
+        setErrors({ form: data.message });
+      }
+    } catch (error) {
+      setErrors({ form: "Login failed. Please try again." });
+    }
+  };
+
+  const handleSignup = async () => {
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: formData.company_name,
+          email: formData.email,
+          password: formData.password,
+          contact_number: formData.contact_number,
+          user_type: selectedUserType,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem("auth_token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        router.push("/");
+      } else {
+        setErrors({ form: data.message });
+      }
+    } catch (error) {
+      setErrors({ form: "Signup failed. Please try again." });
     }
   };
 
   const toggleMode = () => {
     setMode(mode === "login" ? "signup" : "login");
     setErrors({});
-    setSelectedRole(null);
+    setSelectedUserType(null);
     setShowPassword(false);
     setShowConfirmPassword(false);
   };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -96,12 +150,12 @@ export function AuthForm() {
     }
   };
 
-  const selectRole = (role: UserRole) => {
-    setSelectedRole(role);
-    if (errors.role) {
+  const selectUserType = (type: UserType) => {
+    setSelectedUserType(type);
+    if (errors.user_type) {
       setErrors((prev) => {
         const newErrors = { ...prev };
-        delete newErrors.role;
+        delete newErrors.user_type;
         return newErrors;
       });
     }
@@ -118,83 +172,105 @@ export function AuthForm() {
         </CardTitle>
         <CardDescription className="text-base">
           {mode === "login"
-            ? "Enter your credentials to access the admin panel"
-            : "Sign up to get started with admin access"}
+            ? "Enter your credentials to access the panel"
+            : "Sign up to get started with your analytics"}
         </CardDescription>
       </CardHeader>
 
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Role Selection - Only for Signup */}
+          {/* Form-level error message */}
+          {errors.form && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+              <p className="text-sm text-red-600">{errors.form}</p>
+            </div>
+          )}
+
+          {/* User Type Selection - Only for Signup */}
           {mode === "signup" && (
             <div className="space-y-3">
-              <Label>Select Your Role</Label>
-              <div className="grid grid-cols-2 gap-3">
+              <Label>Select User Type</Label>
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => selectRole("admin")}
-                  className={`relative flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:border-indigo-500 hover:bg-indigo-50 ${
-                    selectedRole === "admin"
+                  onClick={() => selectUserType("admin")}
+                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-indigo-500 hover:bg-indigo-50 ${
+                    selectedUserType === "admin"
                       ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600 ring-offset-2"
                       : "border-gray-200"
                   }`}
                 >
-                  {selectedRole === "admin" && (
-                    <div className="absolute -right-2 -top-2 rounded-full bg-indigo-600 p-1">
-                      <CheckCircle2 className="h-4 w-4 text-white" />
+                  {selectedUserType === "admin" && (
+                    <div className="absolute -right-1 -top-1 rounded-full bg-indigo-600 p-1">
+                      <CheckCircle2 className="h-3 w-3 text-white" />
                     </div>
                   )}
-                  <Shield className="h-8 w-8 text-indigo-600" />
-                  <span className="font-semibold">Admin</span>
-                  <span className="text-xs text-gray-500 text-center">
-                    Full system access
-                  </span>
+                  <Shield className="h-6 w-6 text-indigo-600" />
+                  <span className="text-xs font-semibold">Admin</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => selectRole("observer")}
-                  className={`relative flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-all hover:border-purple-500 hover:bg-purple-50 ${
-                    selectedRole === "observer"
+                  onClick={() => selectUserType("observer")}
+                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-purple-500 hover:bg-purple-50 ${
+                    selectedUserType === "observer"
                       ? "border-purple-600 bg-purple-50 ring-2 ring-purple-600 ring-offset-2"
                       : "border-gray-200"
                   }`}
                 >
-                  {selectedRole === "observer" && (
-                    <div className="absolute -right-2 -top-2 rounded-full bg-purple-600 p-1">
-                      <CheckCircle2 className="h-4 w-4 text-white" />
+                  {selectedUserType === "observer" && (
+                    <div className="absolute -right-1 -top-1 rounded-full bg-purple-600 p-1">
+                      <CheckCircle2 className="h-3 w-3 text-white" />
                     </div>
                   )}
-                  <Eye className="h-8 w-8 text-purple-600" />
-                  <span className="font-semibold">Observer</span>
-                  <span className="text-xs text-gray-500 text-center">
-                    View-only access
-                  </span>
+                  <Eye className="h-6 w-6 text-purple-600" />
+                  <span className="text-xs font-semibold">Observer</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => selectUserType("regular")}
+                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-green-500 hover:bg-green-50 ${
+                    selectedUserType === "regular"
+                      ? "border-green-600 bg-green-50 ring-2 ring-green-600 ring-offset-2"
+                      : "border-gray-200"
+                  }`}
+                >
+                  {selectedUserType === "regular" && (
+                    <div className="absolute -right-1 -top-1 rounded-full bg-green-600 p-1">
+                      <CheckCircle2 className="h-3 w-3 text-white" />
+                    </div>
+                  )}
+                  <User className="h-6 w-6 text-green-600" />
+                  <span className="text-xs font-semibold">Regular</span>
                 </button>
               </div>
-              {errors.role && (
-                <p className="text-sm text-red-600">{errors.role}</p>
+              {errors.user_type && (
+                <p className="text-sm text-red-600">{errors.user_type}</p>
               )}
+              <p className="text-xs text-gray-500">
+                Regular users have observer features. Owner type is set manually.
+              </p>
             </div>
           )}
 
-          {/* Name Field - Only for Signup */}
+          {/* Company Name - Only for Signup */}
           {mode === "signup" && (
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="company_name">Company Name</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <Building2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <Input
-                  id="name"
+                  id="company_name"
                   type="text"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  className={`pl-10 ${errors.name ? "border-red-500" : ""}`}
+                  placeholder="Acme Inc."
+                  value={formData.company_name}
+                  onChange={(e) => handleInputChange("company_name", e.target.value)}
+                  className={`pl-10 ${errors.company_name ? "border-red-500" : ""}`}
                 />
               </div>
-              {errors.name && (
-                <p className="text-sm text-red-600">{errors.name}</p>
+              {errors.company_name && (
+                <p className="text-sm text-red-600">{errors.company_name}</p>
               )}
             </div>
           )}
@@ -217,6 +293,27 @@ export function AuthForm() {
               <p className="text-sm text-red-600">{errors.email}</p>
             )}
           </div>
+
+          {/* Contact Number - Only for Signup */}
+          {mode === "signup" && (
+            <div className="space-y-2">
+              <Label htmlFor="contact_number">Contact Number</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                <Input
+                  id="contact_number"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  value={formData.contact_number}
+                  onChange={(e) => handleInputChange("contact_number", e.target.value)}
+                  className={`pl-10 ${errors.contact_number ? "border-red-500" : ""}`}
+                />
+              </div>
+              {errors.contact_number && (
+                <p className="text-sm text-red-600">{errors.contact_number}</p>
+              )}
+            </div>
+          )}
 
           {/* Password Field */}
           <div className="space-y-2">
@@ -284,47 +381,21 @@ export function AuthForm() {
             </div>
           )}
 
-          {/* Invite Code - Only for Signup */}
-          {mode === "signup" && (
-            <div className="space-y-2">
-              <Label htmlFor="inviteCode" className="flex items-center gap-2">
-                Invite Code
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                  Required
-                </span>
-              </Label>
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-                <Input
-                  id="inviteCode"
-                  type="text"
-                  placeholder="Enter your invite code"
-                  value={formData.inviteCode}
-                  onChange={(e) =>
-                    handleInputChange("inviteCode", e.target.value.toUpperCase())
-                  }
-                  className={`pl-10 font-mono uppercase ${
-                    errors.inviteCode ? "border-red-500" : ""
-                  }`}
-                  maxLength={20}
-                />
-              </div>
-              {errors.inviteCode && (
-                <p className="text-sm text-red-600">{errors.inviteCode}</p>
-              )}
-              <p className="text-xs text-gray-500">
-                Contact the system administrator to receive your invite code
-              </p>
-            </div>
-          )}
-
           {/* Submit Button */}
           <Button
             type="submit"
+            disabled={isSubmitting}
             className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
             size="lg"
           >
-            {mode === "login" ? "Sign In" : "Create Account"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {mode === "login" ? "Signing In..." : "Creating Account..."}
+              </>
+            ) : (
+              mode === "login" ? "Sign In" : "Create Account"
+            )}
           </Button>
         </form>
       </CardContent>
@@ -368,4 +439,3 @@ export function AuthForm() {
     </Card>
   );
 }
-
