@@ -9,12 +9,14 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isAuthPage = pathname?.startsWith("/auth");
-  const [isAuthenticating, setIsAuthenticating] = useState(!isAuthPage);
+  const isResetPasswordPage = pathname?.startsWith("/reset-password");
+  const isPublicPage = isAuthPage || isResetPasswordPage;
+  const [isAuthenticating, setIsAuthenticating] = useState(!isPublicPage);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Skip auth check for auth pages
-    if (isAuthPage) {
+    // Skip auth check for public pages (auth and reset password)
+    if (isPublicPage) {
       setIsAuthenticating(false);
       setIsAuthenticated(false);
       return;
@@ -64,10 +66,10 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     }, 100);
 
     return () => clearTimeout(timeout);
-  }, [isAuthPage]);
+  }, [isPublicPage]);
 
-  // Auth pages: no sidebar, full screen
-  if (isAuthPage) {
+  // Public pages (auth and reset password): no sidebar, full screen
+  if (isPublicPage) {
     return <>{children}</>;
   }
 
