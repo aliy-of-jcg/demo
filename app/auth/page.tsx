@@ -1,9 +1,59 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { AuthFooter } from "@/components/auth-footer";
+import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    const checkAuth = async () => {
+      const token = localStorage.getItem("auth_token");
+      
+      if (token) {
+        try {
+          const response = await fetch("/api/auth/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+
+          const data = await response.json();
+
+          if (data.valid) {
+            // User is authenticated, redirect to dashboard
+            window.location.replace("/");
+            return;
+          }
+        } catch (error) {
+          console.error("Auth check failed:", error);
+        }
+      }
+      
+      // Not authenticated, show login page
+      setIsChecking(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // Show loading while checking authentication
+  if (isChecking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-white" />
+          <p className="text-white text-lg font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
       {/* Animated gradient background */}

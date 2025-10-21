@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 508 508" xml:space="preserve">
+<circle style="fill:#54C0EB;" cx="254" cy="254" r="254"/>
+<path style="fill:#84DBFF;" d="M77.2,436.4c45.6,44.4,108,71.6,176.8,71.6s131.2-27.2,176.8-71.6H77.2z"/>
+<polygon style="fill:#324A5E;" points="265.2,347.2 275.6,377.2 232.8,377.2 242.8,347.2 225.6,347.2 195.2,436.4 214,436.4 
+	228.8,391.6 279.2,391.6 294.4,436.4 314,436.4 283.6,347.2 "/>
+<path style="fill:#FFFFFF;" d="M413.2,352.8H96c-8.8,0-16-7.2-16-16V144.4h348.8v192.4C429.2,345.6,422,352.8,413.2,352.8z"/>
+<path style="fill:#324A5E;" d="M434.8,157.6H73.2c-2.8,0-5.2-2.4-5.2-5.2v-17.2c0-2.8,2.4-5.2,5.2-5.2h361.6c2.8,0,5.2,2.4,5.2,5.2
+	v17.2C440,155.6,437.6,157.6,434.8,157.6z"/>
+<g>
+	<rect x="139.6" y="278.8" style="fill:#E6E9EE;" width="8.4" height="47.2"/>
+	<rect x="166.8" y="256.4" style="fill:#E6E9EE;" width="8.4" height="69.2"/>
+	<rect x="194" y="263.2" style="fill:#E6E9EE;" width="8.4" height="62.8"/>
+	<rect x="221.2" y="279.6" style="fill:#E6E9EE;" width="8.4" height="46"/>
+	<rect x="248.4" y="246.4" style="fill:#E6E9EE;" width="8.4" height="79.2"/>
+	<rect x="275.6" y="219.6" style="fill:#E6E9EE;" width="8.4" height="106"/>
+	<polygon style="fill:#E6E9EE;" points="304.4,235.6 303.2,235.6 303.2,325.6 311.6,325.6 311.6,237.6 304.4,237.6 	"/>
+	<rect x="330.4" y="218.8" style="fill:#E6E9EE;" width="8.4" height="107.2"/>
+	<rect x="357.6" y="200" style="fill:#E6E9EE;" width="8.4" height="126"/>
+</g>
+<path style="fill:#FF7058;" d="M382.4,171.2l-41.2,9.2l10.8,10.8L310,230l-27.6-24.8c-1.6-1.2-3.2-2-5.2-1.6c-2,0-3.6,1.2-4.8,2.8
+	l-48.4,66l-39.6-29.2c-2.8-2-6.4-1.6-8.8,0.4l-46.8,42c-2.8,2.4-3.2,6.8-0.4,9.6c1.2,1.6,3.2,2.4,5.2,2.4c1.6,0,3.2-0.4,4.8-1.6
+	l42.4-38.4l40.4,30c1.6,1.2,3.2,1.6,5.2,1.2s3.6-1.2,4.4-2.8l48-65.6l26.4,24c2.8,2.4,6.8,2.4,9.2,0l47.6-43.6l11.6,11.6
+	L382.4,171.2z"/>
+</svg>
