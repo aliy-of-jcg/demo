@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import clickhouse from "@/lib/clickhouse";
+import { getPool } from "@/lib/mysql";
 import { encrypt } from "@/lib/encryption";
 
 export async function POST(request: NextRequest) {
@@ -8,6 +9,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       campaignName,
+      campaignId, // Optional: Link to specific campaign
       targetUrl,
       utmSource,
       utmMedium,
@@ -32,8 +34,18 @@ export async function POST(request: NextRequest) {
     // All data is stored in database and looked up by code
     // No sensitive information exposed in URL
     const trackingUrl = `${appUrl}/t/${trackingCode}`;
+    
+    // Build full URL with UTM parameters for reference
+    const urlObj = new URL(targetUrl);
+    urlObj.searchParams.set('utm_source', utmSource);
+    urlObj.searchParams.set('utm_medium', utmMedium);
+    urlObj.searchParams.set('utm_campaign', utmCampaign);
+    if (utmContent) urlObj.searchParams.set('utm_content', utmContent);
+    if (utmTerm) urlObj.searchParams.set('utm_term', utmTerm);
+    const fullUrlWithUtm = urlObj.toString();
 
     try {
+      // Store in ClickHouse for analytics
       await clickhouse.insert({
         table: "analytics.tracking_codes",
         values: [
@@ -50,7 +62,30 @@ export async function POST(request: NextRequest) {
         format: "JSONEachRow",
       });
     } catch (error) {
-      console.warn("ClickHouse not available, continuing without storage:", error);
+      console.warn("ClickHouse not available, continuing without analytics storage:", error);
+    }
+
+    try {
+      // Store in MySQL utm_codes table for campaign management
+      const pool = getPool();
+      await pool.execute(
+        `INSERT INTO utm_codes 
+         (name, campaign_id, utm_campaign, utm_source, utm_medium, utm_term, utm_content, landing_url, full_url, status) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+        [
+          campaignName,
+          campaignId || null,
+          utmCampaign,
+          utmSource,
+          utmMedium,
+          utmTerm || '',
+          utmContent || '',
+          targetUrl,
+          fullUrlWithUtm
+        ]
+      );
+    } catch (error) {
+      console.warn("MySQL utm_codes insert failed:", error);
     }
 
     return NextResponse.json({
@@ -63,7 +98,10 @@ export async function POST(request: NextRequest) {
         utmSource,
         utmMedium,
         utmCampaign,
+        utmContent: utmContent || '',
+        utmTerm: utmTerm || '',
         fullUrl: trackingUrl,
+        fullUrlWithUtm,
         createdAt: new Date().toISOString(),
       },
     });

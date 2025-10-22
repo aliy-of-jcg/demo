@@ -1,4 +1,4 @@
-# Admin Panel - Analytics & Tracking System
+# CosMos AI - Analytics & Tracking System
 
 A modern admin panel for tracking UTM parameters with ClickHouse and Next.js 14.
 

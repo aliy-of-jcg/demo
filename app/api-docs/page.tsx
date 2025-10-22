@@ -32,7 +32,7 @@ export default function ApiDocsPage() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">API Documentation</h1>
           <p className="text-lg text-gray-600">
-            Complete API reference for the Admin Panel Analytics & Tracking System
+            Complete API reference for the CosMos AI Analytics & Tracking System
           </p>
         </div>
         
