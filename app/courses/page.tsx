@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -37,6 +37,7 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Immediate input value
+  const [statusFilter, setStatusFilter] = useState(''); // Status filter
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [formData, setFormData] = useState({
@@ -47,6 +48,32 @@ export default function CoursesPage() {
     price: '',
     status: 'active'
   });
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Close modal when clicking outside or pressing Escape
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        handleCloseModal();
+      }
+    };
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleCloseModal();
+      }
+    };
+
+    if (showModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [showModal]);
 
   // Debounce function for search
   useEffect(() => {
@@ -59,12 +86,15 @@ export default function CoursesPage() {
 
   useEffect(() => {
     fetchCourses();
-  }, [search]);
+  }, [search, statusFilter]);
 
   const fetchCourses = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ search });
+      if (statusFilter) {
+        params.append('status', statusFilter);
+      }
       const response = await fetch(`/api/courses?${params}`);
       const data = await response.json();
 
@@ -245,17 +275,31 @@ export default function CoursesPage() {
         </div>
       )}
 
-      {/* Search */}
+      {/* Search and Filter */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by course name or code..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by course name or code..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          
+          <div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="ended">Ended</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -367,7 +411,7 @@ export default function CoursesPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div ref={modalRef} className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
               {editingCourse ? 'Edit Course' : 'Add Course'}
             </h2>

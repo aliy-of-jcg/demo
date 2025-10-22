@@ -5,10 +5,20 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || '';
+    const status = searchParams.get('status') || '';
     
     const pool = getPool();
-    let query = 'SELECT * FROM courses WHERE status = "active"';
+    let query = 'SELECT * FROM courses WHERE 1=1';
     const params: any[] = [];
+
+    // Filter by status if provided, otherwise show only active by default
+    if (status) {
+      query += ' AND status = ?';
+      params.push(status);
+    } else {
+      // If no status filter, show all courses
+      // Remove the default "active" only filter to show all
+    }
 
     if (search) {
       query += ' AND (name LIKE ? OR code LIKE ?)';

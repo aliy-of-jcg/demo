@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -65,6 +65,32 @@ export default function CampaignsPage() {
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
   const [actionMenuOpen, setActionMenuOpen] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setActionMenuOpen(null);
+      }
+    };
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActionMenuOpen(null);
+      }
+    };
+
+    if (actionMenuOpen !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [actionMenuOpen]);
 
   // Debounce function for search
   useEffect(() => {
@@ -426,7 +452,7 @@ export default function CampaignsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="relative">
+                      <div className="relative" ref={actionMenuOpen === campaign.id ? menuRef : null}>
                         <button
                           onClick={() => setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id)}
                           className="text-gray-400 hover:text-gray-600"
