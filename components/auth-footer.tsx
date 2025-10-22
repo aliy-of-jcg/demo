@@ -10,7 +10,7 @@ export function AuthFooter() {
           {/* App Info */}
           <div className="text-center md:text-left">
             <h3 className="mb-2 text-lg font-bold text-white">
-              Admin Panel Analytics
+              CosMos AI
             </h3>
             <p className="text-sm text-gray-300">
               Advanced tracking and analytics platform for modern businesses

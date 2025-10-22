@@ -1,5 +1,5 @@
 {
-  "name": "admin-panel",
+  "name": "cosmos-ai",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,7 +12,11 @@
     "clickhouse:seed": "node scripts/seed-data.js",
     "clickhouse:migrate": "node scripts/migrate-clickhouse.js",
     "mysql:init": "node scripts/init-mysql.js",
-    "generate:secret": "node scripts/generate-secret.js"
+    "generate:secret": "node scripts/generate-secret.js",
+    "db:drop": "node scripts/drop-all-tables.js",
+    "db:init": "node scripts/init-new-schema.js",
+    "db:seed": "node scripts/seed-campaigns-courses.js",
+    "db:reset": "node scripts/drop-all-tables.js && node scripts/init-new-schema.js && node scripts/seed-campaigns-courses.js"
   },
   "dependencies": {
     "@clickhouse/client": "^1.5.0",
@@ -32,6 +36,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",
+    "sonner": "^2.0.7",
     "swagger-ui-react": "^5.29.4",
     "tailwind-merge": "^2.4.0",
     "ua-parser-js": "^2.0.6",
