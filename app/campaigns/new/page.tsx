@@ -530,39 +530,46 @@ export default function NewCampaignPage() {
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 sticky top-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Campaign Summary</h2>
               
-              <div className="space-y-4">
+              <div className="space-y-4 mb-6">
                 <div>
                   <p className="text-sm text-gray-600">Media</p>
                   <p className="text-base font-medium text-gray-900 mt-1">
-                    {formData.source !== 'select' ? formData.source : '-'}
+                    {formData.source !== 'select' ? formData.source.charAt(0).toUpperCase() + formData.source.slice(1) : '-'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600">Course</p>
+                  <p className="text-base font-medium text-gray-900 mt-1">
+                    {selectedCourse ? selectedCourse.name : '-'}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-gray-600">Ad Type</p>
                   <p className="text-base font-medium text-gray-900 mt-1">
-                    {formData.medium !== 'select' ? formData.medium : '-'}
+                    {formData.medium !== 'select' ? formData.medium.charAt(0).toUpperCase() + formData.medium.slice(1) : '-'}
                   </p>
                 </div>
 
                 <div className="border-t border-gray-200 pt-4">
                   <p className="text-sm text-gray-600">Start Date</p>
                   <p className="text-base font-medium text-gray-900 mt-1">
-                    {formData.start_date || '2025.10.21'}
+                    {formData.start_date ? new Date(formData.start_date).toLocaleDateString('en-CA').replace(/-/g, '.') : '-'}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-gray-600">End Date</p>
                   <p className="text-base font-medium text-gray-900 mt-1">
-                    {formData.end_date || '2025.11.20'}
+                    {formData.end_date ? new Date(formData.end_date).toLocaleDateString('en-CA').replace(/-/g, '.') : '-'}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-gray-600">Campaign Period</p>
                   <p className="text-base font-medium text-gray-900 mt-1">
-                    {campaignPeriod > 0 ? `${campaignPeriod} days` : '3 days'}
+                    {campaignPeriod > 0 ? `${campaignPeriod} days` : '-'}
                   </p>
                 </div>
 
@@ -574,11 +581,49 @@ export default function NewCampaignPage() {
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600">Daily Average Budget</p>
+                  <p className="text-sm text-gray-600">Daily Budget</p>
                   <p className="text-base font-medium text-gray-900 mt-1">
                     {formData.daily_budget ? `${parseInt(formData.daily_budget).toLocaleString()}₩` : '0₩'}
                   </p>
                 </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({
+                      name: '',
+                      course_id: '',
+                      source: 'select',
+                      medium: 'select',
+                      status: 'waiting',
+                      start_date: '',
+                      end_date: '',
+                      budget: '',
+                      daily_budget: '',
+                      description: '',
+                      utm_campaign: '',
+                      utm_source: '',
+                      utm_medium: '',
+                      utm_term: '',
+                      utm_content: '',
+                      landing_url: ''
+                    });
+                    setErrors({});
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
               </div>
             </div>
           </div>
