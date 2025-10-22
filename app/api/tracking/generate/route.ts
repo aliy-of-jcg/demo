@@ -70,11 +70,12 @@ export async function POST(request: NextRequest) {
       const pool = getPool();
       await pool.execute(
         `INSERT INTO utm_codes 
-         (name, campaign_id, utm_campaign, utm_source, utm_medium, utm_term, utm_content, landing_url, full_url, status) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+         (name, campaign_id, tracking_code, utm_campaign, utm_source, utm_medium, utm_term, utm_content, landing_url, full_url, status) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
         [
           campaignName,
           campaignId || null,
+          trackingCode,
           utmCampaign,
           utmSource,
           utmMedium,

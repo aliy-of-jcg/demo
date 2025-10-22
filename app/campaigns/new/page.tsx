@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -14,8 +14,12 @@ interface Course {
 
 export default function NewCampaignPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const duplicateId = searchParams.get('duplicate');
+  
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingDuplicate, setLoadingDuplicate] = useState(false);
   
   // Refs for scrolling to error fields
   const fieldRefs = {
@@ -53,7 +57,49 @@ export default function NewCampaignPage() {
 
   useEffect(() => {
     fetchCourses();
-  }, []);
+    
+    // If duplicate ID is present, fetch campaign data
+    if (duplicateId) {
+      fetchDuplicateCampaign(duplicateId);
+    }
+  }, [duplicateId]);
+
+  const fetchDuplicateCampaign = async (id: string) => {
+    setLoadingDuplicate(true);
+    try {
+      const response = await fetch(`/api/campaigns/${id}`);
+      const data = await response.json();
+      
+      if (data.success && data.campaign) {
+        const campaign = data.campaign;
+        // Populate form with campaign data except dates
+        setFormData({
+          name: campaign.name + ' (Copy)',
+          course_id: campaign.course_id?.toString() || '',
+          source: campaign.source || 'select',
+          medium: campaign.medium || 'select',
+          status: campaign.status || 'waiting',
+          start_date: '', // Leave dates empty
+          end_date: '', // Leave dates empty
+          budget: campaign.budget?.toString() || '',
+          daily_budget: '', // Will be recalculated when dates are set
+          description: campaign.description || '',
+          utm_campaign: campaign.utm_campaign || '',
+          utm_source: campaign.utm_source || '',
+          utm_medium: campaign.utm_medium || '',
+          utm_term: campaign.utm_term || '',
+          utm_content: campaign.utm_content || '',
+          landing_url: campaign.landing_url || ''
+        });
+        toast.success('Campaign data loaded for duplication');
+      }
+    } catch (error) {
+      console.error('Error fetching campaign for duplication:', error);
+      toast.error('Failed to load campaign data');
+    } finally {
+      setLoadingDuplicate(false);
+    }
+  };
 
   useEffect(() => {
     // Auto-generate UTM parameters
@@ -212,6 +258,17 @@ export default function NewCampaignPage() {
 
   const selectedCourse = courses.find(c => c.id === parseInt(formData.course_id));
 
+  if (loadingDuplicate) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading campaign data for duplication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -220,8 +277,12 @@ export default function NewCampaignPage() {
           <ChevronLeft className="w-5 h-5" />
           <span>Back to List</span>
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Create New Campaign</h1>
-        <p className="text-gray-600 mt-1">Please register a new campaign</p>
+        <h1 className="text-3xl font-bold text-gray-900">
+          {duplicateId ? 'Duplicate Campaign' : 'Create New Campaign'}
+        </h1>
+        <p className="text-gray-600 mt-1">
+          {duplicateId ? 'Review and update the campaign details below' : 'Please register a new campaign'}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit}>

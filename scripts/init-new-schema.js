@@ -57,6 +57,7 @@ async function initNewSchema() {
         id INT PRIMARY KEY AUTO_INCREMENT,
         name VARCHAR(255),
         campaign_id INT,
+        tracking_code VARCHAR(20),
         utm_campaign VARCHAR(255),
         utm_source VARCHAR(100),
         utm_medium VARCHAR(100),
@@ -67,7 +68,8 @@ async function initNewSchema() {
         clicks INT DEFAULT 0,
         status VARCHAR(20) DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+        FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
+        UNIQUE KEY unique_tracking_code (tracking_code)
       )
     `);
     console.log('✅ Created table: utm_codes');

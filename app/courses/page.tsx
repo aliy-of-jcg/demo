@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import Swal from 'sweetalert2';
 
 interface Course {
   id: number;
@@ -23,12 +24,18 @@ interface Summary {
 
 const statusColors: Record<string, string> = {
   active: 'bg-blue-100 text-blue-800',
-  ended: 'bg-gray-200 text-gray-600'
+  waiting: 'bg-gray-100 text-gray-800',
+  paused: 'bg-yellow-100 text-yellow-800',
+  ended: 'bg-gray-200 text-gray-600',
+  hidden: 'bg-gray-300 text-gray-500'
 };
 
 const statusLabels: Record<string, string> = {
   active: 'Active',
-  ended: 'Ended'
+  waiting: 'Waiting',
+  paused: 'Paused',
+  ended: 'Ended',
+  hidden: 'Hidden'
 };
 
 export default function CoursesPage() {
@@ -180,28 +187,42 @@ export default function CoursesPage() {
   };
 
   const handleDelete = async (id: number) => {
+    const result = await Swal.fire({
+      title: 'Hide Course?',
+      text: 'Are you sure you want to hide this course? You can unhide it later by editing the course.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#6b7280',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, hide it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
     toast.promise(
       (async () => {
-        const confirmed = window.confirm('Are you sure you want to delete this course? This action cannot be undone.');
-        if (!confirmed) throw new Error('Cancelled');
-
         const response = await fetch(`/api/courses/${id}`, {
-          method: 'DELETE'
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: 'hidden' })
         });
 
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to delete course');
+          throw new Error(data.error || 'Failed to hide course');
         }
 
         await fetchCourses();
         return data;
       })(),
       {
-        loading: 'Deleting course...',
-        success: 'Course deleted successfully!',
-        error: (err) => err.message === 'Cancelled' ? '' : `Error: ${err.message}`,
+        loading: 'Hiding course...',
+        success: 'Course hidden successfully!',
+        error: (err) => `Error: ${err.message}`,
       }
     );
   };
@@ -253,7 +274,7 @@ export default function CoursesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Active Campaigns</p>
-                <p className="text-3xl font-bold text-gray-900">9</p>
+                <p className="text-3xl font-bold text-gray-900">{summary.total_campaigns}</p>
               </div>
               <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-pink-600" />
@@ -297,6 +318,8 @@ export default function CoursesPage() {
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
+              <option value="waiting">Waiting</option>
+              <option value="paused">Paused</option>
               <option value="ended">Ended</option>
             </select>
           </div>
@@ -490,6 +513,8 @@ export default function CoursesPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="active">Active</option>
+                  <option value="waiting">Waiting</option>
+                  <option value="paused">Paused</option>
                   <option value="ended">Ended</option>
                 </select>
               </div>
