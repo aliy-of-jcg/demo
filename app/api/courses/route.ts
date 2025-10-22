@@ -8,16 +8,13 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || '';
     
     const pool = getPool();
-    let query = 'SELECT * FROM courses WHERE 1=1';
+    let query = 'SELECT * FROM courses WHERE status != \'hidden\''; // Exclude hidden courses by default
     const params: any[] = [];
 
-    // Filter by status if provided, otherwise show only active by default
+    // Filter by status if provided
     if (status) {
-      query += ' AND status = ?';
+      query = 'SELECT * FROM courses WHERE status = ?';
       params.push(status);
-    } else {
-      // If no status filter, show all courses
-      // Remove the default "active" only filter to show all
     }
 
     if (search) {
@@ -40,14 +37,24 @@ export async function GET(request: NextRequest) {
     const [summaryResult] = await pool.execute(summaryQuery);
     const summary = (summaryResult as any)[0];
 
+    // Get total active campaigns
+    const campaignsQuery = `
+      SELECT COUNT(*) as total_campaigns
+      FROM campaigns
+      WHERE status = 'active'
+    `;
+    
+    const [campaignsResult] = await pool.execute(campaignsQuery);
+    const campaigns = (campaignsResult as any)[0];
+
     return NextResponse.json({
       success: true,
       courses,
       summary: {
         total_courses: summary.total_courses,
         active_courses: summary.active_courses,
-        total_campaigns: 0, // Will be calculated from campaigns
-        total_visits: 0 // Will be calculated from ClickHouse
+        total_campaigns: campaigns.total_campaigns,
+        total_visits: 0 // Will be calculated from ClickHouse later
       }
     });
   } catch (error) {

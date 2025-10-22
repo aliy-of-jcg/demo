@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const pool = getPool();
 
     // Build WHERE conditions dynamically
-    let whereConditions = '';
+    let whereConditions = ' AND campaigns.status != \'hidden\''; // Exclude hidden campaigns by default
     const countParams: any[] = [];
     const queryParams: any[] = [];
 

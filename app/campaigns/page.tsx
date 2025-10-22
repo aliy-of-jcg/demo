@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import Swal from 'sweetalert2';
 
 interface Campaign {
   id: number;
@@ -37,14 +38,16 @@ const statusColors: Record<string, string> = {
   active: 'bg-blue-100 text-blue-800',
   waiting: 'bg-gray-100 text-gray-800',
   ended: 'bg-gray-200 text-gray-600',
-  paused: 'bg-yellow-100 text-yellow-800'
+  paused: 'bg-yellow-100 text-yellow-800',
+  hidden: 'bg-gray-300 text-gray-500'
 };
 
 const statusLabels: Record<string, string> = {
   active: 'Active',
   waiting: 'Waiting',
   ended: 'Ended',
-  paused: 'Paused'
+  paused: 'Paused',
+  hidden: 'Hidden'
 };
 
 export default function CampaignsPage() {
@@ -148,55 +151,49 @@ export default function CampaignsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    // Use toast.promise for better UX
+    const result = await Swal.fire({
+      title: 'Hide Campaign?',
+      text: 'Are you sure you want to hide this campaign? You can unhide it later by editing the campaign.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#6b7280',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, hide it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
     toast.promise(
       (async () => {
-        const confirmed = window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.');
-        if (!confirmed) throw new Error('Cancelled');
-
         const response = await fetch(`/api/campaigns/${id}`, {
-          method: 'DELETE'
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: 'hidden' })
         });
 
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to delete campaign');
+          throw new Error(data.error || 'Failed to hide campaign');
         }
 
         await fetchCampaigns();
         return data;
       })(),
       {
-        loading: 'Deleting campaign...',
-        success: 'Campaign deleted successfully!',
-        error: (err) => err.message === 'Cancelled' ? '' : `Error: ${err.message}`,
+        loading: 'Hiding campaign...',
+        success: 'Campaign hidden successfully!',
+        error: (err) => `Error: ${err.message}`,
       }
     );
   };
 
   const handleDuplicate = async (id: number) => {
-    toast.promise(
-      (async () => {
-        const response = await fetch(`/api/campaigns/${id}/duplicate`, {
-          method: 'POST'
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to duplicate campaign');
-        }
-
-        await fetchCampaigns();
-        return data;
-      })(),
-      {
-        loading: 'Duplicating campaign...',
-        success: 'Campaign duplicated successfully!',
-        error: (err) => `Error: ${err.message}`,
-      }
-    );
+    // Redirect to new campaign page with duplicate data
+    window.location.href = `/campaigns/new?duplicate=${id}`;
   };
 
   return (

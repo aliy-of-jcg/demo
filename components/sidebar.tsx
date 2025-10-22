@@ -10,13 +10,13 @@ import { useState } from "react";
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Performance", href: "/performance", icon: TrendingUp },
-  { name: "Tracking Links", href: "/tracking", icon: Link2 },
 ];
 
 const campaignManagementItems = [
   { name: "Campaign List", href: "/campaigns" },
   { name: "Create New Campaign", href: "/campaigns/new" },
   { name: "Course Management", href: "/courses" },
+  { name: "Tracking Links", href: "/tracking" },
 ];
 
 export function Sidebar() {

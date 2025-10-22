@@ -1,73 +1,55 @@
-import { NextRequest, NextResponse } from "next/server";
-import clickhouse from "@/lib/clickhouse";
+import { NextRequest, NextResponse } from 'next/server';
+import { getPool } from '@/lib/mysql';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get("limit") || "50");
-
-    const query = await clickhouse.query({
-      query: `
-        SELECT
-          id,
-          tracking_code,
-          campaign_name,
-          target_url,
-          description,
-          created_by,
-          created_at,
-          is_active
-        FROM analytics.tracking_codes
-        WHERE is_active = 1
-        ORDER BY created_at DESC
-        LIMIT ${limit}
-      `,
-      format: "JSONEachRow",
-    });
-
-    const links = await query.json();
-
-    // Transform to match frontend interface
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const search = searchParams.get('search') || '';
     
-    const transformedLinks = links.map((link: any) => {
-      // Extract UTM params from description (format: "source - medium - campaign")
-      const [utmSource, utmMedium, utmCampaign] = link.description?.split(' - ') || ['', '', ''];
-      
-      // Create clean short URL: /t/<code>
-      // All data is looked up from database, nothing exposed
-      const trackingUrl = `${appUrl}/t/${link.tracking_code}`;
+    const pool = getPool();
+    
+    let query = `
+      SELECT 
+        utm_codes.id,
+        utm_codes.name,
+        utm_codes.campaign_id,
+        utm_codes.tracking_code,
+        utm_codes.utm_campaign,
+        utm_codes.utm_source,
+        utm_codes.utm_medium,
+        utm_codes.utm_term,
+        utm_codes.utm_content,
+        utm_codes.landing_url,
+        utm_codes.full_url,
+        utm_codes.clicks,
+        utm_codes.status,
+        utm_codes.created_at,
+        campaigns.name as campaign_name
+      FROM utm_codes
+      LEFT JOIN campaigns ON utm_codes.campaign_id = campaigns.id
+      WHERE 1=1
+    `;
+    
+    const params: any[] = [];
+    
+    if (search) {
+      query += ` AND (utm_codes.name LIKE ? OR campaigns.name LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    
+    query += ` ORDER BY utm_codes.created_at DESC`;
 
-      return {
-        id: link.id,
-        campaignName: link.campaign_name,
-        trackingCode: link.tracking_code,
-        targetUrl: link.target_url,
-        utmSource,
-        utmMedium,
-        utmCampaign,
-        fullUrl: trackingUrl,
-        createdAt: link.created_at,
-      };
-    });
+    const [links] = await pool.execute(query, params);
 
     return NextResponse.json({
       success: true,
-      links: transformedLinks,
-      count: transformedLinks.length,
+      links
     });
   } catch (error) {
-    console.error("Error fetching tracking links:", error);
+    console.error('Error fetching tracking links:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch tracking links",
-        links: [],
-        count: 0,
-      },
+      { success: false, error: 'Failed to fetch tracking links' },
       { status: 500 }
     );
   }
 }
-
-

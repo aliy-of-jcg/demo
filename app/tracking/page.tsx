@@ -1,405 +1,468 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Copy, ExternalLink, Trash2, Check, RefreshCw } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { Search, Link as LinkIcon, Copy, Check, ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import Swal from 'sweetalert2';
 
 interface TrackingLink {
-  id: string;
-  campaignName: string;
-  trackingCode: string;
-  targetUrl: string;
-  utmSource: string;
-  utmMedium: string;
-  utmCampaign: string;
-  fullUrl: string;
-  createdAt: string;
+  id: number;
+  name: string;
+  campaign_id: number | null;
+  campaign_name: string | null;
+  tracking_code: string | null;
+  utm_campaign: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_term: string;
+  utm_content: string;
+  landing_url: string;
+  full_url: string;
+  clicks: number;
+  status: string;
+  created_at: string;
 }
 
-export default function TrackingPage() {
+export default function TrackingLinksPage() {
   const [trackingLinks, setTrackingLinks] = useState<TrackingLink[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  
+  const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
-    campaignName: "",
-    targetUrl: "",
-    utmSource: "",
-    utmMedium: "",
-    utmCampaign: "",
-    utmContent: "",
-    utmTerm: "",
+    campaign_name: '',
+    target_url: '',
+    description: '',
+    utm_campaign: '',
+    utm_source: '',
+    utm_medium: '',
+    utm_term: '',
+    utm_content: ''
   });
 
-  // Fetch stored links from database
+  // Debounce search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearch(searchInput);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  useEffect(() => {
+    fetchTrackingLinks();
+  }, [search]);
+
   const fetchTrackingLinks = async () => {
+    setLoading(true);
     try {
-      const response = await fetch("/api/tracking/links?limit=50");
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      
+      const response = await fetch(`/api/tracking/links?${params}`);
       const data = await response.json();
       
-      if (data.success && data.links) {
+      if (data.success) {
         setTrackingLinks(data.links);
       }
     } catch (error) {
-      console.error("Error fetching tracking links:", error);
+      console.error('Error fetching tracking links:', error);
+      toast.error('Failed to load tracking links');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // Load links on component mount
-  useEffect(() => {
-    fetchTrackingLinks();
-  }, []);
-
-  const generateTrackingLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsGenerating(true);
-
-    try {
-      const response = await fetch("/api/tracking/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setTrackingLinks([data.trackingLink, ...trackingLinks]);
-        setFormData({
-          campaignName: "",
-          targetUrl: "",
-          utmSource: "",
-          utmMedium: "",
-          utmCampaign: "",
-          utmContent: "",
-          utmTerm: "",
-        });
-      }
-    } catch (error) {
-      console.error("Error generating tracking link:", error);
-      alert("Failed to generate tracking link");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const copyToClipboard = async (url: string, id: string) => {
-    try {
-      // Try modern clipboard API first (works on localhost and HTTPS)
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000);
-      } else {
-        // Fallback for non-secure contexts (HTTP with IP address)
-        const textArea = document.createElement('textarea');
-        textArea.value = url;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.select();
-        
-        try {
-          document.execCommand('copy');
-          setCopiedId(id);
-          setTimeout(() => setCopiedId(null), 2000);
-        } catch (err) {
-          console.error('Copy failed:', err);
-          alert('Failed to copy. Please copy manually.');
-        } finally {
-          document.body.removeChild(textArea);
-        }
-      }
-    } catch (err) {
-      console.error('Clipboard error:', err);
-      alert('Failed to copy. Please copy manually.');
-    }
-  };
-
-  const deleteLink = async (id: string) => {
-    // Optimistic update - remove from UI immediately
-    setTrackingLinks(trackingLinks.filter(link => link.id !== id));
+  const handleCopy = async (trackingCode: string) => {
+    const baseUrl = window.location.origin;
+    const shortUrl = `${baseUrl}/t/${trackingCode}`;
     
     try {
-      // Delete from database
+      await navigator.clipboard.writeText(shortUrl);
+      setCopiedId(trackingCode);
+      toast.success('Link copied to clipboard!');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (error) {
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const handleOpenLink = (trackingCode: string) => {
+    const baseUrl = window.location.origin;
+    const shortUrl = `${baseUrl}/t/${trackingCode}`;
+    window.open(shortUrl, '_blank');
+  };
+
+  const handleCreateLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.campaign_name || !formData.target_url) {
+      toast.error('Campaign name and target URL are required');
+      return;
+    }
+
+    toast.promise(
+      (async () => {
+        const response = await fetch('/api/tracking/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to create tracking link');
+        }
+
+        setShowModal(false);
+        setFormData({
+          campaign_name: '',
+          target_url: '',
+          description: '',
+          utm_campaign: '',
+          utm_source: '',
+          utm_medium: '',
+          utm_term: '',
+          utm_content: ''
+        });
+        await fetchTrackingLinks();
+        return data;
+      })(),
+      {
+        loading: 'Creating tracking link...',
+        success: 'Tracking link created successfully!',
+        error: (err) => err.message
+      }
+    );
+  };
+
+  const handleDelete = async (id: string) => {
+    const result = await Swal.fire({
+      title: 'Delete Tracking Link?',
+      text: 'Are you sure you want to delete this tracking link? This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    toast.promise(
+      (async () => {
       const response = await fetch(`/api/tracking/links/${id}`, {
-        method: 'DELETE',
+          method: 'DELETE'
       });
       
       const data = await response.json();
       
-      if (!data.success) {
-        console.error('Failed to delete link from database');
-        // Optionally: Show error message to user
-        // Optionally: Reload links from database to revert optimistic update
-        alert('Failed to delete link. It may reappear on refresh.');
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to delete tracking link');
+        }
+
+        await fetchTrackingLinks();
+        return data;
+      })(),
+      {
+        loading: 'Deleting tracking link...',
+        success: 'Tracking link deleted successfully!',
+        error: (err) => err.message
       }
-    } catch (error) {
-      console.error('Error deleting link:', error);
-      alert('Error deleting link. It may reappear on refresh.');
-    }
+    );
   };
 
   return (
     <div className="p-8">
-      <div className="mb-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
         <h1 className="text-3xl font-bold text-gray-900">Tracking Links</h1>
-        <p className="text-gray-500 mt-2">Generate and manage UTM tracking links for your campaigns</p>
+          <p className="text-gray-600 mt-1">Manage and monitor your tracking links</p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create New Link</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Generate New Tracking Link</CardTitle>
-            <CardDescription>Create a unique tracking URL with UTM parameters</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={generateTrackingLink} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="campaignName">Campaign Name *</Label>
-                <Input
-                  id="campaignName"
-                  placeholder="e.g., Summer Sale 2024"
-                  value={formData.campaignName}
-                  onChange={(e) => setFormData({ ...formData, campaignName: e.target.value })}
-                  required
-                />
-              </div>
+      {/* Search */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by campaign name or description..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+      </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="targetUrl">Target URL *</Label>
-                <Input
-                  id="targetUrl"
-                  type="url"
-                  placeholder="https://yourwebsite.com/landing"
-                  value={formData.targetUrl}
-                  onChange={(e) => setFormData({ ...formData, targetUrl: e.target.value })}
-                  required
-                />
-              </div>
+      {/* Tracking Links Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">All Tracking Links</h3>
+          <p className="text-sm text-gray-600 mt-1">Click the copy icon to copy the short URL</p>
+        </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="utmSource">UTM Source *</Label>
-                  <Input
-                    id="utmSource"
-                    placeholder="telegram, kakao, naver"
-                    value={formData.utmSource}
-                    onChange={(e) => setFormData({ ...formData, utmSource: e.target.value })}
-                    required
-                  />
-                </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Campaign
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Short URL
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Target URL
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Description
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                    Loading tracking links...
+                  </td>
+                </tr>
+              ) : trackingLinks.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                    No tracking links found
+                  </td>
+                </tr>
+              ) : (
+                trackingLinks.map((link) => {
+                  const shortUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/t/${link.tracking_code}`;
+                  return (
+                    <tr key={link.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{link.campaign_name || link.name}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                            /t/{link.tracking_code}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(link.tracking_code || '')}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Copy full URL"
+                          >
+                            {copiedId === link.tracking_code ? (
+                              <Check className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleOpenLink(link.tracking_code || '')}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Open in new tab"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600 max-w-xs truncate" title={link.landing_url}>
+                          {link.landing_url}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600 max-w-xs truncate">
+                          {link.utm_source && link.utm_medium ? `${link.utm_source} / ${link.utm_medium}` : '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          link.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {link.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(link.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <button
+                          onClick={() => handleDelete(link.id.toString())}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="utmMedium">UTM Medium *</Label>
-                  <Input
-                    id="utmMedium"
-                    placeholder="social, email, cpc"
-                    value={formData.utmMedium}
-                    onChange={(e) => setFormData({ ...formData, utmMedium: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
+      {/* Create Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Tracking Link</h2>
 
-              <div className="space-y-2">
-                <Label htmlFor="utmCampaign">UTM Campaign *</Label>
-                <Input
-                  id="utmCampaign"
-                  placeholder="summer_sale"
-                  value={formData.utmCampaign}
-                  onChange={(e) => setFormData({ ...formData, utmCampaign: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="utmContent">UTM Content (Optional)</Label>
-                <Input
-                  id="utmContent"
-                  placeholder="banner_ad, text_link"
-                  value={formData.utmContent}
-                  onChange={(e) => setFormData({ ...formData, utmContent: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="utmTerm">UTM Term (Optional)</Label>
-                <Input
-                  id="utmTerm"
-                  placeholder="keyword1, keyword2"
-                  value={formData.utmTerm}
-                  onChange={(e) => setFormData({ ...formData, utmTerm: e.target.value })}
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isGenerating}>
-                {isGenerating ? "Generating..." : "Generate Tracking Link"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+            <form onSubmit={handleCreateLink} className="space-y-4">
               <div>
-                <CardTitle>Generated Links</CardTitle>
-                <CardDescription>Your recently created tracking URLs (stored in ClickHouse)</CardDescription>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Campaign Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.campaign_name}
+                  onChange={(e) => setFormData({ ...formData, campaign_name: e.target.value })}
+                  placeholder="Enter campaign name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsLoading(true);
-                  fetchTrackingLinks();
-                }}
-                disabled={isLoading}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-blue-500" />
-                  <p className="text-gray-500">Loading tracking links...</p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Target URL <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  value={formData.target_url}
+                  onChange={(e) => setFormData({ ...formData, target_url: e.target.value })}
+                  placeholder="https://example.com/landing-page"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Optional description"
+                  rows={2}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">UTM Parameters (Optional)</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UTM Campaign
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.utm_campaign}
+                      onChange={(e) => setFormData({ ...formData, utm_campaign: e.target.value })}
+                      placeholder="campaign_name"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
               </div>
-            ) : trackingLinks.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <p>No tracking links generated yet.</p>
-                <p className="text-sm mt-2">Fill out the form to create your first tracking link.</p>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UTM Source
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.utm_source}
+                      onChange={(e) => setFormData({ ...formData, utm_source: e.target.value })}
+                      placeholder="google, facebook, etc."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
-            ) : (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                {trackingLinks.map((link) => (
-                  <div key={link.id} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-semibold text-sm">{link.campaignName}</h4>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Code: <span className="font-mono">{link.trackingCode}</span>
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteLink(link.id)}
-                        className="h-8 w-8 text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UTM Medium
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.utm_medium}
+                      onChange={(e) => setFormData({ ...formData, utm_medium: e.target.value })}
+                      placeholder="cpc, banner, email, etc."
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UTM Term
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.utm_term}
+                      onChange={(e) => setFormData({ ...formData, utm_term: e.target.value })}
+                      placeholder="keyword terms"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UTM Content
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.utm_content}
+                      onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
+                      placeholder="ad variation"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+            </div>
+                </div>
                     </div>
                     
-                    <div className="bg-white border rounded p-2 mb-2">
-                      <a 
-                        href={link.fullUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs break-all font-mono text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        {link.fullUrl}
-                      </a>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => copyToClipboard(link.fullUrl, link.id)}
-                      >
-                        {copiedId === link.id ? (
-                          <>
-                            <Check className="h-3 w-3 mr-1" />
-                            Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3 mr-1" />
-                            Copy
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(link.fullUrl, "_blank")}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    </div>
-
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                        {link.utmSource}
-                      </span>
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
-                        {link.utmMedium}
-                      </span>
-                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
-                        {link.utmCampaign}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-end gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create Link
+                </button>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>About UTM Parameters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <h4 className="font-semibold mb-2">Supported Platforms</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• Telegram (telegram or tg)</li>
-                <li>• Kakao (kakao)</li>
-                <li>• Naver (naver)</li>
-                <li>• Google (google)</li>
-                <li>• Facebook (facebook)</li>
-                <li>• Instagram (instagram)</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-2">Common Mediums</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• social - Social media</li>
-                <li>• cpc - Cost per click</li>
-                <li>• email - Email campaigns</li>
-                <li>• banner - Display ads</li>
-                <li>• organic - Organic search</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-2">Tracked Data</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• Click timestamp</li>
-                <li>• Device type</li>
-                <li>• Browser & OS</li>
-                <li>• IP & Location</li>
-                <li>• Referrer URL</li>
-              </ul>
-            </div>
+            </form>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 }
-
