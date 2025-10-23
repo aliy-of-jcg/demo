@@ -243,8 +243,28 @@ export default function NewCampaignPage() {
           throw new Error(data.error || 'Failed to create campaign');
         }
 
+        // Show tracking link if generated
+        if (data.trackingLink) {
+          const baseUrl = window.location.origin;
+          const shortUrl = `${baseUrl}/t/${data.trackingLink.trackingCode}`;
+          
+          // Copy to clipboard
+          try {
+            await navigator.clipboard.writeText(shortUrl);
+            toast.success(
+              `Tracking link copied: ${shortUrl}`,
+              { duration: 5000 }
+            );
+          } catch (clipboardError) {
+            toast.success(
+              `Tracking link created: ${shortUrl}`,
+              { duration: 5000 }
+            );
+          }
+        }
+
         // Redirect after short delay to show success message
-        setTimeout(() => router.push('/campaigns'), 1000);
+        setTimeout(() => router.push('/campaigns'), 1500);
         return data;
       })(),
       {

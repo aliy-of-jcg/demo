@@ -83,11 +83,23 @@ export async function GET(request: NextRequest) {
     const [countResult] = await pool.execute(countQuery, countParams);
     const total = (countResult as any)[0].total;
 
-    // Get campaigns with course info
+    // Get campaigns with course info (without duplicates from tracking links)
     // Build the complete query without string interpolation in ORDER BY
     const baseQuery = `
-      SELECT 
-        campaigns.*,
+      SELECT DISTINCT
+        campaigns.id,
+        campaigns.name,
+        campaigns.course_id,
+        campaigns.source,
+        campaigns.medium,
+        campaigns.status,
+        campaigns.start_date,
+        campaigns.end_date,
+        campaigns.budget,
+        campaigns.spent,
+        campaigns.description,
+        campaigns.created_at,
+        campaigns.updated_at,
         courses.name as course_name,
         courses.code as course_code
       FROM campaigns
@@ -99,6 +111,39 @@ export async function GET(request: NextRequest) {
     const fullQuery = baseQuery + ` ORDER BY campaigns.${validSortBy} ${validSortOrder} LIMIT ${limit} OFFSET ${offset}`;
 
     const [campaigns] = await pool.execute(fullQuery, queryParams);
+
+    // Get all tracking links for these campaigns in a single query (more efficient)
+    const campaignIds = (campaigns as any[]).map(c => c.id);
+    
+    let platformsMap = new Map();
+    if (campaignIds.length > 0) {
+      const placeholders = campaignIds.map(() => '?').join(',');
+      const [allPlatforms] = await pool.execute(
+        `SELECT campaign_id, utm_source, utm_medium 
+         FROM utm_codes 
+         WHERE campaign_id IN (${placeholders}) AND status = 'active'
+         GROUP BY campaign_id, utm_source, utm_medium
+         ORDER BY campaign_id, utm_source`,
+        campaignIds
+      );
+      
+      // Group platforms by campaign_id
+      (allPlatforms as any[]).forEach(platform => {
+        if (!platformsMap.has(platform.campaign_id)) {
+          platformsMap.set(platform.campaign_id, []);
+        }
+        platformsMap.get(platform.campaign_id).push({
+          utm_source: platform.utm_source,
+          utm_medium: platform.utm_medium
+        });
+      });
+    }
+
+    // Add platforms to each campaign
+    const campaignsWithPlatforms = (campaigns as any[]).map(campaign => ({
+      ...campaign,
+      platforms: platformsMap.get(campaign.id) || []
+    }));
 
     // Calculate summary stats
     const summaryQuery = `
@@ -115,7 +160,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      campaigns,
+      campaigns: campaignsWithPlatforms,
       pagination: {
         page,
         limit,
@@ -150,7 +195,13 @@ export async function POST(request: NextRequest) {
       start_date,
       end_date,
       budget,
-      description
+      description,
+      landing_url,
+      utm_campaign,
+      utm_source,
+      utm_medium,
+      utm_term,
+      utm_content
     } = body;
 
     // Validation
@@ -181,6 +232,39 @@ export async function POST(request: NextRequest) {
 
     const insertId = (result as any).insertId;
 
+    // Auto-generate tracking link if landing_url and UTM params are provided
+    let trackingLink = null;
+    if (landing_url && utm_campaign && utm_source && utm_medium) {
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const trackingResponse = await fetch(`${appUrl}/api/tracking/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            campaignName: name,
+            campaignId: insertId,
+            targetUrl: landing_url,
+            utmSource: utm_source,
+            utmMedium: utm_medium,
+            utmCampaign: utm_campaign,
+            utmContent: utm_content || '',
+            utmTerm: utm_term || ''
+          })
+        });
+
+        const trackingData = await trackingResponse.json();
+        if (trackingData.success) {
+          trackingLink = trackingData.trackingLink;
+          console.log('✅ Tracking link generated:', trackingLink.trackingCode);
+        }
+      } catch (error) {
+        console.error('Failed to generate tracking link:', error);
+        // Don't fail the campaign creation if tracking link generation fails
+      }
+    }
+
     // Fetch the created campaign
     const [campaigns] = await pool.execute(
       'SELECT campaigns.*, courses.name as course_name FROM campaigns LEFT JOIN courses ON campaigns.course_id = courses.id WHERE campaigns.id = ?',
@@ -189,7 +273,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      campaign: (campaigns as any)[0]
+      campaign: (campaigns as any)[0],
+      trackingLink: trackingLink
     });
   } catch (error) {
     console.error('Error creating campaign:', error);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -17,6 +17,8 @@ interface Campaign {
   end_date: string;
   budget: number;
   spent: number;
+  tracking_code?: string;
+  platforms?: Array<{ utm_source: string; utm_medium: string }>;
 }
 
 interface Summary {
@@ -68,6 +70,7 @@ export default function CampaignsPage() {
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
   const [actionMenuOpen, setActionMenuOpen] = useState<number | null>(null);
+  const [copiedTrackingCode, setCopiedTrackingCode] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close action menu when clicking outside
@@ -152,13 +155,13 @@ export default function CampaignsPage() {
 
   const handleDelete = async (id: number) => {
     const result = await Swal.fire({
-      title: 'Hide Campaign?',
-      text: 'Are you sure you want to hide this campaign? You can unhide it later by editing the campaign.',
+      title: 'Delete Campaign?',
+      text: 'Are you sure you want to delete this campaign?',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#6b7280',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, hide it!',
+      confirmButtonText: 'Yes, Delete it!',
       cancelButtonText: 'Cancel'
     });
 
@@ -177,7 +180,7 @@ export default function CampaignsPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to hide campaign');
+          throw new Error(data.error || 'Failed to delete campaign');
         }
 
         await fetchCampaigns();
@@ -194,6 +197,26 @@ export default function CampaignsPage() {
   const handleDuplicate = async (id: number) => {
     // Redirect to new campaign page with duplicate data
     window.location.href = `/campaigns/new?duplicate=${id}`;
+  };
+
+  const handleCopyTrackingLink = async (trackingCode: string) => {
+    const baseUrl = window.location.origin;
+    const shortUrl = `${baseUrl}/t/${trackingCode}`;
+    
+    try {
+      await navigator.clipboard.writeText(shortUrl);
+      setCopiedTrackingCode(trackingCode);
+      toast.success('Tracking link copied to clipboard!');
+      setTimeout(() => setCopiedTrackingCode(null), 2000);
+    } catch (error) {
+      toast.error('Failed to copy tracking link');
+    }
+  };
+
+  const handleOpenTrackingLink = (trackingCode: string) => {
+    const baseUrl = window.location.origin;
+    const shortUrl = `${baseUrl}/t/${trackingCode}`;
+    window.open(shortUrl, '_blank');
   };
 
   return (
@@ -390,6 +413,9 @@ export default function CampaignsPage() {
                   Performance
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tracking Link
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Action
                 </th>
               </tr>
@@ -397,7 +423,7 @@ export default function CampaignsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                     </div>
@@ -405,7 +431,7 @@ export default function CampaignsPage() {
                 </tr>
               ) : campaigns.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     No campaigns found
                   </td>
                 </tr>
@@ -420,13 +446,36 @@ export default function CampaignsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {campaign.course_name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${sourceColors[campaign.source] || 'bg-gray-100 text-gray-800'}`}>
-                        {campaign.source}
-                      </span>
+                    <td className="px-6 py-4">
+                      {campaign.platforms && campaign.platforms.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {campaign.platforms.map((platform, idx) => (
+                            <span 
+                              key={idx}
+                              className={`px-2 py-1 text-xs font-medium rounded-full ${sourceColors[platform.utm_source] || 'bg-gray-100 text-gray-800'}`}
+                            >
+                              {platform.utm_source}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${sourceColors[campaign.source] || 'bg-gray-100 text-gray-800'}`}>
+                          {campaign.source}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {campaign.medium}
+                      {campaign.platforms && campaign.platforms.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {campaign.platforms.map((platform, idx) => (
+                            <span key={idx} className="text-xs">
+                              {platform.utm_medium}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        campaign.medium
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[campaign.status] || 'bg-gray-100 text-gray-800'}`}>
@@ -447,6 +496,35 @@ export default function CampaignsPage() {
                         <div className="text-gray-900">CTR: 4.2%</div>
                         <div className="text-gray-500">Conv: 2.8%</div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {campaign.tracking_code ? (
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                            /t/{campaign.tracking_code}
+                          </code>
+                          <button
+                            onClick={() => handleCopyTrackingLink(campaign.tracking_code!)}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Copy tracking link"
+                          >
+                            {copiedTrackingCode === campaign.tracking_code ? (
+                              <Check className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleOpenTrackingLink(campaign.tracking_code!)}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Landing page"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Not generated</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="relative" ref={actionMenuOpen === campaign.id ? menuRef : null}>

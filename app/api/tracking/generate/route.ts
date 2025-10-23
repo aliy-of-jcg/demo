@@ -68,12 +68,16 @@ export async function POST(request: NextRequest) {
     try {
       // Store in MySQL utm_codes table for campaign management
       const pool = getPool();
+      
+      // Generate a descriptive name for the tracking link (only source, not medium)
+      const linkName = utmSource.charAt(0).toUpperCase() + utmSource.slice(1);
+      
       await pool.execute(
         `INSERT INTO utm_codes 
          (name, campaign_id, tracking_code, utm_campaign, utm_source, utm_medium, utm_term, utm_content, landing_url, full_url, status) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
         [
-          campaignName,
+          linkName,
           campaignId || null,
           trackingCode,
           utmCampaign,

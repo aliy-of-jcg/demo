@@ -25,7 +25,7 @@ export function getPasswordResetEmailTemplate(data: EmailTemplateData): { html: 
                     <!-- Header -->
                     <tr>
                         <td style="padding: 40px 40px 20px 40px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Admin Panel</h1>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">CosMos AI</h1>
                         </td>
                     </tr>
                     
@@ -39,7 +39,7 @@ export function getPasswordResetEmailTemplate(data: EmailTemplateData): { html: 
                             </p>
                             
                             <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                                We received a request to reset your password for your Admin Panel account. Click the button below to create a new password:
+                                We received a request to reset your password for your CosmosAI account. Click the button below to create a new password:
                             </p>
                             
                             <!-- Button -->
@@ -75,10 +75,10 @@ export function getPasswordResetEmailTemplate(data: EmailTemplateData): { html: 
                     <tr>
                         <td style="padding: 30px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; border-top: 1px solid #e9ecef;">
                             <p style="margin: 0; color: #999999; font-size: 12px; line-height: 1.6; text-align: center;">
-                                This is an automated message from Admin Panel. Please do not reply to this email.
+                                This is an automated message from CosmosAI. Please do not reply to this email.
                             </p>
                             <p style="margin: 10px 0 0 0; color: #999999; font-size: 12px; text-align: center;">
-                                © ${new Date().getFullYear()} Admin Panel. All rights reserved.
+                                © ${new Date().getFullYear()} CosmosAI. All rights reserved.
                             </p>
                         </td>
                     </tr>
@@ -95,7 +95,7 @@ Password Reset Request
 
 ${userName ? `Hi ${userName},` : 'Hello,'}
 
-We received a request to reset your password for your Admin Panel account.
+We received a request to reset your password for your CosmosAI account.
 
 To reset your password, click the link below or copy and paste it into your browser:
 
@@ -106,8 +106,8 @@ ${resetLink}
 If you didn't request a password reset, please ignore this email. Your password won't change unless you click the link above and create a new password.
 
 ---
-This is an automated message from Admin Panel. Please do not reply to this email.
-© ${new Date().getFullYear()} Admin Panel. All rights reserved.
+This is an automated message from CosMosAI. Please do not reply to this email.
+© ${new Date().getFullYear()} CosMosAI. All rights reserved.
   `.trim();
 
   return { html, text };
@@ -132,7 +132,7 @@ export function getPasswordResetConfirmationTemplate(data: EmailTemplateData): {
                     <!-- Header -->
                     <tr>
                         <td style="padding: 40px 40px 20px 40px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">Admin Panel</h1>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">CosMos AI</h1>
                         </td>
                     </tr>
                     
@@ -152,7 +152,7 @@ export function getPasswordResetConfirmationTemplate(data: EmailTemplateData): {
                             </p>
                             
                             <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                                Your password has been successfully changed for your Admin Panel account: <strong>${email}</strong>
+                                Your password has been successfully changed for your CosMos AI account: <strong>${email}</strong>
                             </p>
                             
                             <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
@@ -179,10 +179,10 @@ export function getPasswordResetConfirmationTemplate(data: EmailTemplateData): {
                     <tr>
                         <td style="padding: 30px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; border-top: 1px solid #e9ecef;">
                             <p style="margin: 0; color: #999999; font-size: 12px; line-height: 1.6; text-align: center;">
-                                This is an automated message from Admin Panel. Please do not reply to this email.
+                                This is an automated message from CosMos AI. Please do not reply to this email.
                             </p>
                             <p style="margin: 10px 0 0 0; color: #999999; font-size: 12px; text-align: center;">
-                                © ${new Date().getFullYear()} Admin Panel. All rights reserved.
+                                © ${new Date().getFullYear()} CosMos AI. All rights reserved.
                             </p>
                         </td>
                     </tr>
@@ -199,7 +199,7 @@ Password Changed Successfully
 
 ${userName ? `Hi ${userName},` : 'Hello,'}
 
-Your password has been successfully changed for your Admin Panel account: ${email}
+Your password has been successfully changed for your CosMos AI account: ${email}
 
 You can now use your new password to sign in to your account.
 
@@ -208,8 +208,8 @@ You can now use your new password to sign in to your account.
 Go to login: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth
 
 ---
-This is an automated message from Admin Panel. Please do not reply to this email.
-© ${new Date().getFullYear()} Admin Panel. All rights reserved.
+This is an automated message from CosMos AI. Please do not reply to this email.
+© ${new Date().getFullYear()} CosMos AI. All rights reserved.
   `.trim();
 
   return { html, text };
