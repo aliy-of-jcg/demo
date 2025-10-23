@@ -12,7 +12,7 @@ const EMAIL_CONFIG = {
   },
 };
 
-const EMAIL_FROM = process.env.EMAIL_FROM || '"Admin Panel" <noreply@adminpanel.com>';
+const EMAIL_FROM = process.env.EMAIL_FROM || '"CosMos AI" <noreply@adminpanel.com>';
 
 // Create reusable transporter
 let transporter: nodemailer.Transporter | null = null;
@@ -58,7 +58,7 @@ export async function sendPasswordResetEmail(params: SendPasswordResetEmailParam
     const mailOptions = {
       from: EMAIL_FROM,
       to: email,
-      subject: 'Password Reset Request - Admin Panel',
+      subject: 'Password Reset Request - CosMos AI',
       text,
       html,
     };
@@ -98,7 +98,7 @@ export async function sendPasswordResetConfirmation(params: SendPasswordResetCon
     const mailOptions = {
       from: EMAIL_FROM,
       to: email,
-      subject: 'Password Changed Successfully - Admin Panel',
+      subject: 'Password Changed Successfully - CosMos AI',
       text,
       html,
     };

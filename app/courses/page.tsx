@@ -188,13 +188,13 @@ export default function CoursesPage() {
 
   const handleDelete = async (id: number) => {
     const result = await Swal.fire({
-      title: 'Hide Course?',
-      text: 'Are you sure you want to hide this course? You can unhide it later by editing the course.',
+      title: 'Delete Course?',
+      text: 'Are you sure you want to delete this course?',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#6b7280',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, hide it!',
+      confirmButtonText: 'Yes, delete it!',
       cancelButtonText: 'Cancel'
     });
 
@@ -213,7 +213,7 @@ export default function CoursesPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to hide course');
+          throw new Error(data.error || 'Failed to delete course');
         }
 
         await fetchCourses();

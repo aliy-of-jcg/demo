@@ -219,8 +219,8 @@ export default function EditCampaignPage() {
 
     setLoading(true);
 
-    toast.promise(
-      (async () => {
+    const updatePromise = (async () => {
+      try {
         const response = await fetch(`/api/campaigns/${campaignId}`, {
           method: 'PUT',
           headers: {
@@ -238,18 +238,22 @@ export default function EditCampaignPage() {
         // Redirect after short delay to show success message
         setTimeout(() => {
           router.push('/campaigns');
-        }, 500);
+        }, 1000);
 
         return data;
-      })(),
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    toast.promise(
+      updatePromise,
       {
         loading: 'Updating campaign...',
         success: 'Campaign updated successfully!',
         error: (err) => err.message || 'Failed to update campaign',
       }
-    ).finally(() => {
-      setLoading(false);
-    });
+    );
   };
 
   const selectedCourse = courses.find(c => c.id === parseInt(formData.course_id));
