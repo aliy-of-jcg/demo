@@ -71,6 +71,7 @@ export default function CampaignsPage() {
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
   const [actionMenuOpen, setActionMenuOpen] = useState<number | null>(null);
   const [copiedTrackingCode, setCopiedTrackingCode] = useState<string | null>(null);
+  const [courses, setCourses] = useState<{ id: number; name: string }[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close action menu when clicking outside
@@ -113,6 +114,11 @@ export default function CampaignsPage() {
     setPage(1);
   }, [limit]);
 
+  // Fetch courses for the filter dropdown
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
   useEffect(() => {
     fetchCampaigns();
   }, [page, limit, search, filters, sortBy, sortOrder]);
@@ -141,6 +147,19 @@ export default function CampaignsPage() {
       console.error('Error fetching campaigns:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch('/api/courses');
+      const data = await response.json();
+
+      if (data.success) {
+        setCourses(data.courses);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
     }
   };
 
@@ -321,7 +340,12 @@ export default function CampaignsPage() {
               onChange={(e) => setFilters({ ...filters, course_id: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All</option>
+              <option value="">All Courses</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.name}
+                </option>
+              ))}
             </select>
           </div>
 
