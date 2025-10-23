@@ -116,14 +116,31 @@ export async function GET(request: NextRequest) {
     const campaignIds = (campaigns as any[]).map(c => c.id);
     
     let platformsMap = new Map();
+    let trackingCodesMap = new Map();
+    
     if (campaignIds.length > 0) {
       const placeholders = campaignIds.map(() => '?').join(',');
+      
+      // Fetch platforms (unique source/medium combinations)
       const [allPlatforms] = await pool.execute(
         `SELECT campaign_id, utm_source, utm_medium 
          FROM utm_codes 
          WHERE campaign_id IN (${placeholders}) AND status = 'active'
          GROUP BY campaign_id, utm_source, utm_medium
          ORDER BY campaign_id, utm_source`,
+        campaignIds
+      );
+      
+      // Fetch the first tracking code for each campaign (for the tracking link column)
+      const [firstTrackingCodes] = await pool.execute(
+        `SELECT u1.campaign_id, u1.tracking_code 
+         FROM utm_codes u1
+         INNER JOIN (
+           SELECT campaign_id, MIN(id) as min_id
+           FROM utm_codes
+           WHERE campaign_id IN (${placeholders}) AND status = 'active'
+           GROUP BY campaign_id
+         ) u2 ON u1.campaign_id = u2.campaign_id AND u1.id = u2.min_id`,
         campaignIds
       );
       
@@ -137,12 +154,18 @@ export async function GET(request: NextRequest) {
           utm_medium: platform.utm_medium
         });
       });
+      
+      // Map tracking codes by campaign_id
+      (firstTrackingCodes as any[]).forEach(tc => {
+        trackingCodesMap.set(tc.campaign_id, tc.tracking_code);
+      });
     }
 
-    // Add platforms to each campaign
+    // Add platforms and tracking_code to each campaign
     const campaignsWithPlatforms = (campaigns as any[]).map(campaign => ({
       ...campaign,
-      platforms: platformsMap.get(campaign.id) || []
+      platforms: platformsMap.get(campaign.id) || [],
+      tracking_code: trackingCodesMap.get(campaign.id) || null
     }));
 
     // Calculate summary stats
