@@ -79,13 +79,13 @@
       }
     },
 
-    // Detect device type
+    // Detect device type (always lowercase for consistency)
     getDeviceType: function() {
-      const ua = navigator.userAgent;
+      const ua = navigator.userAgent.toLowerCase();
       if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
         return 'tablet';
       }
-      if (/Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
+      if (/mobile|iphone|ipod|android|blackberry|iemobile|kindle|silk-accelerated|(hpw|web)os|opera m(obi|ini)/i.test(ua)) {
         return 'mobile';
       }
       return 'desktop';
@@ -94,6 +94,35 @@
     // Get screen resolution
     getScreenResolution: function() {
       return window.screen.width + 'x' + window.screen.height;
+    },
+
+    // Detect browser from user agent
+    getBrowser: function() {
+      const ua = navigator.userAgent;
+      
+      // Check for specific browsers (order matters!)
+      if (ua.indexOf('YaBrowser') > -1 || ua.indexOf('Yandex') > -1) return 'Yandex';
+      if (ua.indexOf('Edg/') > -1 || ua.indexOf('Edge/') > -1) return 'Edge';
+      if (ua.indexOf('OPR') > -1 || ua.indexOf('Opera') > -1) return 'Opera';
+      if (ua.indexOf('Firefox') > -1) return 'Firefox';
+      if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) return 'Safari';
+      if (ua.indexOf('Chrome') > -1) return 'Chrome';
+      if (ua.indexOf('MSIE') > -1 || ua.indexOf('Trident/') > -1) return 'Internet Explorer';
+      
+      return 'Unknown';
+    },
+
+    // Detect OS from user agent
+    getOS: function() {
+      const ua = navigator.userAgent;
+      
+      if (ua.indexOf('Win') > -1) return 'Windows';
+      if (ua.indexOf('Mac') > -1 && ua.indexOf('Mobile') === -1) return 'macOS';
+      if (ua.indexOf('Linux') > -1 && ua.indexOf('Android') === -1) return 'Linux';
+      if (ua.indexOf('Android') > -1) return 'Android';
+      if (ua.indexOf('iOS') > -1 || ua.indexOf('iPhone') > -1 || ua.indexOf('iPad') > -1) return 'iOS';
+      
+      return 'Unknown';
     },
 
     // Get current timestamp
@@ -228,6 +257,8 @@
         user_agent: navigator.userAgent,
         device_type: utils.getDeviceType(),
         screen_resolution: utils.getScreenResolution(),
+        browser: utils.getBrowser(),
+        os: utils.getOS(),
         
         // Browser Info
         language: navigator.language || '',
@@ -304,6 +335,8 @@
           user_agent: navigator.userAgent,
           device_type: utils.getDeviceType(),
           screen_resolution: utils.getScreenResolution(),
+          browser: utils.getBrowser(),
+          os: utils.getOS(),
           language: navigator.language || '',
           event_type: 'page_exit',
           time_on_page: timeOnPage

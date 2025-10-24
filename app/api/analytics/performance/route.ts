@@ -1,0 +1,178 @@
+import { NextRequest, NextResponse } from 'next/server';
+import clickhouse from '@/lib/clickhouse';
+import { getPool } from '@/lib/mysql';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    
+    // Get date range from query parameters (default: last 30 days)
+    const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
+    const startDate = searchParams.get('start') || (() => {
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      return date.toISOString().split('T')[0];
+    })();
+
+    console.log(`📊 Performance Dashboard API - Date Range: ${startDate} to ${endDate}`);
+
+    // Calculate comparison period (previous period of same length)
+    const startMs = new Date(startDate).getTime();
+    const endMs = new Date(endDate).getTime();
+    const periodLength = endMs - startMs;
+    const comparisonStart = new Date(startMs - periodLength).toISOString().split('T')[0];
+    const comparisonEnd = new Date(startMs - 1).toISOString().split('T')[0];
+
+    // Query 1: Summary Metrics (visitors, conversions, revenue)
+    const metricsQuery = `
+      SELECT 
+        COUNT(DISTINCT user_id) as total_visitors,
+        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
+        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT user_id) as conversion_rate
+      FROM analytics.visit_logs
+      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+    `;
+
+    const metricsResult = await clickhouse.query({
+      query: metricsQuery,
+      format: 'JSONEachRow'
+    });
+    const metricsData = await metricsResult.json();
+    const metrics = metricsData[0] || { total_visitors: 0, conversions: 0, conversion_rate: 0 };
+
+    // Query 2: Get revenue from MySQL campaigns (budget spent)
+    const pool = getPool();
+    const [revenueResult] = await pool.execute(`
+      SELECT COALESCE(SUM(spent), 0) as total_spent
+      FROM campaigns
+      WHERE start_date >= ? AND end_date <= ?
+    `, [startDate, endDate]);
+    
+    const revenue = (revenueResult as any[])[0]?.total_spent || 0;
+
+    // Query 3: Channel Breakdown (by utm_source)
+    const channelQuery = `
+      SELECT 
+        CASE 
+          WHEN utm_source = '' THEN 'Direct'
+          ELSE utm_source
+        END as channel,
+        COUNT(DISTINCT user_id) as visitors,
+        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
+        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT user_id) as conversion_rate
+      FROM analytics.visit_logs
+      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      GROUP BY channel
+      ORDER BY visitors DESC
+      LIMIT 10
+    `;
+
+    const channelResult = await clickhouse.query({
+      query: channelQuery,
+      format: 'JSONEachRow'
+    });
+    const channelData = await channelResult.json() as any[];
+
+    // Get campaign budgets for each channel to calculate CPA
+    const channelDataEnhanced = await Promise.all(
+      channelData.map(async (channel: any) => {
+        const [budgetResult] = await pool.execute(`
+          SELECT COALESCE(SUM(spent), 0) as channel_spent
+          FROM campaigns
+          WHERE source = ?
+          AND start_date >= ? AND end_date <= ?
+        `, [channel.channel === 'Direct' ? '' : channel.channel, startDate, endDate]);
+        
+        const spent = (budgetResult as any[])[0]?.channel_spent || 0;
+        const cpa = channel.conversions > 0 ? spent / channel.conversions : 0;
+
+        return {
+          channel: channel.channel,
+          visitors: parseInt(channel.visitors),
+          conversions: parseInt(channel.conversions),
+          rate: parseFloat(channel.conversion_rate).toFixed(2),
+          revenue: spent, // Using spent as revenue for now
+          cpa: Math.round(cpa)
+        };
+      })
+    );
+
+    // Query 4: Daily Visitor Trend (current period)
+    const trendQuery = `
+      SELECT 
+        toDate(timestamp) as date,
+        COUNT(DISTINCT user_id) as visitors
+      FROM analytics.visit_logs
+      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      GROUP BY date
+      ORDER BY date ASC
+    `;
+
+    const trendResult = await clickhouse.query({
+      query: trendQuery,
+      format: 'JSONEachRow'
+    });
+    const trendData = await trendResult.json() as any[];
+
+    // Query 5: Comparison Period Trend
+    const comparisonTrendQuery = `
+      SELECT 
+        toDate(timestamp) as date,
+        COUNT(DISTINCT user_id) as visitors
+      FROM analytics.visit_logs
+      WHERE toDate(timestamp) BETWEEN toDate('${comparisonStart}') AND toDate('${comparisonEnd}')
+      GROUP BY date
+      ORDER BY date ASC
+    `;
+
+    const comparisonTrendResult = await clickhouse.query({
+      query: comparisonTrendQuery,
+      format: 'JSONEachRow'
+    });
+    const comparisonTrendData = await comparisonTrendResult.json() as any[];
+
+    // Format response
+    const response = {
+      success: true,
+      dateRange: {
+        start: startDate,
+        end: endDate
+      },
+      metrics: {
+        totalVisitors: parseInt(metrics.total_visitors) || 0,
+        conversions: parseInt(metrics.conversions) || 0,
+        conversionRate: parseFloat(metrics.conversion_rate || '0').toFixed(2),
+        revenue: parseFloat(revenue)
+      },
+      channelData: channelDataEnhanced,
+      visitorTrend: {
+        current: trendData.map((item: any) => ({
+          date: item.date,
+          visitors: parseInt(item.visitors)
+        })),
+        comparison: comparisonTrendData.map((item: any) => ({
+          date: item.date,
+          visitors: parseInt(item.visitors)
+        }))
+      }
+    };
+
+    console.log(`✅ Performance data fetched: ${response.metrics.totalVisitors} visitors, ${channelDataEnhanced.length} channels`);
+
+    return NextResponse.json(response);
+
+  } catch (error) {
+    console.error('❌ Performance Dashboard API Error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch performance data',
+        message: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    );
+  }
+}
+

@@ -1,0 +1,154 @@
+import { NextRequest, NextResponse } from 'next/server';
+import clickhouse from '@/lib/clickhouse';
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
+
+    // Build WHERE clause for date filtering
+    let whereClause = '1=1';
+
+    if (startDate) {
+      whereClause += ` AND toDate(timestamp) >= '${startDate}'`;
+    }
+    if (endDate) {
+      whereClause += ` AND toDate(timestamp) <= '${endDate}'`;
+    }
+
+    // 1. Device Type Breakdown (normalize to lowercase using subquery)
+    const deviceQuery = `
+      SELECT 
+        device_type,
+        COUNT(DISTINCT user_id) as visitors,
+        COUNT(*) as pageviews,
+        countIf(event_type = 'conversion') as conversions
+      FROM (
+        SELECT 
+          lower(device_type) as device_type,
+          user_id,
+          event_type
+        FROM visit_logs
+        WHERE ${whereClause}
+          AND device_type != ''
+      )
+      GROUP BY device_type
+      ORDER BY visitors DESC
+    `;
+
+    const deviceResult = await clickhouse.query({
+      query: deviceQuery,
+      format: 'JSONEachRow',
+    });
+
+    const deviceJson = await deviceResult.json();
+    const deviceData = deviceJson.map((row: any) => ({
+      device: row.device_type || 'Unknown',
+      visitors: row.visitors || 0,
+      pageviews: row.pageviews || 0,
+      conversions: row.conversions || 0,
+      conversionRate: row.visitors > 0 ? ((row.conversions / row.visitors) * 100).toFixed(2) : '0.00',
+    }));
+
+    // 2. Operating System Breakdown (normalize case)
+    const osQuery = `
+      SELECT 
+        os,
+        COUNT(DISTINCT user_id) as visitors,
+        COUNT(*) as pageviews,
+        countIf(event_type = 'conversion') as conversions
+      FROM visit_logs
+      WHERE ${whereClause}
+        AND os != ''
+      GROUP BY os
+      ORDER BY visitors DESC
+    `;
+
+    const osResult = await clickhouse.query({
+      query: osQuery,
+      format: 'JSONEachRow',
+    });
+
+    const osJson = await osResult.json();
+    const osData = osJson.map((row: any) => ({
+      os: row.os || 'Unknown',
+      visitors: row.visitors || 0,
+      pageviews: row.pageviews || 0,
+      conversions: row.conversions || 0,
+      conversionRate: row.visitors > 0 ? ((row.conversions / row.visitors) * 100).toFixed(2) : '0.00',
+    }));
+
+    // 3. Browser Breakdown (normalize case)
+    const browserQuery = `
+      SELECT 
+        browser,
+        COUNT(DISTINCT user_id) as visitors,
+        COUNT(*) as pageviews,
+        countIf(event_type = 'conversion') as conversions
+      FROM visit_logs
+      WHERE ${whereClause}
+        AND browser != ''
+      GROUP BY browser
+      ORDER BY visitors DESC
+    `;
+
+    const browserResult = await clickhouse.query({
+      query: browserQuery,
+      format: 'JSONEachRow',
+    });
+
+    const browserJson = await browserResult.json();
+    const browserData = browserJson.map((row: any) => ({
+      browser: row.browser || 'Unknown',
+      visitors: row.visitors || 0,
+      pageviews: row.pageviews || 0,
+      conversions: row.conversions || 0,
+      conversionRate: row.visitors > 0 ? ((row.conversions / row.visitors) * 100).toFixed(2) : '0.00',
+    }));
+
+    // 4. Screen Resolution Breakdown (top 10)
+    const resolutionQuery = `
+      SELECT 
+        screen_resolution,
+        COUNT(DISTINCT user_id) as visitors,
+        COUNT(*) as pageviews
+      FROM visit_logs
+      WHERE ${whereClause}
+        AND screen_resolution != ''
+      GROUP BY screen_resolution
+      ORDER BY visitors DESC
+      LIMIT 10
+    `;
+
+    const resolutionResult = await clickhouse.query({
+      query: resolutionQuery,
+      format: 'JSONEachRow',
+    });
+
+    const resolutionJson = await resolutionResult.json();
+    const resolutionData = resolutionJson.map((row: any) => ({
+      resolution: row.screen_resolution || 'Unknown',
+      visitors: row.visitors || 0,
+      pageviews: row.pageviews || 0,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      devices: deviceData,
+      os: osData,
+      browsers: browserData,
+      resolutions: resolutionData,
+    });
+
+  } catch (error) {
+    console.error('Environment analysis API error:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Internal server error' 
+      },
+      { status: 500 }
+    );
+  }
+}
