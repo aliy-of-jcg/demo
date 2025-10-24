@@ -1,323 +1,310 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, Users, MousePointerClick, Globe, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { 
+  BarChart3, 
+  Users, 
+  MousePointerClick, 
+  TrendingUp, 
+  Sparkles,
+  ArrowRight,
+  Target,
+  Globe,
+  BarChart,
+  Clock,
+  PieChart,
+  Activity
+} from "lucide-react";
 import { PageFooter } from "@/components/page-footer";
 
-interface AnalyticsData {
-  stats: {
-    total_clicks: number;
-    unique_visitors: number;
-    active_campaigns: number;
-  };
-  clicks: Array<{ date: string; clicks: number; conversions: number }>;
-  platforms: Array<{ name: string; value: number; color: string }>;
-  devices: Array<{ device: string; visits: number }>;
-  campaigns: Array<{ name: string; clicks: number; ctr: string }>;
+interface CampaignSummary {
+  total_campaigns: number;
+  active_campaigns: number;
+  total_budget: number;
+  total_spent: number;
+  total_clicks: number;
+  total_visitors: number;
 }
 
-export default function Dashboard() {
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const [autoRefresh, setAutoRefresh] = useState(true);
+interface Campaign {
+  id: number;
+  name: string;
+  course_name: string;
+  status: string;
+  clicks?: number;
+  visitors?: number;
+}
 
-  const fetchAnalytics = async () => {
-    try {
-      const response = await fetch("/api/analytics?days=7");
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setData(result.data);
-      } else if (result.data) {
-        setData(result.data);
-      }
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function LandingPage() {
+  const [summary, setSummary] = useState<CampaignSummary | null>(null);
+  const [recentCampaigns, setRecentCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAnalytics();
+    const fetchData = async () => {
+      try {
+        const response = await fetch("/api/campaigns");
+        const result = await response.json();
+        
+        if (result.success) {
+          setSummary(result.summary);
+          // Get top 3 recent campaigns
+          setRecentCampaigns(result.campaigns.slice(0, 3));
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  useEffect(() => {
-    if (!autoRefresh) return;
-    
-    const interval = setInterval(() => {
-      fetchAnalytics();
-    }, 10000);
+  const stats = [
+    {
+      label: "Active Campaigns",
+      value: summary?.active_campaigns || 0,
+      icon: Target,
+      color: "bg-blue-500",
+      gradient: "from-blue-500 to-blue-600"
+    },
+    {
+      label: "Total Clicks",
+      value: summary?.total_clicks || 0,
+      icon: MousePointerClick,
+      color: "bg-green-500",
+      gradient: "from-green-500 to-green-600"
+    },
+    {
+      label: "Unique Visitors",
+      value: summary?.total_visitors || 0,
+      icon: Users,
+      color: "bg-purple-500",
+      gradient: "from-purple-500 to-purple-600"
+    },
+    {
+      label: "Total Budget",
+      value: `₩${((summary?.total_budget || 0) / 10000).toFixed(0)}만`,
+      icon: TrendingUp,
+      color: "bg-orange-500",
+      gradient: "from-orange-500 to-orange-600"
+    }
+  ];
 
-    return () => clearInterval(interval);
-  }, [autoRefresh]);
+  const features = [
+    {
+      title: "Campaign Management",
+      description: "Create, manage, and track marketing campaigns across multiple platforms",
+      icon: Target,
+      href: "/campaigns",
+      color: "bg-blue-50 border-blue-200 hover:border-blue-400",
+      iconColor: "text-blue-600"
+    },
+    {
+      title: "Performance Dashboard",
+      description: "Real-time analytics and insights into your campaign performance",
+      icon: BarChart,
+      href: "/performance",
+      color: "bg-green-50 border-green-200 hover:border-green-400",
+      iconColor: "text-green-600"
+    },
+    {
+      title: "Source & Media Analysis",
+      description: "Analyze traffic sources and media platform effectiveness",
+      icon: Globe,
+      href: "/source-analysis",
+      color: "bg-purple-50 border-purple-200 hover:border-purple-400",
+      iconColor: "text-purple-600"
+    },
+    {
+      title: "Campaign Analytics",
+      description: "Deep dive into individual campaign metrics and performance",
+      icon: BarChart3,
+      href: "/campaign-analysis",
+      color: "bg-pink-50 border-pink-200 hover:border-pink-400",
+      iconColor: "text-pink-600"
+    },
+    {
+      title: "Environment Analysis",
+      description: "Understand user devices, browsers, and operating systems",
+      icon: Activity,
+      href: "/environment-analysis",
+      color: "bg-indigo-50 border-indigo-200 hover:border-indigo-400",
+      iconColor: "text-indigo-600"
+    },
+    {
+      title: "Time-based Analysis",
+      description: "Discover peak hours and day-of-week visitor patterns (KST)",
+      icon: Clock,
+      href: "/time-analysis",
+      color: "bg-orange-50 border-orange-200 hover:border-orange-400",
+      iconColor: "text-orange-600"
+    }
+  ];
 
-  const handleRefresh = () => {
-    setLoading(true);
-    fetchAnalytics();
+  const statusColors: Record<string, string> = {
+    active: 'bg-green-100 text-green-800',
+    waiting: 'bg-gray-100 text-gray-800',
+    ended: 'bg-gray-200 text-gray-600',
+    paused: 'bg-yellow-100 text-yellow-800'
   };
 
-  if (loading && !data) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-          <p className="text-gray-500">Loading analytics...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const stats = data?.stats || { total_clicks: 0, unique_visitors: 0, active_campaigns: 0 };
-  const clickData = data?.clicks || [];
-  const platformData = data?.platforms || [];
-  const deviceData = data?.devices || [];
-  const topCampaigns = data?.campaigns || [];
-
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-2">Overview of your tracking analytics</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-500">
-            Last updated: {lastUpdated.toLocaleTimeString()}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button
-            variant={autoRefresh ? "default" : "outline"}
-            size="sm"
-            onClick={() => setAutoRefresh(!autoRefresh)}
-          >
-            {autoRefresh ? "Auto-refresh ON" : "Auto-refresh OFF"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clicks</CardTitle>
-            <MousePointerClick className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total_clicks.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.total_clicks === 0 ? (
-                <span className="text-blue-600">Start generating tracking links!</span>
-              ) : (
-                <span className="text-green-600">Real-time data</span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unique Visitors</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.unique_visitors.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.unique_visitors === 0 ? (
-                <span className="text-blue-600">Awaiting first visitor</span>
-              ) : (
-                <span className="text-green-600">Based on unique IPs</span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.total_clicks > 0 
-                ? ((stats.unique_visitors / stats.total_clicks) * 100).toFixed(1) 
-                : '0.0'}%
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <div className="relative px-8 py-16">
+          <div className="max-w-7xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-full text-blue-700 text-sm font-medium mb-6">
+              <Sparkles className="w-4 h-4" />
+              Smart Marketing Analytics Platform
             </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-gray-600">Visitors / Clicks</span>
+            
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+              Welcome to <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">CosMos AI</span>
+            </h1>
+            
+            <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
+              Empower your marketing campaigns with real-time tracking, intelligent analytics, 
+              and actionable insights. Track every click, understand every visitor.
             </p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.active_campaigns}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.active_campaigns === 0 ? (
-                <span className="text-blue-600">Create your first campaign</span>
-              ) : (
-                <span className="text-green-600">Currently tracking</span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Clicks & Conversions</CardTitle>
-            <CardDescription>Daily performance over the last 7 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {clickData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={clickData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="clicks" stroke="#3b82f6" strokeWidth={2} />
-                  <Line type="monotone" dataKey="conversions" stroke="#10b981" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400">
-                <div className="text-center">
-                  <MousePointerClick className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No click data yet</p>
-                  <p className="text-sm">Generate tracking links to see data here</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Traffic Sources</CardTitle>
-            <CardDescription>Distribution by platform (Real-time)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {platformData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={platformData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
+            {/* Stats Overview */}
+            {!loading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                {stats.map((stat, index) => (
+                  <div 
+                    key={index}
+                    className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                   >
-                    {platformData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400">
-                <div className="text-center">
-                  <Globe className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No traffic sources yet</p>
-                  <p className="text-sm">Clicks from Telegram, Kakao, Naver, etc. will appear here</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Device Breakdown</CardTitle>
-            <CardDescription>Visits by device type</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {deviceData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={deviceData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="device" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="visits" fill="#8b5cf6" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400">
-                <div className="text-center">
-                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No device data yet</p>
-                  <p className="text-sm">Device types will be tracked automatically</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Campaigns</CardTitle>
-            <CardDescription>Best performing campaigns this month</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {topCampaigns.length > 0 ? (
-              <div className="space-y-4">
-                {topCampaigns.map((campaign, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{campaign.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {Number(campaign.clicks).toLocaleString()} clicks
-                      </p>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-4 mx-auto`}>
+                      <stat.icon className="w-6 h-6 text-white" />
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-green-600">{campaign.ctr}</p>
-                      <p className="text-xs text-muted-foreground">Share</p>
+                    <div className="text-3xl font-bold text-gray-900 mb-1">
+                      {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
                     </div>
+                    <div className="text-sm text-gray-600">{stat.label}</div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400">
-                <div className="text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No campaigns yet</p>
-                  <p className="text-sm">Create tracking links to see campaigns</p>
-                </div>
+            )}
+
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      {/* Footer with extra spacing */}
-      <div className="mt-8">
-        <PageFooter />
+      {/* Features Grid */}
+      <div className="px-8 py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+              Powerful Features at Your Fingertips
+            </h2>
+            <p className="text-gray-600">
+              Everything you need to track, analyze, and optimize your marketing campaigns
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {features.map((feature, index) => (
+              <Link key={index} href={feature.href}>
+                <div className={`${feature.color} border-2 rounded-2xl p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer h-full`}>
+                  <div className={`w-12 h-12 rounded-xl bg-white flex items-center justify-center mb-4 shadow-sm`}>
+                    <feature.icon className={`w-6 h-6 ${feature.iconColor}`} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    {feature.description}
+                  </p>
+                  <div className="flex items-center text-sm font-medium text-blue-600">
+                    Explore <ArrowRight className="w-4 h-4 ml-1" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Recent Campaigns */}
+          {recentCampaigns.length > 0 && (
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Recent Campaigns</h3>
+                <Link href="/campaigns">
+                  <div className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center cursor-pointer">
+                    View All <ArrowRight className="w-4 h-4 ml-1" />
+                  </div>
+                </Link>
+              </div>
+              
+              <div className="space-y-4">
+                {recentCampaigns.map((campaign) => (
+                  <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer border border-gray-200">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h4 className="font-semibold text-gray-900">{campaign.name}</h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[campaign.status] || 'bg-gray-100 text-gray-800'}`}>
+                            {campaign.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{campaign.course_name}</p>
+                      </div>
+                      <div className="flex items-center gap-6 text-sm">
+                        <div className="text-center">
+                          <div className="font-bold text-blue-600">{campaign.clicks || 0}</div>
+                          <div className="text-xs text-gray-500">Clicks</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-bold text-purple-600">{campaign.visitors || 0}</div>
+                          <div className="text-xs text-gray-500">Visitors</div>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          <div className="mt-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-center shadow-xl">
+            <h3 className="text-2xl font-bold text-white mb-3">
+              Ready to Get Started?
+            </h3>
+            <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
+              Create your first campaign and start tracking valuable insights today
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <Link href="/campaigns/new">
+                <button className="px-6 py-3 bg-white text-blue-600 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg">
+                  Create Campaign
+                </button>
+              </Link>
+              <Link href="/campaigns">
+                <button className="px-6 py-3 bg-blue-700 text-white rounded-xl font-semibold hover:bg-blue-800 transition-colors border border-blue-500">
+                  View All Campaigns
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-8 pb-8">
+        <div className="max-w-7xl mx-auto">
+          <PageFooter />
+        </div>
       </div>
     </div>
   );
