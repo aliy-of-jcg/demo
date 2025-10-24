@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Link2, TrendingUp, BarChart3, Megaphone, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { LayoutDashboard, Link2, TrendingUp, BarChart3, Megaphone, ChevronDown, ChevronUp, FileText, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./user-menu";
 import { useState } from "react";
@@ -18,6 +18,11 @@ const campaignManagementItems = [
   { name: "Tracking Links", href: "/tracking" },
 ];
 
+const utmToolsItems = [
+  { name: "UTM List", href: "/utm-tools" },
+  { name: "UTM Generator", href: "/utm-tools/generator" },
+];
+
 const logAnalysisItems = [
   { name: "Performance Dashboard", href: "/performance" },
   { name: "Source & Media Analysis", href: "/source-analysis" },
@@ -31,6 +36,7 @@ const logAnalysisItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [isCampaignManagementOpen, setIsCampaignManagementOpen] = useState(false);
+  const [isUTMToolsOpen, setIsUTMToolsOpen] = useState(false);
   const [isLogAnalysisOpen, setIsLogAnalysisOpen] = useState(false);
 
   return (
@@ -107,8 +113,8 @@ export function Sidebar() {
           )}
         </div>
 
-        {/* Log Analysis Dropdown */}
-        <div className="space-y-1">
+             {/* Log Analysis Dropdown */}
+             <div className="space-y-1">
           <button
             onClick={() => setIsLogAnalysisOpen(!isLogAnalysisOpen)}
             className={cn(
@@ -149,6 +155,51 @@ export function Sidebar() {
             </div>
           )}
         </div>
+
+        {/* UTM Tools Dropdown */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsUTMToolsOpen(!isUTMToolsOpen)}
+            className={cn(
+              "flex items-center justify-between w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+              "text-gray-300 hover:bg-gray-800 hover:text-white"
+            )}
+          >
+            <div className="flex items-center">
+              <Target className="w-5 h-5 mr-3" />
+              UTM Tools
+            </div>
+            {isUTMToolsOpen ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+          
+          {isUTMToolsOpen && (
+            <div className="ml-4 space-y-1">
+              {utmToolsItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                      isActive
+                        ? "bg-gray-700 text-white"
+                        : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                    )}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+   
       </nav>
       <div className="p-4 border-t border-gray-800">
         <p className="text-xs text-gray-400">
