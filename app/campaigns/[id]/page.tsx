@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronLeft, Edit, Calendar, DollarSign, TrendingUp, Link as LinkIcon, Plus, Copy, Check, ExternalLink, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
+import { PageFooter } from '@/components/page-footer';
 
 interface Campaign {
   id: number;
@@ -22,6 +23,10 @@ interface Campaign {
   spent: number;
   description: string;
   created_at: string;
+  clicks?: number;
+  visitors?: number;
+  ctr?: string;
+  conversion_rate?: string;
 }
 
 interface TrackingLink {
@@ -396,24 +401,34 @@ export default function CampaignDetailsPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Performance</h2>
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-medium text-gray-600">Click-Through Rate</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">4.2%</p>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div className="bg-blue-600 h-2 rounded-full" style={{ width: '42%' }}></div>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">2.8%</p>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div className="bg-green-600 h-2 rounded-full" style={{ width: '28%' }}></div>
-              </div>
-            </div>
-            <div>
               <p className="text-sm font-medium text-gray-600">Total Clicks</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {trackingLinks.reduce((sum, link) => sum + link.clicks, 0).toLocaleString()}
+                {(campaign?.clicks ?? 0).toLocaleString()}
               </p>
+              <p className="text-xs text-gray-500 mt-1">
+                From {trackingLinks.length} tracking link{trackingLinks.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Unique Visitors</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {(campaign?.visitors ?? 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {campaign?.clicks && campaign.visitors 
+                  ? `${((campaign.visitors / campaign.clicks) * 100).toFixed(1)}% of clicks`
+                  : 'No data yet'
+                }
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Budget Used</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {((campaign.spent / campaign.budget) * 100).toFixed(1)}%
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.min((campaign.spent / campaign.budget) * 100, 100)}%` }}></div>
+              </div>
             </div>
           </div>
         </div>
@@ -821,6 +836,11 @@ export default function CampaignDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Footer with extra spacing */}
+      <div className="mt-8">
+        <PageFooter />
+      </div>
     </div>
   );
 }

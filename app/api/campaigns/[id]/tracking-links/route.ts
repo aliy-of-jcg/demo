@@ -23,7 +23,6 @@ export async function GET(
         utm_codes.utm_content,
         utm_codes.landing_url,
         utm_codes.full_url,
-        utm_codes.clicks,
         utm_codes.budget,
         utm_codes.spent,
         utm_codes.auto_pause_on_budget,
@@ -35,9 +34,52 @@ export async function GET(
       [campaignId]
     );
 
+    // Fetch real click data from ClickHouse for each tracking code
+    const trackingCodes = (links as any[]).map(link => link.tracking_code);
+    let clicksMap = new Map();
+
+    if (trackingCodes.length > 0) {
+      try {
+        const analyticsQuery = await clickhouse.query({
+          query: `
+            SELECT 
+              tracking_code,
+              COUNT(*) as total_clicks
+            FROM analytics.tracking_events
+            WHERE tracking_code != ''
+            GROUP BY tracking_code
+          `,
+          format: 'JSONEachRow'
+        });
+
+        const analyticsData = await analyticsQuery.json() as any[];
+        analyticsData.forEach((result: any) => {
+          clicksMap.set(result.tracking_code, parseInt(result.total_clicks));
+        });
+      } catch (error) {
+        console.error('Error fetching clicks from ClickHouse:', error);
+        // Continue without click data
+      }
+    }
+
+    // 🎭 DEMO FEATURE: Auto-calculate spent based on clicks ($0.50 per click)
+    const DEMO_COST_PER_CLICK = 0.50;
+
+    // Add real click data and calculated spent to each link
+    const linksWithAnalytics = (links as any[]).map(link => {
+      const realClicks = clicksMap.get(link.tracking_code) || 0;
+      const calculatedSpent = realClicks * DEMO_COST_PER_CLICK;
+      
+      return {
+        ...link,
+        clicks: realClicks, // Override with real clicks from ClickHouse
+        spent: calculatedSpent // Override with calculated spent
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      links
+      links: linksWithAnalytics
     });
   } catch (error) {
     console.error('Error fetching tracking links:', error);

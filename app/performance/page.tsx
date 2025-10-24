@@ -1,389 +1,352 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, Users, MousePointerClick, DollarSign, RefreshCw, Calendar } from "lucide-react";
+import { useState } from 'react';
+import { Calendar, Users, TrendingUp, DollarSign, Target } from 'lucide-react';
+import { PageFooter } from '@/components/page-footer';
 
-interface PerformanceData {
-  summary: {
-    total_visits: number;
-    unique_visitors: number;
-    total_conversions: number;
-    conversion_rate: number;
-    ctr: number;
-    avg_cpa: number;
-    total_cost: number;
-    avg_time_on_page: number;
-    new_visitors: number;
-  };
-  daily_trend: Array<{
-    date: string;
-    visits: number;
-    unique_visitors: number;
-    conversions: number;
-    cost: number;
-    avg_time: number;
-  }>;
-  source_performance: Array<{
-    source: string;
-    visits: number;
-    unique_visitors: number;
-    conversions: number;
-    cost: number;
-    cpa: string;
-    conversion_rate: string;
-    avg_time: number;
-  }>;
-}
+export default function PerformanceAnalysisPage() {
+  const [dateRange, setDateRange] = useState({
+    start: '2025-03-01',
+    end: '2025-03-31'
+  });
 
-export default function PerformanceDashboard() {
-  const [data, setData] = useState<PerformanceData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState('30');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [customRange, setCustomRange] = useState(false);
-
-  const fetchPerformanceData = async () => {
-    setLoading(true);
-    try {
-      let url = '/api/performance?';
-      
-      if (customRange && startDate && endDate) {
-        url += `start_date=${startDate}&end_date=${endDate}`;
-      } else {
-        const days = parseInt(dateRange);
+  // Quick date range selection
+  const setQuickRange = (days: number) => {
         const end = new Date();
         const start = new Date();
         start.setDate(start.getDate() - days);
-        url += `start_date=${start.toISOString().split('T')[0]}&end_date=${end.toISOString().split('T')[0]}`;
-      }
-
-      const response = await fetch(url);
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        setData(result.data);
-      } else if (result.data) {
-        setData(result.data);
-      }
-    } catch (error) {
-      console.error("Error fetching performance data:", error);
-    } finally {
-      setLoading(false);
-    }
+    
+    setDateRange({
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    });
   };
 
-  useEffect(() => {
-    fetchPerformanceData();
-  }, []);
-
-  useEffect(() => {
-    if (!customRange) {
-      fetchPerformanceData();
-    }
-  }, [dateRange]);
-
-  const handleCustomRangeApply = () => {
-    if (startDate && endDate) {
-      fetchPerformanceData();
-    }
+  // Static data for demo
+  const metrics = {
+    totalVisitors: 7135,
+    conversions: 309,
+    conversionRate: 4.33,
+    revenue: 59640000 // 59.64M won
   };
 
-  const handleQuickSelect = (days: string) => {
-    setCustomRange(false);
-    setDateRange(days);
-  };
+  const channelData = [
+    { channel: 'Naver', visitors: 3145, conversions: 142, rate: 4.52, revenue: 19442000, cpa: 137000, color: 'bg-green-500' },
+    { channel: 'Kakao', visitors: 2286, conversions: 98, rate: 4.3, revenue: 13442000, cpa: 137000, color: 'bg-yellow-500' },
+    { channel: 'Google', visitors: 987, conversions: 39, rate: 3.9, revenue: 5352000, cpa: 137000, color: 'bg-red-500' },
+    { channel: 'YouTube', visitors: 717, conversions: 30, rate: 4.2, revenue: 4118000, cpa: 137000, color: 'bg-blue-500' }
+  ];
 
-  const summary = data?.summary || {
-    total_visits: 0,
-    unique_visitors: 0,
-    total_conversions: 0,
-    conversion_rate: 0,
-    ctr: 0,
-    avg_cpa: 0,
-    total_cost: 0,
-    avg_time_on_page: 0,
-    new_visitors: 0
-  };
-
-  const dailyTrend = data?.daily_trend || [];
-  const sourcePerformance = data?.source_performance || [];
+  // Calculate percentages for donut chart
+  const totalVisitors = channelData.reduce((sum, item) => sum + item.visitors, 0);
+  const chartData = channelData.map(item => ({
+    ...item,
+    percentage: ((item.visitors / totalVisitors) * 100).toFixed(1)
+  }));
 
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
+      <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
-          <p className="text-gray-500 mt-2">Track campaign performance and analyze visitor behavior</p>
+        <p className="text-gray-600 mt-1">Overall marketing campaign performance analysis</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchPerformanceData}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+
+      {/* Date Range Picker */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Date Range Picker */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-gray-500" />
+            <input 
+              type="date" 
+              value={dateRange.start}
+              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+            <span className="text-gray-500">~</span>
+            <input 
+              type="date" 
+              value={dateRange.end}
+              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
+              Apply
+            </button>
       </div>
 
-      {/* Date Range Filter */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Date Range
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-end gap-4">
-            {/* Quick Select Buttons */}
-            <div className="flex gap-2">
-              <Button
-                variant={!customRange && dateRange === '7' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleQuickSelect('7')}
-              >
-                Last 7 Days
-              </Button>
-              <Button
-                variant={!customRange && dateRange === '30' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleQuickSelect('30')}
-              >
-                Last 30 Days
-              </Button>
-              <Button
-                variant={!customRange && dateRange === '90' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleQuickSelect('90')}
-              >
-                Last 3 Months
-              </Button>
+          {/* Right: Quick Range Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setQuickRange(7)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Last 7 days
+            </button>
+            <button
+              onClick={() => setQuickRange(30)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Last 30 days
+            </button>
+            <button
+              onClick={() => setQuickRange(90)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Last 3 months
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {/* Total Visitors */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Users className="w-5 h-5 text-purple-600" />
+            </div>
+            <span className="text-sm text-gray-600">Total Visitors</span>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{metrics.totalVisitors.toLocaleString()}</p>
+          <p className="text-xs text-gray-500 mt-1">Total unique visitors</p>
+        </div>
+
+        {/* Conversions */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Target className="w-5 h-5 text-green-600" />
+            </div>
+            <span className="text-sm text-gray-600">Conversions</span>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{metrics.conversions.toLocaleString()}</p>
+          <p className="text-xs text-gray-500 mt-1">Total conversions</p>
+        </div>
+
+        {/* Conversion Rate */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+            </div>
+            <span className="text-sm text-gray-600">Conversion Rate</span>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{metrics.conversionRate}%</p>
+          <p className="text-xs text-gray-500 mt-1">Average conversion rate</p>
             </div>
 
-            {/* Custom Date Range */}
-            <div className="flex items-end gap-2 border-l pl-4">
-              <div className="space-y-2">
-                <Label htmlFor="start-date" className="text-xs">Start Date</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setCustomRange(true);
-                  }}
-                  className="w-40"
-                />
+        {/* Revenue */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <DollarSign className="w-5 h-5 text-orange-600" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="end-date" className="text-xs">End Date</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setCustomRange(true);
-                  }}
-                  className="w-40"
-                />
+            <span className="text-sm text-gray-600">Revenue</span>
               </div>
-              <Button
-                size="sm"
-                onClick={handleCustomRangeApply}
-                disabled={!startDate || !endDate || loading}
-              >
-                Apply
-              </Button>
+          <p className="text-3xl font-bold text-gray-900">₩{(metrics.revenue / 10000).toFixed(0)}M</p>
+          <p className="text-xs text-gray-500 mt-1">Total revenue</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
-            <MousePointerClick className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary.total_visits.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-green-600">{summary.new_visitors} new visitors</span>
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversions</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary.total_conversions.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-blue-600">{summary.conversion_rate}% conversion rate</span>
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">CTR</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary.ctr}%</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-gray-600">Click-through rate</span>
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg CPA</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₩{summary.avg_cpa.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-gray-600">Cost per acquisition</span>
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
+      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Daily Trend Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Performance Trend</CardTitle>
-            <CardDescription>Visits, conversions, and cost over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {dailyTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={dailyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip 
-                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                  />
-                  <Legend />
-                  <Line yAxisId="left" type="monotone" dataKey="visits" stroke="#3b82f6" strokeWidth={2} name="Visits" />
-                  <Line yAxisId="left" type="monotone" dataKey="conversions" stroke="#10b981" strokeWidth={2} name="Conversions" />
-                  <Line yAxisId="right" type="monotone" dataKey="cost" stroke="#f59e0b" strokeWidth={2} name="Cost (₩)" />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400">
-                <div className="text-center">
-                  <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No data available for the selected period</p>
-                </div>
+        {/* Visitor Trend Chart */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Visitor Trend by Date</h2>
+            <span className="text-xs text-gray-500">Last 30 days comparison</span>
+          </div>
+          <div className="relative h-64">
+            {/* Static SVG Chart */}
+            <svg viewBox="0 0 400 200" className="w-full h-full">
+              {/* Grid lines */}
+              <line x1="0" y1="160" x2="400" y2="160" stroke="#e5e7eb" strokeWidth="1"/>
+              <line x1="0" y1="120" x2="400" y2="120" stroke="#e5e7eb" strokeWidth="1"/>
+              <line x1="0" y1="80" x2="400" y2="80" stroke="#e5e7eb" strokeWidth="1"/>
+              <line x1="0" y1="40" x2="400" y2="40" stroke="#e5e7eb" strokeWidth="1"/>
+              
+              {/* Area chart - This Year */}
+              <path
+                d="M 0,140 L 50,130 L 100,120 L 150,110 L 200,115 L 250,105 L 300,100 L 350,95 L 400,100 L 400,200 L 0,200 Z"
+                fill="#3b82f6"
+                fillOpacity="0.2"
+                stroke="#3b82f6"
+                strokeWidth="2"
+              />
+              
+              {/* Line chart - Last Year */}
+              <path
+                d="M 0,165 L 50,160 L 100,158 L 150,155 L 200,153 L 250,150 L 300,148 L 350,145 L 400,143"
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2"
+              />
+              
+              {/* Y-axis labels */}
+              <text x="-5" y="45" fontSize="10" fill="#6b7280" textAnchor="end">1,500</text>
+              <text x="-5" y="85" fontSize="10" fill="#6b7280" textAnchor="end">1,000</text>
+              <text x="-5" y="125" fontSize="10" fill="#6b7280" textAnchor="end">500</text>
+              <text x="-5" y="165" fontSize="10" fill="#6b7280" textAnchor="end">0</text>
+            </svg>
+            
+            {/* Legend */}
+            <div className="flex items-center justify-center gap-6 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                <span className="text-xs text-gray-600">This Year</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Source Performance Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Source Performance</CardTitle>
-            <CardDescription>Traffic and conversions by source</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {sourcePerformance.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={sourcePerformance}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="source" tick={{ fontSize: 12 }} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="visits" fill="#3b82f6" name="Visits" />
-                  <Bar dataKey="conversions" fill="#10b981" name="Conversions" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400">
-                <div className="text-center">
-                  <MousePointerClick className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No source data available</p>
-                </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
+                <span className="text-xs text-gray-600">Last Year</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
       </div>
 
-      {/* Source Performance Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Detailed Source Analysis</CardTitle>
-          <CardDescription>Performance metrics by traffic source</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {sourcePerformance.length > 0 ? (
+        {/* Donut Chart - Channel Distribution */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Visitors by Channel</h2>
+            <span className="text-xs text-gray-500">Current period breakdown</span>
+          </div>
+          <div className="flex items-center justify-center h-64">
+            {/* Simple Donut Chart */}
+            <div className="relative w-48 h-48">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                {/* Naver - Green (44%) */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="35"
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="20"
+                  strokeDasharray="97 220"
+                  strokeDashoffset="0"
+                />
+                {/* Kakao - Yellow (32%) */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="35"
+                  fill="none"
+                  stroke="#eab308"
+                  strokeWidth="20"
+                  strokeDasharray="71 220"
+                  strokeDashoffset="-97"
+                />
+                {/* Google - Red (14%) */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="35"
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth="20"
+                  strokeDasharray="31 220"
+                  strokeDashoffset="-168"
+                />
+                {/* YouTube - Blue (10%) */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="35"
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="20"
+                  strokeDasharray="22 220"
+                  strokeDashoffset="-199"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-gray-900">{totalVisitors.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">Total</p>
+                </div>
+              </div>
+                </div>
+              </div>
+          
+          {/* Legend */}
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            {chartData.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <div className={`w-3 h-3 ${item.color} rounded-sm`}></div>
+                <span className="text-xs text-gray-600">{item.channel}</span>
+                <span className="text-xs font-medium text-gray-900 ml-auto">{item.percentage}%</span>
+              </div>
+            ))}
+                </div>
+              </div>
+      </div>
+
+      {/* Channel Performance Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Channel Performance Ranking</h2>
+        </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-semibold">Source</th>
-                    <th className="text-right py-3 px-4 font-semibold">Visits</th>
-                    <th className="text-right py-3 px-4 font-semibold">Conversions</th>
-                    <th className="text-right py-3 px-4 font-semibold">Conv. Rate</th>
-                    <th className="text-right py-3 px-4 font-semibold">Cost</th>
-                    <th className="text-right py-3 px-4 font-semibold">CPA</th>
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Channel
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Visitors
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Conversions
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Conversion Rate
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Revenue
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  CPA
+                </th>
                   </tr>
                 </thead>
-                <tbody>
-                  {sourcePerformance.map((source, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <span className="font-medium capitalize">{source.source}</span>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {channelData.map((item, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 ${item.color} rounded-full`}></div>
+                      <span className="text-sm font-medium text-gray-900">{item.channel}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {item.visitors.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {item.conversions}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                    {item.rate}%
                       </td>
-                      <td className="py-3 px-4 text-right">{source.visits.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right">{source.conversions.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right">
-                        <span className="text-blue-600 font-medium">{source.conversion_rate}%</span>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ₩{(item.revenue / 10000).toFixed(2)}M
                       </td>
-                      <td className="py-3 px-4 text-right">₩{source.cost.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right">
-                        <span className="text-green-600 font-medium">₩{parseInt(source.cpa).toLocaleString()}</span>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ₩{(item.cpa / 10000).toFixed(0)}만
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : (
-            <div className="text-center py-12 text-gray-400">
-              <p>No source performance data available</p>
-              <p className="text-sm mt-2">Data will appear here once you have campaign traffic</p>
+      </div>
+
+      {/* Footer with extra spacing */}
+      <div className="mt-8">
+        <PageFooter />
             </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
-

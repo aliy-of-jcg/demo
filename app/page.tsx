@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp, Users, MousePointerClick, Globe, RefreshCw } from "lucide-react";
+import { PageFooter } from "@/components/page-footer";
 
 interface AnalyticsData {
   stats: {
@@ -312,6 +313,11 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Footer with extra spacing */}
+      <div className="mt-8">
+        <PageFooter />
       </div>
     </div>
   );

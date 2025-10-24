@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import clickhouse from "@/lib/clickhouse";
 import { parseUserAgent } from "@/lib/user-agent";
 import { parseReferrer, getGeoLocation } from "@/lib/url-parser";
+import { getPool } from "@/lib/mysql";
 
 export const dynamic = 'force-dynamic';
 
@@ -56,24 +57,36 @@ export async function GET(
     console.log("- Campaign:", campaignName);
     console.log("- UTM Source:", utmSource);
     
-    // Check if UTM parameters should be appended (query parameter)
-    const appendUtm = request.nextUrl.searchParams.get("utm") === "true";
+    // ✨ NEW: Get campaign_id and course_id from MySQL for server-side tracking
+    let campaign_id = 0;
+    let course_id = 0;
     
-    // Build final redirect URL
-    let finalRedirectUrl = targetUrl;
-    
-    if (appendUtm && utmSource && utmMedium && utmCampaign) {
-      // Only append UTM if explicitly requested
-      const urlObj = new URL(targetUrl);
-      urlObj.searchParams.set("utm_source", utmSource);
-      urlObj.searchParams.set("utm_medium", utmMedium);
-      urlObj.searchParams.set("utm_campaign", utmCampaign);
-      finalRedirectUrl = urlObj.toString();
-      console.log("✅ UTM parameters appended to URL");
-    } else {
-      console.log("✅ Clean URL (no UTM parameters)");
+    try {
+      const pool = getPool();
+      
+      // Match tracking code to campaign
+      const query = `
+        SELECT c.id as campaign_id, c.course_id, c.name as campaign_name
+        FROM utm_codes u
+        INNER JOIN campaigns c ON u.campaign_id = c.id
+        WHERE u.tracking_code = ?
+        LIMIT 1
+      `;
+      
+      const [rows] = await pool.execute(query, [trackingCode]);
+      
+      if ((rows as any[]).length > 0) {
+        const match = (rows as any[])[0];
+        campaign_id = match.campaign_id;
+        course_id = match.course_id || 0;
+        console.log(`✅ Linked to campaign_id: ${campaign_id}, course_id: ${course_id}`);
+      }
+    } catch (mysqlError) {
+      console.warn('⚠️  Failed to lookup campaign:', mysqlError);
     }
     
+    // Build final redirect URL (CLEAN - no UTM parameters visible)
+    const finalRedirectUrl = targetUrl;
     console.log("🔗 Redirecting to:", finalRedirectUrl);
     
     // Log tracking event asynchronously (don't block redirect)
@@ -88,6 +101,7 @@ export async function GET(
         const parsedReferrer = parseReferrer(referrer);
         const geoLocation = getGeoLocation(ip);
         
+        // 1. Log click event to tracking_events
         await clickhouse.insert({
           table: "analytics.tracking_events",
           values: [{
@@ -142,7 +156,55 @@ export async function GET(
           format: "JSONEachRow",
         });
         
-        console.log("✅ Tracking event logged successfully");
+        console.log("✅ Click event logged to tracking_events");
+        
+        // 2. ✨ NEW: Also log a "visit" to visit_logs for course tracking
+        // This enables course visit counts even for external landing pages
+        if (campaign_id > 0) {
+          try {
+            // Generate a pseudo user_id based on IP (not as accurate as cookie, but works for external sites)
+            const pseudoUserId = `redirect_${ip.replace(/\./g, '_')}`;
+            const sessionId = nanoid();
+            
+            await clickhouse.insert({
+              table: "analytics.visit_logs",
+              values: [{
+                timestamp: Math.floor(Date.now() / 1000),
+                session_id: sessionId,
+                user_id: pseudoUserId, // Pseudo ID based on IP
+                page_url: targetUrl,
+                page_title: campaignName || '',
+                referrer: referrer || '',
+                utm_source: utmSource || '',
+                utm_medium: utmMedium || '',
+                utm_campaign: utmCampaign || '',
+                utm_term: '',
+                utm_content: '',
+                campaign_id: campaign_id, // ✅ Populated from MySQL lookup
+                course_id: course_id,     // ✅ Populated from MySQL lookup
+                user_agent: userAgent,
+                device_type: parsedUA.deviceType,
+                os: parsedUA.os || '',
+                browser: parsedUA.browser || '',
+                screen_resolution: '',
+                visit_count: 1,
+                is_new_visitor: 1, // Assume new since we don't have cookie access
+                time_on_page: 0,
+                event_type: 'redirect_visit',
+                page_sequence: 1,
+                is_landing_page: 1,
+                is_exit_page: 0,
+                previous_page_url: referrer || ''
+              }],
+              format: "JSONEachRow",
+            });
+            
+            console.log(`✅ Visit logged to visit_logs (campaign_id: ${campaign_id}, course_id: ${course_id})`);
+          } catch (visitError) {
+            console.warn("⚠️  Failed to log visit to visit_logs:", visitError);
+          }
+        }
+        
       } catch (e) {
         console.error("❌ Failed to log tracking event:", e);
       }

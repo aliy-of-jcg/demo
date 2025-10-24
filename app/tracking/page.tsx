@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Link as LinkIcon, Copy, Check, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
+import { PageFooter } from '@/components/page-footer';
 
 interface TrackingLink {
   id: number;
@@ -463,6 +464,11 @@ export default function TrackingLinksPage() {
           </div>
         </div>
       )}
+
+      {/* Footer with extra spacing */}
+      <div className="mt-8">
+        <PageFooter />
+      </div>
     </div>
   );
 }
