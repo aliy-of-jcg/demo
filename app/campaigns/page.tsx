@@ -5,6 +5,7 @@ import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarCh
 import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
+import { PageFooter } from '@/components/page-footer';
 
 interface Campaign {
   id: number;
@@ -18,7 +19,12 @@ interface Campaign {
   budget: number;
   spent: number;
   tracking_code?: string;
+  tracking_codes?: string[]; // Array of all tracking codes
   platforms?: Array<{ utm_source: string; utm_medium: string }>;
+  clicks?: number;
+  visitors?: number;
+  ctr?: string;
+  conversion_rate?: string;
 }
 
 interface Summary {
@@ -206,8 +212,8 @@ export default function CampaignsPage() {
         return data;
       })(),
       {
-        loading: 'Hiding campaign...',
-        success: 'Campaign hidden successfully!',
+        loading: 'Deleting campaign...',
+        success: 'Campaign deleted successfully!',
         error: (err) => `Error: ${err.message}`,
       }
     );
@@ -304,9 +310,13 @@ export default function CampaignsPage() {
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Visits</p>
-                <p className="text-3xl font-bold text-gray-900">7,310</p>
-                <p className="text-sm text-green-600 mt-1">+15.3%</p>
+                <p className="text-sm text-gray-600 mb-1">Total Clicks</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {campaigns.reduce((sum, c) => sum + (c.clicks || 0), 0).toLocaleString()}
+                </p>
+                <p className="text-sm text-green-600 mt-1">
+                  {campaigns.reduce((sum, c) => sum + (c.visitors || 0), 0).toLocaleString()} visitors
+                </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-purple-600" />
@@ -517,12 +527,60 @@ export default function CampaignsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm">
-                        <div className="text-gray-900">CTR: 4.2%</div>
-                        <div className="text-gray-500">Conv: 2.8%</div>
+                        <div className="text-gray-900">
+                          {(campaign.clicks ?? 0) > 0 ? (
+                            <>Clicks: {(campaign.clicks ?? 0).toLocaleString()}</>
+                          ) : (
+                            <span className="text-gray-400">No clicks yet</span>
+                          )}
+                        </div>
+                        <div className="text-gray-500">
+                          {(campaign.visitors ?? 0) > 0 ? (
+                            <>Visitors: {(campaign.visitors ?? 0).toLocaleString()}</>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {campaign.tracking_code ? (
+                    <td className="px-6 py-4">
+                      {campaign.tracking_codes && campaign.tracking_codes.length > 0 ? (
+                        <div className="flex flex-col gap-1.5">
+                          {campaign.tracking_codes.slice(0, 3).map((code, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <code className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                /t/{code}
+                              </code>
+                              <button
+                                onClick={() => handleCopyTrackingLink(code)}
+                                className="text-gray-400 hover:text-blue-600 transition-colors"
+                                title="Copy tracking link"
+                              >
+                                {copiedTrackingCode === code ? (
+                                  <Check className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleOpenTrackingLink(code)}
+                                className="text-gray-400 hover:text-blue-600 transition-colors"
+                                title="Landing page"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                          {campaign.tracking_codes.length > 3 && (
+                            <Link 
+                              href={`/campaigns/${campaign.id}`}
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
+                            >
+                              +{campaign.tracking_codes.length - 3} more
+                            </Link>
+                          )}
+                        </div>
+                      ) : campaign.tracking_code ? (
                         <div className="flex items-center gap-2">
                           <code className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                             /t/{campaign.tracking_code}
@@ -633,6 +691,11 @@ export default function CampaignsPage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Footer with extra spacing */}
+      <div className="mt-8">
+        <PageFooter />
       </div>
     </div>
   );

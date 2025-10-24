@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
+import { PageFooter } from '@/components/page-footer';
 
 interface Course {
   id: number;
@@ -13,6 +14,8 @@ interface Course {
   duration: string;
   price: number;
   status: string;
+  active_campaigns?: number;
+  total_visits?: number;
 }
 
 interface Summary {
@@ -220,8 +223,8 @@ export default function CoursesPage() {
         return data;
       })(),
       {
-        loading: 'Hiding course...',
-        success: 'Course hidden successfully!',
+        loading: 'Deleting course...',
+        success: 'Course deleted successfully!',
         error: (err) => `Error: ${err.message}`,
       }
     );
@@ -286,7 +289,7 @@ export default function CoursesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Total Visits</p>
-                <p className="text-3xl font-bold text-gray-900">7,530</p>
+                <p className="text-3xl font-bold text-gray-900">{summary.total_visits}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                 <Users className="w-6 h-6 text-purple-600" />
@@ -398,11 +401,11 @@ export default function CoursesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        3개
+                        {course.active_campaigns ?? 0}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      2,450
+                      {course.total_visits?.toLocaleString() ?? 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[course.status] || 'bg-gray-100 text-gray-800'}`}>
@@ -538,6 +541,11 @@ export default function CoursesPage() {
           </div>
         </div>
       )}
+
+      {/* Footer with extra spacing */}
+      <div className="mt-8">
+        <PageFooter />
+      </div>
     </div>
   );
 }

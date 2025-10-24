@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Link2, TrendingUp, BarChart3, Megaphone, ChevronDown, ChevronUp } from "lucide-react";
+import { LayoutDashboard, Link2, TrendingUp, BarChart3, Megaphone, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./user-menu";
 import { useState } from "react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Performance", href: "/performance", icon: TrendingUp },
 ];
 
 const campaignManagementItems = [
@@ -19,9 +18,20 @@ const campaignManagementItems = [
   { name: "Tracking Links", href: "/tracking" },
 ];
 
+const logAnalysisItems = [
+  { name: "Performance Dashboard", href: "/performance" },
+  { name: "Source & Media Analysis", href: "/source-analysis" },
+  { name: "Campaign Analysis", href: "/campaign-analysis" },
+  { name: "Environment Analysis", href: "/environment-analysis" },
+  { name: "Time-based Analysis", href: "/time-analysis" },
+  { name: "Returning Visitor Analysis", href: "/returning-analysis" },
+  { name: "Page Flow Analysis", href: "/page-flow-analysis" },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
   const [isCampaignManagementOpen, setIsCampaignManagementOpen] = useState(false);
+  const [isLogAnalysisOpen, setIsLogAnalysisOpen] = useState(false);
 
   return (
     <div className="flex flex-col w-64 bg-gray-900 relative">
@@ -77,6 +87,49 @@ export function Sidebar() {
           {isCampaignManagementOpen && (
             <div className="ml-4 space-y-1">
               {campaignManagementItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                      isActive
+                        ? "bg-gray-700 text-white"
+                        : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                    )}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Log Analysis Dropdown */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsLogAnalysisOpen(!isLogAnalysisOpen)}
+            className={cn(
+              "flex items-center justify-between w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+              "text-gray-300 hover:bg-gray-800 hover:text-white"
+            )}
+          >
+            <div className="flex items-center">
+              <FileText className="w-5 h-5 mr-3" />
+              Log Analysis
+            </div>
+            {isLogAnalysisOpen ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+          
+          {isLogAnalysisOpen && (
+            <div className="ml-4 space-y-1">
+              {logAnalysisItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <Link

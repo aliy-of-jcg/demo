@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { LayoutWrapper } from "@/components/layout-wrapper";
 import { Toaster } from "sonner";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,6 +22,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <LayoutWrapper>{children}</LayoutWrapper>
         <Toaster position="top-right" richColors />
+        
+        {/* CosMos Tracking Script - For local testing */}
+        <Script src="/cosmos-track.js" strategy="afterInteractive" />
       </body>
     </html>
   );

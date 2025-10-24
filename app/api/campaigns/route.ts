@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
+import clickhouse from '@/lib/clickhouse';
 
 export async function GET(request: NextRequest) {
   try {
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
     const campaignIds = (campaigns as any[]).map(c => c.id);
     
     let platformsMap = new Map();
-    let trackingCodesMap = new Map();
+    let trackingCodesMap = new Map(); // Map: campaign_id -> array of tracking codes
     
     if (campaignIds.length > 0) {
       const placeholders = campaignIds.map(() => '?').join(',');
@@ -131,16 +132,12 @@ export async function GET(request: NextRequest) {
         campaignIds
       );
       
-      // Fetch the first tracking code for each campaign (for the tracking link column)
-      const [firstTrackingCodes] = await pool.execute(
-        `SELECT u1.campaign_id, u1.tracking_code 
-         FROM utm_codes u1
-         INNER JOIN (
-           SELECT campaign_id, MIN(id) as min_id
-           FROM utm_codes
-           WHERE campaign_id IN (${placeholders}) AND status = 'active'
-           GROUP BY campaign_id
-         ) u2 ON u1.campaign_id = u2.campaign_id AND u1.id = u2.min_id`,
+      // Fetch ALL tracking codes for each campaign (not just the first one)
+      const [allTrackingCodes] = await pool.execute(
+        `SELECT campaign_id, tracking_code 
+         FROM utm_codes
+         WHERE campaign_id IN (${placeholders}) AND status = 'active'
+         ORDER BY campaign_id`,
         campaignIds
       );
       
@@ -155,18 +152,118 @@ export async function GET(request: NextRequest) {
         });
       });
       
-      // Map tracking codes by campaign_id
-      (firstTrackingCodes as any[]).forEach(tc => {
-        trackingCodesMap.set(tc.campaign_id, tc.tracking_code);
+      // Group tracking codes by campaign_id
+      (allTrackingCodes as any[]).forEach(tc => {
+        if (!trackingCodesMap.has(tc.campaign_id)) {
+          trackingCodesMap.set(tc.campaign_id, []);
+        }
+        trackingCodesMap.get(tc.campaign_id).push(tc.tracking_code);
       });
     }
 
-    // Add platforms and tracking_code to each campaign
-    const campaignsWithPlatforms = (campaigns as any[]).map(campaign => ({
-      ...campaign,
-      platforms: platformsMap.get(campaign.id) || [],
-      tracking_code: trackingCodesMap.get(campaign.id) || null
-    }));
+    // Get analytics data from ClickHouse for these campaigns
+    let analyticsMap = new Map();
+    
+    if (campaignIds.length > 0) {
+      try {
+        // Query 1: Get CLICKS from tracking_events (redirect clicks)
+        const clicksQuery = await clickhouse.query({
+          query: `
+            SELECT 
+              tracking_code,
+              COUNT(*) as total_clicks
+            FROM analytics.tracking_events
+            WHERE tracking_code != ''
+            GROUP BY tracking_code
+          `,
+          format: 'JSONEachRow'
+        });
+        
+        const clicksResults = await clicksQuery.json() as any[];
+        const trackingCodeClicks = new Map();
+        clicksResults.forEach((result: any) => {
+          trackingCodeClicks.set(result.tracking_code, parseInt(result.total_clicks));
+        });
+        
+        // Query 2: Get UNIQUE VISITORS from visit_logs (pageviews with UTM)
+        // This counts actual users who viewed pages after clicking tracking links
+        const visitorsQuery = await clickhouse.query({
+          query: `
+            SELECT 
+              campaign_id,
+              COUNT(DISTINCT user_id) as unique_visitors
+            FROM analytics.visit_logs
+            WHERE campaign_id > 0
+            GROUP BY campaign_id
+          `,
+          format: 'JSONEachRow'
+        });
+        
+        const visitorsResults = await visitorsQuery.json() as any[];
+        const campaignVisitors = new Map();
+        visitorsResults.forEach((result: any) => {
+          campaignVisitors.set(result.campaign_id, parseInt(result.unique_visitors));
+        });
+        
+        // Aggregate analytics for ALL tracking codes per campaign
+        (campaigns as any[]).forEach(campaign => {
+          const trackingCodes = trackingCodesMap.get(campaign.id) || [];
+          let totalClicks = 0;
+          
+          // Sum clicks from all tracking codes
+          trackingCodes.forEach((trackingCode: string) => {
+            if (trackingCodeClicks.has(trackingCode)) {
+              totalClicks += trackingCodeClicks.get(trackingCode);
+            }
+          });
+          
+          // Get unique visitors for this campaign from visit_logs
+          const totalVisitors = campaignVisitors.get(campaign.id) || 0;
+          
+          if (totalClicks > 0 || totalVisitors > 0) {
+            analyticsMap.set(campaign.id, {
+              clicks: totalClicks,
+              visitors: totalVisitors
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching campaign analytics from ClickHouse:', error);
+        // Continue without analytics data
+      }
+    }
+
+    // Add platforms, tracking_code, and analytics to each campaign
+    const campaignsWithPlatforms = (campaigns as any[]).map(campaign => {
+      const analytics = analyticsMap.get(campaign.id) || { clicks: 0, visitors: 0 };
+      const ctr = analytics.clicks > 0 && analytics.visitors > 0
+        ? ((analytics.visitors / analytics.clicks) * 100).toFixed(1)
+        : '0.0';
+      const conversionRate = analytics.clicks > 0 && analytics.visitors > 0
+        ? ((analytics.visitors / analytics.clicks) * 100).toFixed(1) 
+        : '0.0';
+      
+      // 🎭 DEMO FEATURE: Auto-calculate spent based on clicks ($0.50 per click)
+      // TODO: Remove this in production - spent should come from actual ad platform data
+      const DEMO_COST_PER_CLICK = 0.50;
+      const calculatedSpent = analytics.clicks * DEMO_COST_PER_CLICK;
+      
+      // Get first tracking code for display
+      const trackingCodes = trackingCodesMap.get(campaign.id) || [];
+      const firstTrackingCode = trackingCodes.length > 0 ? trackingCodes[0] : null;
+      
+      return {
+        ...campaign,
+        platforms: platformsMap.get(campaign.id) || [],
+        tracking_code: firstTrackingCode, // First tracking code for display
+        tracking_codes: trackingCodes, // ALL tracking codes
+        clicks: analytics.clicks,
+        visitors: analytics.visitors,
+        ctr: ctr,
+        conversion_rate: conversionRate,
+        spent: calculatedSpent // Override spent with calculated value
+      };
+    });
 
     // Calculate summary stats
     const summaryQuery = `

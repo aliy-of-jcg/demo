@@ -61,7 +61,7 @@ export function AuthFooter() {
               <Heart className="h-4 w-4 fill-red-500 text-red-500" />
               <span className="text-sm text-gray-300">by</span>
             </div>
-            <p className="text-lg font-bold text-white">jcglobeway</p>
+            <p className="text-lg font-bold text-white">JCG .Inc</p>
             <p className="mt-1 text-xs text-gray-400">
               © {new Date().getFullYear()} All rights reserved
             </p>

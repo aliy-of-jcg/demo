@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { PageFooter } from '@/components/page-footer';
 
 interface Course {
   id: number;
@@ -710,6 +711,11 @@ export default function NewCampaignPage() {
           </div>
         </div>
       </form>
+
+      {/* Footer with extra spacing */}
+      <div className="mt-8">
+        <PageFooter />
+      </div>
     </div>
   );
 }
