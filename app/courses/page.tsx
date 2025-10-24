@@ -206,11 +206,7 @@ export default function CoursesPage() {
     toast.promise(
       (async () => {
         const response = await fetch(`/api/courses/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ status: 'hidden' })
+          method: 'DELETE'
         });
 
         const data = await response.json();
