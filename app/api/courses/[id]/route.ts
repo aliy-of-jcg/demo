@@ -50,6 +50,14 @@ export async function PUT(
       status
     } = body;
 
+    // Validate required fields
+    if (!name || !code) {
+      return NextResponse.json(
+        { success: false, error: 'Course name and code are required' },
+        { status: 400 }
+      );
+    }
+
     const pool = getPool();
     const query = `
       UPDATE courses 
@@ -68,7 +76,10 @@ export async function PUT(
     ]);
 
     // Fetch updated course
-    const [courses] = await pool.execute('SELECT * FROM courses WHERE id = ?', [id]);
+    const [courses] = await pool.execute(
+      'SELECT * FROM courses WHERE id = ?',
+      [id]
+    );
 
     return NextResponse.json({
       success: true,
@@ -91,20 +102,29 @@ export async function DELETE(
     const id = params.id;
     const pool = getPool();
     
-    // Check if course has campaigns
+    // Check if course has active campaigns
     const [campaigns] = await pool.execute(
-      'SELECT COUNT(*) as count FROM campaigns WHERE course_id = ?',
-      [id]
+      'SELECT COUNT(*) as count FROM campaigns WHERE course_id = ? AND status != ?',
+      [id, 'hidden']
     );
-
-    if ((campaigns as any)[0].count > 0) {
+    
+    const campaignCount = (campaigns as any)[0].count;
+    
+    if (campaignCount > 0) {
       return NextResponse.json(
-        { success: false, error: 'Cannot delete course with existing campaigns' },
+        { 
+          success: false, 
+          error: `Cannot delete course with ${campaignCount} active campaign${campaignCount > 1 ? 's' : ''}. Please delete or reassign the campaign${campaignCount > 1 ? 's' : ''} first.` 
+        },
         { status: 400 }
       );
     }
-
-    await pool.execute('DELETE FROM courses WHERE id = ?', [id]);
+    
+    // Soft delete - set status to 'hidden' instead of deleting
+    await pool.execute(
+      'UPDATE courses SET status = ? WHERE id = ?',
+      ['hidden', id]
+    );
 
     return NextResponse.json({
       success: true,
@@ -118,4 +138,3 @@ export async function DELETE(
     );
   }
 }
-

@@ -65,8 +65,8 @@ export async function GET(
 
       const analyticsData = await analyticsQuery.json();
       if (analyticsData.length > 0) {
-        clicks = parseInt(analyticsData[0].total_clicks || '0');
-        visitors = parseInt(analyticsData[0].unique_visitors || '0');
+        clicks = parseInt((analyticsData[0] as any).total_clicks || '0');
+        visitors = parseInt((analyticsData[0] as any).unique_visitors || '0');
       }
     }
 
@@ -122,6 +122,14 @@ export async function PUT(
       description
     } = body;
 
+    // Validate required fields
+    if (!name) {
+      return NextResponse.json(
+        { success: false, error: 'Campaign name is required' },
+        { status: 400 }
+      );
+    }
+
     const pool = getPool();
     const query = `
       UPDATE campaigns 
@@ -132,13 +140,13 @@ export async function PUT(
 
     await pool.execute(query, [
       name,
-      course_id,
-      source,
-      medium,
-      status,
-      start_date,
-      end_date,
-      budget,
+      course_id || null,
+      source || null,
+      medium || null,
+      status || 'active',
+      start_date || null,
+      end_date || null,
+      budget || null,
       description || null,
       id
     ]);
@@ -170,7 +178,11 @@ export async function DELETE(
     const id = params.id;
     const pool = getPool();
     
-    await pool.execute('DELETE FROM campaigns WHERE id = ?', [id]);
+    // Soft delete - set status to 'hidden' instead of deleting
+    await pool.execute(
+      'UPDATE campaigns SET status = ? WHERE id = ?',
+      ['hidden', id]
+    );
 
     return NextResponse.json({
       success: true,

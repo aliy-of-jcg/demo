@@ -195,11 +195,7 @@ export default function CampaignsPage() {
     toast.promise(
       (async () => {
         const response = await fetch(`/api/campaigns/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ status: 'hidden' })
+          method: 'DELETE'
         });
 
         const data = await response.json();
