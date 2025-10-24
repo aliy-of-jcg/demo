@@ -33,6 +33,10 @@ export const apiSpec = {
       description: "Course management and analytics",
     },
     {
+      name: "UTM Tools",
+      description: "UTM code management and generation",
+    },
+    {
       name: "Analytics",
       description: "Advanced analytics and metrics endpoints",
     },
@@ -222,6 +226,70 @@ export const apiSpec = {
                           name: { type: "string" },
                           active_campaigns: { type: "number" },
                           total_visits: { type: "number" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // ==================== UTM TOOLS ====================
+    "/api/utm-codes": {
+      get: {
+        tags: ["UTM Tools"],
+        summary: "Get all UTM codes",
+        description: "Retrieve list of all UTM codes with click tracking, campaign associations, and full URLs",
+        parameters: [
+          {
+            name: "search",
+            in: "query",
+            description: "Search by UTM name, campaign name, or source",
+            schema: { type: "string", example: "naver" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "UTM codes retrieved successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    summary: {
+                      type: "object",
+                      properties: {
+                        total_utms: { type: "number", example: 5 },
+                        active_utms: { type: "number", example: 3 },
+                        inactive_utms: { type: "number", example: 1 },
+                        total_clicks: { type: "number", example: 4130 },
+                      },
+                    },
+                    utm_list: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "number", example: 1 },
+                          name: { type: "string", example: "2501_ai_education_naver_search" },
+                          tracking_code: { type: "string", example: "NAV001" },
+                          campaign_name: { type: "string", example: "AI Education Campaign" },
+                          course_name: { type: "string", example: "AI Course" },
+                          utm_source: { type: "string", example: "naver" },
+                          utm_medium: { type: "string", example: "cpc" },
+                          utm_campaign: { type: "string", example: "ai_2501" },
+                          utm_term: { type: "string", example: "ai-course" },
+                          utm_content: { type: "string", example: "banner1" },
+                          landing_url: { type: "string", example: "https://aptdecor.uz/course" },
+                          full_url: { type: "string", example: "https://aptdecor.uz/course?utm_campaign=ai_2501&utm_source=naver&utm_medium=cpc" },
+                          created_at: { type: "string", format: "date-time", example: "2025-01-05T10:00:00Z" },
+                          clicks: { type: "number", example: 1240 },
+                          status: { type: "string", enum: ["active", "inactive", "ended"], example: "active" },
                         },
                       },
                     },

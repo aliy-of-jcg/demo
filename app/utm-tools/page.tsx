@@ -1,0 +1,428 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { Search, Copy, ExternalLink, Edit, Trash2, Plus, TrendingUp, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { PageFooter } from '@/components/page-footer';
+import { toast } from 'sonner';
+import Swal from 'sweetalert2';
+
+interface UTMCode {
+  id: number;
+  name: string;
+  tracking_code: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  utm_term?: string;
+  utm_content?: string;
+  campaign_name: string;
+  course_name: string;
+  landing_url: string;
+  full_url: string;
+  created_at: string;
+  clicks: number;
+  status: 'active' | 'inactive' | 'ended';
+}
+
+interface Summary {
+  total_utms: number;
+  active_utms: number;
+  inactive_utms: number;
+  total_clicks: number;
+}
+
+export default function UTMListPage() {
+  const [searchInput, setSearchInput] = useState('');
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [summary, setSummary] = useState<Summary>({
+    total_utms: 0,
+    active_utms: 0,
+    inactive_utms: 0,
+    total_clicks: 0
+  });
+  const [utmCodes, setUtmCodes] = useState<UTMCode[]>([]);
+
+  useEffect(() => {
+    fetchUTMCodes();
+  }, [searchInput, page, limit]);
+
+  const fetchUTMCodes = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = new URLSearchParams();
+      if (searchInput) {
+        params.set('search', searchInput);
+      }
+      params.set('page', page.toString());
+      params.set('limit', limit.toString());
+
+      const response = await fetch(`/api/utm-codes?${params.toString()}`);
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to fetch UTM codes');
+      }
+
+      setSummary(data.summary);
+      setUtmCodes(data.utm_list);
+      setTotal(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
+    } catch (error: any) {
+      console.error('Error fetching UTM codes:', error);
+      setError(error.message || 'Failed to load UTM codes');
+      toast.error('Failed to load UTM codes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statusColors = {
+    active: 'bg-blue-100 text-blue-800',
+    inactive: 'bg-yellow-100 text-yellow-800',
+    ended: 'bg-gray-100 text-gray-800'
+  };
+
+  const handleCopy = async (text: string, id: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+      toast.success('URL copied to clipboard!');
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      toast.error('Failed to copy URL');
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const handleDelete = async (id: number, name: string) => {
+    const result = await Swal.fire({
+      title: 'Delete UTM Code?',
+      text: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    toast.promise(
+      (async () => {
+        const response = await fetch(`/api/utm-codes/${id}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to delete UTM code');
+        }
+
+        await fetchUTMCodes();
+        return data;
+      })(),
+      {
+        loading: 'Deleting UTM code...',
+        success: 'UTM code deleted successfully!',
+        error: (err) => `Error: ${err.message}`,
+      }
+    );
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1); // Reset to page 1 when limit changes
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading UTM codes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p className="text-red-800 font-medium mb-2">Error Loading UTM Codes</p>
+          <p className="text-red-600 text-sm mb-4">{error}</p>
+          <button
+            onClick={fetchUTMCodes}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">UTM Management</h1>
+          <p className="text-gray-600 mt-1">Manage and track UTM codes for campaign attribution</p>
+        </div>
+        <Link 
+          href="/utm-tools/generator"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create UTM Code</span>
+        </Link>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">Total UTMs</p>
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{summary.total_utms}</p>
+          <p className="text-sm text-green-600 mt-1">All tracking codes</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">Active UTMs</p>
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-green-600" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{summary.active_utms}</p>
+          <p className="text-sm text-gray-500 mt-1">Currently in use</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">Inactive</p>
+            <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-yellow-600" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{summary.inactive_utms}</p>
+          <p className="text-sm text-gray-500 mt-1">Not being used</p>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">Total Clicks</p>
+            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-purple-600" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{summary.total_clicks.toLocaleString()}</p>
+          <p className="text-sm text-gray-500 mt-1">Across all UTMs</p>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by UTM name, campaign, or source..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+      </div>
+
+      {/* UTM Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UTM Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medium</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Landing URL</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clicks</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {utmCodes.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <p className="text-gray-500">No UTM codes found</p>
+                    {searchInput && (
+                      <button
+                        onClick={() => setSearchInput('')}
+                        className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
+                      >
+                        Clear search
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ) : (
+                utmCodes.map((utm) => (
+                  <tr key={utm.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{utm.name}</div>
+                      <div className="text-xs text-gray-500">{utm.tracking_code}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Campaign: {utm.campaign_name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                      {utm.utm_source || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                      {utm.utm_medium || '-'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 truncate max-w-xs">
+                          {utm.landing_url || '-'}
+                        </span>
+                        {utm.full_url && (
+                          <>
+                            <button
+                              onClick={() => handleCopy(utm.full_url, utm.id)}
+                              className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                              title="Copy URL"
+                            >
+                              {copiedId === utm.id ? (
+                                <span className="text-green-600 text-xs">✓</span>
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                            <a
+                              href={utm.full_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                              title="Open URL"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(utm.created_at)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">
+                        {utm.clicks.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[utm.status]}`}>
+                        {utm.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/utm-tools/generator?edit=${utm.id}`}
+                          className="text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(utm.id, utm.name)}
+                          className="text-gray-400 hover:text-red-600 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Pagination */}
+      {total > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-700">Total {total} UTM codes</span>
+              <select
+                value={limit}
+                onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="40">40</option>
+              </select>
+              <span className="text-sm text-gray-700">per page</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`px-3 py-1 rounded ${
+                    page === pageNum
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="mt-8">
+        <PageFooter />
+      </div>
+    </div>
+  );
+}
+
