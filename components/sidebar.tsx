@@ -36,7 +36,7 @@ export function Sidebar() {
   return (
     <div className="flex flex-col w-64 bg-gray-900 relative">
       <div className="flex items-center justify-between h-16 bg-gray-800 px-4 relative z-10">
-        <Link href="/" className="flex items-center min-w-0 flex-1 mr-2 cursor-pointer hover:opacity-80 transition-opacity">
+         <Link href="/" className="flex items-center min-w-0 flex-1 mr-2 cursor-pointer hover:opacity-80 transition-opacity">
           <BarChart3 className="w-8 h-8 text-blue-500 flex-shrink-0" />
           <span className="ml-2 text-lg font-bold text-white truncate">CosMos AI</span>
         </Link>
