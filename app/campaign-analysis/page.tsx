@@ -1,19 +1,66 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar, Download } from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+interface CampaignData {
+  id: number;
+  name: string;
+  course_name: string;
+  budget: number;
+  spent: number;
+}
+
+interface MetricsData {
+  visitors: number;
+  conversions: number;
+  conversionRate: string;
+  clicks: number;
+  ctr: string;
+  revenue: number;
+  cpa: number;
+}
+
+interface DailyData {
+  date: string;
+  visitors: number;
+  conversions: number;
+  conversionRate: string;
+  cost: number;
+}
+
+interface ApiResponse {
+  success: boolean;
+  campaign: CampaignData;
+  platforms: string[];
+  metrics: MetricsData;
+  dailyData: DailyData[];
+}
+
+interface Campaign {
+  id: number;
+  name: string;
+}
 
 export default function CampaignAnalysisPage() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [selectedCampaign, setSelectedCampaign] = useState<string>('');
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
   const [dateRange, setDateRange] = useState({
-    start: '2025-09-21',
-    end: '2025-10-20'
+    start: (() => {
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      return date.toISOString().split('T')[0];
+    })(),
+    end: new Date().toISOString().split('T')[0]
   });
 
-  const [selectedCampaign, setSelectedCampaign] = useState('2501_ai_education');
-  const [selectedPlatform, setSelectedPlatform] = useState('all');
-  const [viewMode, setViewMode] = useState('chart'); // chart or table
+  const [data, setData] = useState<ApiResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Quick date range selection
   const setQuickRange = (days: number) => {
@@ -27,143 +74,165 @@ export default function CampaignAnalysisPage() {
     });
   };
 
-  // Sample campaigns with their platforms
-  const campaigns = [
-    { 
-      id: '2501_ai_education', 
-      name: '2501 ai education - Full Training Course',
-      platforms: ['naver', 'kakao', 'google']
-    },
-    { 
-      id: '2502_web_dev', 
-      name: '2502 web development - Web Dev Bootcamp',
-      platforms: ['google', 'youtube']
-    },
-    { 
-      id: '2503_data_science', 
-      name: '2503 data science - Data Analysis',
-      platforms: ['naver', 'facebook']
-    },
-  ];
+  // Fetch campaigns list on mount
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        const response = await fetch('/api/campaigns');
+        const result = await response.json();
+        if (result.campaigns && result.campaigns.length > 0) {
+          setCampaigns(result.campaigns);
+          setSelectedCampaign(result.campaigns[0].id.toString());
+        }
+      } catch (err) {
+        console.error('Error fetching campaigns:', err);
+      }
+    };
 
-  // Get current campaign data
-  const currentCampaign = campaigns.find(c => c.id === selectedCampaign) || campaigns[0];
+    fetchCampaigns();
+  }, []);
 
-  // Platform display names
-  const platformNames: Record<string, string> = {
-    'naver': 'Naver',
-    'kakao': 'Kakao',
-    'google': 'Google',
-    'youtube': 'YouTube',
-    'facebook': 'Facebook',
-    'instagram': 'Instagram'
-  };
+  // Fetch campaign analysis data when campaign or filters change
+  useEffect(() => {
+    if (!selectedCampaign) return;
 
-  // Platform colors
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          campaign_id: selectedCampaign,
+          platform: selectedPlatform,
+          start_date: dateRange.start,
+          end_date: dateRange.end
+        });
+        const response = await fetch(`/api/analytics/campaign-analysis?${params}`);
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch data');
+        }
+        
+        setData(result);
+      } catch (err) {
+        console.error('Error fetching campaign analysis data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedCampaign, selectedPlatform, dateRange]);
+
+  // Platform badge colors
   const platformColors: Record<string, string> = {
-    'naver': 'bg-green-100 text-green-800',
-    'kakao': 'bg-yellow-100 text-yellow-800',
-    'google': 'bg-blue-100 text-blue-800',
-    'youtube': 'bg-red-100 text-red-800',
-    'facebook': 'bg-indigo-100 text-indigo-800',
-    'instagram': 'bg-pink-100 text-pink-800'
+    naver: 'bg-green-100 text-green-800',
+    kakao: 'bg-yellow-100 text-yellow-800',
+    google: 'bg-red-100 text-red-800',
+    youtube: 'bg-blue-100 text-blue-800',
+    facebook: 'bg-indigo-100 text-indigo-800',
+    instagram: 'bg-pink-100 text-pink-800',
   };
 
-  // Metrics data
-  const metrics = {
-    visitors: 1240,
-    conversions: 52,
-    conversionRate: 4.19,
-    revenue: 8500000,
-    cpa: 163460,
-    roas: 3.2
+  const getPlatformBadgeColor = (platform: string) => {
+    return platformColors[platform.toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
 
-  // Visitor trend data
-  const trendData = [
-    { date: '10/12', thisYear: 180, lastYear: 150 },
-    { date: '10/14', thisYear: 165, lastYear: 145 },
-    { date: '10/16', thisYear: 178, lastYear: 155 },
-    { date: '10/17', thisYear: 195, lastYear: 160 },
-    { date: '10/18', thisYear: 172, lastYear: 150 },
-    { date: '10/19', thisYear: 185, lastYear: 148 },
-    { date: '10/20', thisYear: 165, lastYear: 142 },
-    { date: '10/21', thisYear: 0, lastYear: 140 },
-  ];
-
-  // Visit time distribution
-  const timeData = [
-    { hour: '14:00', visits: 1200000 },
-    { hour: '15:00', visits: 1350000 },
-    { hour: '16:00', visits: 1280000 },
-    { hour: '17:00', visits: 1400000 },
-    { hour: '18:00', visits: 1520000 },
-    { hour: '19:00', visits: 1480000 },
-    { hour: '20:00', visits: 1350000 },
-    { hour: '21:00', visits: 1100000 },
-  ];
-
-  // Daily performance data
-  const dailyData = [
-    { date: '2025-10-15', visitors: 365, conversions: 7, rate: 4.24, revenue: 11450000, cpa: 163460, cpc: 697 },
-    { date: '2025-10-15', visitors: 362, conversions: 9, rate: 4.85, revenue: 12450000, cpa: 138405, cpc: 697 },
-    { date: '2025-10-15', visitors: 357, conversions: 8, rate: 4.65, revenue: 11680000, cpa: 146000, cpc: 697 },
-  ];
+  // Filter platforms based on selection
+  const displayedPlatforms = data?.platforms || [];
+  const filteredPlatforms = selectedPlatform === 'all' 
+    ? displayedPlatforms 
+    : displayedPlatforms.filter(p => p.toLowerCase() === selectedPlatform.toLowerCase());
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Campaign Performance Analysis</h1>
-        <p className="text-gray-600 mt-1">Detailed insights into individual campaign performance</p>
+        <p className="text-gray-600 mt-1">Detailed performance metrics for individual campaigns</p>
+      </div>
+
+      {/* Campaign Selector */}
+      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Campaign</label>
+        <select
+          value={selectedCampaign}
+          onChange={(e) => setSelectedCampaign(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        >
+          {campaigns.length === 0 && <option value="">No campaigns available</option>}
+          {campaigns.map((campaign) => (
+            <option key={campaign.id} value={campaign.id}>
+              {campaign.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Campaign Info with Platform Badges */}
+        {data && (
+          <div className="mt-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">{data.campaign.name}</h3>
+              <p className="text-sm text-gray-600">{data.campaign.course_name || 'No course linked'}</p>
+              <div className="flex gap-2 mt-2">
+                {filteredPlatforms.map((platform, idx) => (
+                  <span key={idx} className={`px-2 py-1 rounded text-xs font-medium ${getPlatformBadgeColor(platform)}`}>
+                    {platform}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Budget</p>
+              <p className="text-xl font-bold text-gray-900">₩{(data.campaign.budget / 10000).toFixed(0)}만</p>
+              <p className="text-xs text-gray-500">Spent: ₩{(data.campaign.spent / 10000).toFixed(0)}만</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
       <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        {/* Campaign Selector and Chart/Table Toggle Row */}
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Campaign:</span>
-            <select
-              value={selectedCampaign}
-              onChange={(e) => setSelectedCampaign(e.target.value)}
-              className="max-w-md px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              {campaigns.map(campaign => (
-                <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Chart/Table Toggle */}
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-4">
+          {/* Chart/Table Toggle - Left */}
+          <div className="flex gap-2">
             <button
               onClick={() => setViewMode('chart')}
-              className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                viewMode === 'chart'
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'chart' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               Chart
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'table' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               Table
             </button>
           </div>
-        </div>
 
-        {/* Date Range Row */}
-        <div className="flex items-center justify-between gap-4">
-          {/* Left: Date Range Picker */}
-          <div className="flex items-center gap-2">
+          {/* Date Range - Right */}
+          <div className="flex items-center gap-4">
+            {/* Platform Filter */}
+            <select
+              value={selectedPlatform}
+              onChange={(e) => setSelectedPlatform(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            >
+              <option value="all">All Platforms</option>
+              {displayedPlatforms.map((platform, idx) => (
+                <option key={idx} value={platform.toLowerCase()}>{platform}</option>
+              ))}
+            </select>
+
             <Calendar className="w-5 h-5 text-gray-500" />
             <input 
               type="date" 
@@ -178,13 +247,8 @@ export default function CampaignAnalysisPage() {
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
-              Apply
-            </button>
-          </div>
 
-          {/* Right: Quick Range Buttons */}
-          <div className="flex items-center gap-2">
+            {/* Quick Range Buttons */}
             <button
               onClick={() => setQuickRange(7)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -207,200 +271,262 @@ export default function CampaignAnalysisPage() {
         </div>
       </div>
 
-      {/* Campaign Info */}
-      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">{currentCampaign.name}</h2>
-            <div className="flex items-center gap-2 mt-2">
-              {/* Show platforms based on filter */}
-              {selectedPlatform === 'all' ? (
-                // Show all platforms when "All Platforms" is selected
-                currentCampaign.platforms.map((platform) => (
-                  <span
-                    key={platform}
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${platformColors[platform]}`}
-                  >
-                    {platformNames[platform]}
-                  </span>
-                ))
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-800">Error: {error}</p>
+        </div>
+      )}
+
+      {/* Data Display */}
+      {!loading && !error && data && (
+        <>
+          {/* Metric Cards - 6 columns */}
+          <div className="grid grid-cols-6 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-purple-100 rounded flex items-center justify-center">
+                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">Visitors</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{data.metrics.visitors.toLocaleString()}</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">Conversions</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{data.metrics.conversions}</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-pink-100 rounded flex items-center justify-center">
+                  <svg className="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">Conv. Rate</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{data.metrics.conversionRate}%</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
+                  <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">Budget</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">₩{(data.campaign.budget / 10000).toFixed(0)}만</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">Spend</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">₩{(data.campaign.spent / 10000).toFixed(0)}만</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                  </svg>
+                </div>
+                <p className="text-xs text-gray-600">CTR</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900">{data.metrics.ctr}%</p>
+            </div>
+          </div>
+
+          {/* Chart View */}
+          {viewMode === 'chart' && (
+            <>
+              {data.dailyData.length > 0 ? (
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  {/* Daily Visitors Chart */}
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base font-semibold text-gray-900">Daily Visitors</h3>
+                      <div className="flex items-center gap-3 text-sm">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-0.5 bg-blue-500"></div>
+                          <span className="text-gray-600">Visitors</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-0.5 bg-green-500"></div>
+                          <span className="text-gray-600">Conversions</span>
+                        </div>
+                      </div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <LineChart data={data.dailyData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          tickLine={false}
+                          axisLine={{ stroke: '#e5e7eb' }}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          tickLine={false}
+                          axisLine={{ stroke: '#e5e7eb' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'white', 
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            fontSize: '12px'
+                          }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="visitors" 
+                          stroke="#3b82f6" 
+                          strokeWidth={2}
+                          dot={{ fill: '#3b82f6', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="conversions" 
+                          stroke="#10b981" 
+                          strokeWidth={2}
+                          dot={{ fill: '#10b981', r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Daily Cost Chart */}
+                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-base font-semibold text-gray-900">Daily Cost</h3>
+                      <div className="flex items-center gap-1 text-sm">
+                        <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                        <span className="text-gray-600">Cost (₩)</span>
+                      </div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={data.dailyData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          tickLine={false}
+                          axisLine={{ stroke: '#e5e7eb' }}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          tickLine={false}
+                          axisLine={{ stroke: '#e5e7eb' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'white', 
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            fontSize: '12px'
+                          }}
+                          formatter={(value: number) => [`₩${(value / 10000).toFixed(0)}만`, 'Cost']}
+                        />
+                        <Bar 
+                          dataKey="cost" 
+                          fill="#f59e0b"
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               ) : (
-                // Show only selected platform
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${platformColors[selectedPlatform]}`}
-                >
-                  {platformNames[selectedPlatform]}
-                </span>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center mb-6">
+                  <p className="text-gray-500">No performance data available for this campaign</p>
+                  <p className="text-sm text-gray-400 mt-1">Try selecting a different date range or campaign</p>
+                </div>
               )}
+            </>
+          )}
+
+          {/* Daily Performance Table - Always Shown */}
+          {data.dailyData.length > 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-base font-semibold text-gray-900">Daily Performance Data</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visitors</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conversions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conv. Rate</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CTR</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg. CPC</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {data.dailyData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.date}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.visitors.toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{row.conversions}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.conversionRate}%</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₩{(row.cost / 10000).toFixed(1)}만</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {data.metrics.ctr}%
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          ₩{row.visitors > 0 ? ((row.cost / row.visitors) / 10).toFixed(0) : 0}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-
-          {/* Platform Filter - Dynamic based on campaign */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Media Platform:</span>
-            <select
-              value={selectedPlatform}
-              onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              <option value="all">All Platforms ({currentCampaign.platforms.length})</option>
-              {currentCampaign.platforms.map((platform) => (
-                <option key={platform} value={platform}>
-                  {platformNames[platform]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-600 mb-1">Visitors</p>
-          <p className="text-2xl font-bold text-gray-900">{metrics.visitors.toLocaleString()}</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-600 mb-1">Conversions</p>
-          <p className="text-2xl font-bold text-gray-900">{metrics.conversions}</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-600 mb-1">Conv. Rate</p>
-          <p className="text-2xl font-bold text-green-600">{metrics.conversionRate}%</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-600 mb-1">Revenue</p>
-          <p className="text-2xl font-bold text-gray-900">₩{(metrics.revenue / 10000).toFixed(0)}만</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-600 mb-1">CPA</p>
-          <p className="text-2xl font-bold text-gray-900">₩{(metrics.cpa / 10000).toFixed(1)}만</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <p className="text-xs text-gray-600 mb-1">ROAS</p>
-          <p className="text-2xl font-bold text-blue-600">{metrics.roas}%</p>
-        </div>
-      </div>
-
-      {/* Charts Row - Only show when viewMode is 'chart' */}
-      {viewMode === 'chart' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Visitor Trend Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Visitor Trend by Date</h2>
-              <span className="text-xs text-gray-500">Year-over-year comparison</span>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center mb-6">
+              <p className="text-gray-500">No performance data available for this campaign</p>
+              <p className="text-sm text-gray-400 mt-1">Try selecting a different date range or campaign</p>
             </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="thisYear" stroke="#3b82f6" strokeWidth={2} name="This Year" />
-                <Line type="monotone" dataKey="lastYear" stroke="#10b981" strokeWidth={2} name="Last Year" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Visit Time Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Visit Time Distribution</h2>
-              <span className="text-xs text-gray-500">Hourly breakdown</span>
-            </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={timeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="hour" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="visits" fill="#f59e0b" name="Visits" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
-      {/* Daily Performance Table - Only show when viewMode is 'table' */}
-      {viewMode === 'table' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Campaign Daily Breakdown</h2>
-          <p className="text-sm text-gray-600 mt-1">Detailed performance by day</p>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Visitors
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Conversions
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Conv. Rate
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Revenue
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  CPA
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Avg. CPC
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {dailyData.map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {item.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {item.visitors}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {item.conversions}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                    {item.rate}%
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₩{(item.revenue / 10000).toFixed(0)}만
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₩{(item.cpa / 10000).toFixed(1)}만
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₩{item.cpc}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      )}
-
-      {/* Footer with extra spacing */}
+      {/* Footer */}
       <div className="mt-8">
         <PageFooter />
       </div>
     </div>
   );
 }
-
