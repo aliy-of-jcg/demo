@@ -370,7 +370,7 @@ export default function CampaignDetailsPage() {
           <h3 className="text-sm font-medium text-gray-600">Budget Spent</h3>
           <p className="text-2xl font-bold text-gray-900 mt-1">₩{campaign.spent.toLocaleString()}</p>
           <p className="text-xs text-gray-500 mt-1">
-            {((campaign.spent / campaign.budget) * 100).toFixed(1)}% used
+            {((campaign.spent / campaign.budget) * 100).toFixed(2)}% used
           </p>
         </div>
 
@@ -469,7 +469,7 @@ export default function CampaignDetailsPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">Budget Used</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {((campaign.spent / campaign.budget) * 100).toFixed(1)}%
+                {((campaign.spent / campaign.budget) * 100).toFixed(2)}%
               </p>
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.min((campaign.spent / campaign.budget) * 100, 100)}%` }}></div>
@@ -488,12 +488,12 @@ export default function CampaignDetailsPage() {
           </div>
           <button
             onClick={() => {
-              // Auto-fill landing URL from first tracking link if it exists
+              // Auto-fill with campaign's source, medium, and landing URL
               const firstLink = trackingLinks[0];
               setFormData({
                 name: '',
-                utm_source: '',
-                utm_medium: '',
+                utm_source: campaign?.source || '',
+                utm_medium: campaign?.medium || '',
                 utm_campaign: campaign?.name || '',
                 utm_term: '',
                 utm_content: '',
@@ -522,7 +522,7 @@ export default function CampaignDetailsPage() {
                   Short URL
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Source / Medium
+                  Media / Ad Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Landing URL
@@ -704,7 +704,7 @@ export default function CampaignDetailsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    UTM Source <span className="text-red-500">*</span>
+                    Media <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -714,20 +714,26 @@ export default function CampaignDetailsPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Auto-filled from campaign. You can override if needed.
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    UTM Medium <span className="text-red-500">*</span>
+                    Ad Type <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.utm_medium}
                     onChange={(e) => setFormData({ ...formData, utm_medium: e.target.value })}
-                    placeholder="e.g., cpc, banner, email"
+                    placeholder="e.g., search, banner, sns"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Auto-filled from campaign. You can override if needed.
+                  </p>
                 </div>
               </div>
 

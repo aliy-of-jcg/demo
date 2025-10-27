@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Users, TrendingUp, DollarSign, Target } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface PerformanceData {
   metrics: {
@@ -41,9 +42,9 @@ export default function PerformanceAnalysisPage() {
 
   // Quick date range selection
   const setQuickRange = (days: number) => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - days);
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - days);
     
     setDateRange({
       start: start.toISOString().split('T')[0],
@@ -62,8 +63,8 @@ export default function PerformanceAnalysisPage() {
           end: dateRange.end
         });
         const response = await fetch(`/api/analytics/performance?${params}`);
-        const result = await response.json();
-        
+      const result = await response.json();
+      
         if (!result.success) {
           throw new Error(result.error || 'Failed to fetch data');
         }
@@ -72,16 +73,31 @@ export default function PerformanceAnalysisPage() {
       } catch (err) {
         console.error('Error fetching performance data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
     fetchData();
   }, [dateRange]);
 
   // Channel colors mapping
   const getChannelColor = (channel: string) => {
+    const colorMap: Record<string, string> = {
+      'naver': '#00C73C',
+      'kakao': '#FAE100',
+      'google': '#EA4335',
+      'youtube': '#FF0000',
+      'facebook': '#1877F2',
+      'instagram': '#E4405F',
+      'direct': '#6B7280',
+      'test': '#F59E0B',
+      'undefined': '#9CA3AF',
+    };
+    return colorMap[channel.toLowerCase()] || '#9CA3AF';
+  };
+
+  const getChannelBgColor = (channel: string) => {
     const colorMap: Record<string, string> = {
       'naver': 'bg-green-500',
       'kakao': 'bg-yellow-500',
@@ -90,27 +106,39 @@ export default function PerformanceAnalysisPage() {
       'facebook': 'bg-indigo-500',
       'instagram': 'bg-pink-500',
       'direct': 'bg-gray-500',
+      'test': 'bg-orange-500',
+      'undefined': 'bg-gray-400',
     };
     return colorMap[channel.toLowerCase()] || 'bg-gray-400';
   };
 
   const channelDataWithColors = data?.channelData.map(item => ({
     ...item,
-    color: getChannelColor(item.channel)
+    color: getChannelColor(item.channel),
+    bgColor: getChannelBgColor(item.channel)
   })) || [];
 
   // Calculate percentages for donut chart
   const totalVisitors = channelDataWithColors.reduce((sum, item) => sum + item.visitors, 0);
-  const chartData = channelDataWithColors.map(item => ({
-    ...item,
+  const pieChartData = channelDataWithColors.map(item => ({
+    name: item.channel,
+    value: item.visitors,
+    color: item.color,
     percentage: totalVisitors > 0 ? ((item.visitors / totalVisitors) * 100).toFixed(1) : '0'
   }));
+
+  // Format line chart data
+  const lineChartData = data?.visitorTrend.current.map((point, idx) => ({
+    date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    current: point.visitors,
+    previous: data.visitorTrend.comparison[idx]?.visitors || 0
+  })) || [];
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
         <p className="text-gray-600 mt-1">Overall marketing campaign performance analysis</p>
       </div>
 
@@ -121,19 +149,19 @@ export default function PerformanceAnalysisPage() {
           <div className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-gray-500" />
             <input 
-              type="date" 
+                  type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
             <span className="text-gray-500">~</span>
             <input 
-              type="date" 
+                  type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
+                />
+              </div>
 
           {/* Right: Quick Range Buttons */}
           <div className="flex items-center gap-2">
@@ -156,8 +184,8 @@ export default function PerformanceAnalysisPage() {
               Last 3 months
             </button>
           </div>
-        </div>
-      </div>
+            </div>
+          </div>
 
       {/* Loading State */}
       {loading && (
@@ -228,22 +256,70 @@ export default function PerformanceAnalysisPage() {
               </p>
               <p className="text-xs text-gray-500 mt-1">Total revenue</p>
             </div>
-          </div>
+      </div>
 
           {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Visitor Trend Chart - Placeholder for now */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Visitor Trend Chart */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Visitor Trend by Date</h2>
                 <span className="text-xs text-gray-500">Period comparison</span>
               </div>
-              <div className="flex items-center justify-center h-64 text-gray-400">
+              <div className="h-64">
+                {lineChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={lineChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fontSize: 12 }}
+                        stroke="#9CA3AF"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        stroke="#9CA3AF"
+                      />
+                  <Tooltip 
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          padding: '8px 12px'
+                        }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="current" 
+                        stroke="#3B82F6" 
+                        strokeWidth={2}
+                        name="Current Period"
+                        dot={{ fill: '#3B82F6', r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="previous" 
+                        stroke="#10B981" 
+                        strokeWidth={2}
+                        name="Previous Period"
+                        dot={{ fill: '#10B981', r: 4 }}
+                        activeDot={{ r: 6 }}
+                        strokeDasharray="5 5"
+                      />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+                  <div className="flex items-center justify-center h-full text-gray-400">
                 <div className="text-center">
-                  <TrendingUp className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Chart visualization coming soon</p>
-                  <p className="text-xs">{data.visitorTrend.current.length} data points available</p>
+                      <TrendingUp className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No trend data available</p>
                 </div>
+              </div>
+            )}
               </div>
             </div>
 
@@ -253,34 +329,64 @@ export default function PerformanceAnalysisPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Visitors by Channel</h2>
                 <span className="text-xs text-gray-500">Current period breakdown</span>
               </div>
-              <div className="flex items-center justify-center h-64">
-                {chartData.length > 0 ? (
-                  <div className="w-full">
-                    <div className="relative w-48 h-48 mx-auto mb-4">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-gray-900">{totalVisitors.toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">Total</p>
-                        </div>
+              <div className="h-64">
+                {pieChartData.length > 0 ? (
+                  <div className="flex items-center gap-8 h-full">
+                    {/* Pie Chart */}
+                    <div className="flex-shrink-0">
+                      <ResponsiveContainer width={200} height={200}>
+                        <PieChart>
+                          <Pie
+                            data={pieChartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={2}
+                            dataKey="value"
+                          >
+                            {pieChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{
+                              backgroundColor: 'white',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              padding: '8px 12px'
+                            }}
+                          />
+                        </PieChart>
+              </ResponsiveContainer>
+                      <div className="text-center -mt-36">
+                        <p className="text-2xl font-bold text-gray-900">{totalVisitors}</p>
+                        <p className="text-xs text-gray-500">Total</p>
                       </div>
                     </div>
+                    
                     {/* Legend */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {chartData.map((item, idx) => (
+                    <div className="flex-1 grid grid-cols-2 gap-3 content-center">
+                      {pieChartData.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-2">
-                          <div className={`w-3 h-3 ${item.color} rounded-sm`}></div>
-                          <span className="text-xs text-gray-600">{item.channel}</span>
+                          <div 
+                            className="w-3 h-3 rounded-sm flex-shrink-0" 
+                            style={{ backgroundColor: item.color }}
+                          ></div>
+                          <span className="text-xs text-gray-600 truncate">{item.name}</span>
                           <span className="text-xs font-medium text-gray-900 ml-auto">{item.percentage}%</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-400">No channel data available</p>
+                  <div className="flex items-center justify-center h-full text-gray-400">
+                    <p className="text-sm">No channel data available</p>
+                  </div>
                 )}
+                </div>
               </div>
-            </div>
-          </div>
+      </div>
 
           {/* Channel Performance Table */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -317,7 +423,7 @@ export default function PerformanceAnalysisPage() {
                       <tr key={idx} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 ${item.color} rounded-full`}></div>
+                            <div className={`w-3 h-3 ${item.bgColor} rounded-full`}></div>
                             <span className="text-sm font-medium text-gray-900">{item.channel}</span>
                           </div>
                         </td>
@@ -348,7 +454,7 @@ export default function PerformanceAnalysisPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+            </div>
         </>
       )}
 

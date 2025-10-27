@@ -17,7 +17,7 @@ export default function UTMGeneratorPage() {
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
-  const [campaigns, setCampaigns] = useState<Array<{ id: number; name: string }>>([]);
+  const [campaigns, setCampaigns] = useState<Array<{ id: number; name: string; source: string; medium: string }>>([]);
   const [formData, setFormData] = useState({
     name: '',
     landing_url: '',
@@ -37,11 +37,16 @@ export default function UTMGeneratorPage() {
 
   const fetchCampaigns = async () => {
     try {
-      // Fetch campaigns
+      // Fetch campaigns with source and medium
       const campaignsRes = await fetch('/api/campaigns?limit=1000');
       const campaignsData = await campaignsRes.json();
       if (campaignsData.success && campaignsData.campaigns) {
-        setCampaigns(campaignsData.campaigns.map((c: any) => ({ id: c.id, name: c.name })));
+        setCampaigns(campaignsData.campaigns.map((c: any) => ({ 
+          id: c.id, 
+          name: c.name,
+          source: c.source || '',
+          medium: c.medium || ''
+        })));
       }
     } catch (error) {
       console.error('Error fetching campaigns:', error);
@@ -314,14 +319,16 @@ export default function UTMGeneratorPage() {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">Link this UTM to a campaign for tracking and analytics (Required)</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Link this UTM to a campaign for tracking and analytics
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Source */}
+                {/* Media (Source) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Source (매체) <span className="text-red-500">*</span>
+                    Media <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.utm_source}
@@ -332,13 +339,13 @@ export default function UTMGeneratorPage() {
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">Traffic source (e.g., google, naver, kakao)</p>
+                  <p className="text-xs text-gray-500 mt-1">Platform where the ad will run (e.g., Google, Naver, Kakao)</p>
                 </div>
 
-                {/* Medium */}
+                {/* Ad Type (Medium) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Medium (채널) <span className="text-red-500">*</span>
+                    Ad Type <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.utm_medium}
@@ -349,7 +356,7 @@ export default function UTMGeneratorPage() {
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">Marketing medium (e.g., cpc, display, email)</p>
+                  <p className="text-xs text-gray-500 mt-1">Ad format type (e.g., Search, Banner, Video, SNS)</p>
                 </div>
               </div>
 
