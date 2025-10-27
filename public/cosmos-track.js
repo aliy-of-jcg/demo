@@ -272,8 +272,36 @@
 
       this.sendEvent(eventData);
       
+      // Clean URL: Remove UTM parameters from browser address bar (after tracking)
+      // This improves UX while still allowing accurate tracking
+      if (urlParams.utm_source || urlParams.utm_medium || urlParams.utm_campaign) {
+        this.cleanUrlParameters();
+      }
+      
       // Store current page as last page for next pageview
       sessionStorage.setItem('cosmos_last_page', window.location.href);
+    },
+
+    // Clean UTM parameters from URL (for better UX)
+    cleanUrlParameters: function() {
+      try {
+        // Only clean if we have history.replaceState support
+        if (window.history && window.history.replaceState) {
+          const url = new URL(window.location.href);
+          
+          // Remove UTM parameters
+          url.searchParams.delete('utm_source');
+          url.searchParams.delete('utm_medium');
+          url.searchParams.delete('utm_campaign');
+          url.searchParams.delete('utm_term');
+          url.searchParams.delete('utm_content');
+          
+          // Update browser URL without reload
+          window.history.replaceState({}, document.title, url.toString());
+        }
+      } catch (e) {
+        // Silently fail - don't break tracking if URL cleaning fails
+      }
     },
 
     // Send event to API

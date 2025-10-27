@@ -3,9 +3,10 @@ import { getPool } from '@/lib/mysql';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const id = params.id;
     const pool = getPool();
     
@@ -39,9 +40,10 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const id = params.id;
     const pool = getPool();
     
@@ -66,12 +68,26 @@ export async function DELETE(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const id = params.id;
     const body = await request.json();
     const pool = getPool();
+
+    // If only status is being updated (quick toggle)
+    if (body.status && Object.keys(body).length === 1) {
+      await pool.execute(
+        'UPDATE utm_codes SET status = ? WHERE id = ?',
+        [body.status, id]
+      );
+
+      return NextResponse.json({
+        success: true,
+        message: 'UTM status updated successfully'
+      });
+    }
 
     const {
       name,
@@ -80,10 +96,11 @@ export async function PUT(
       utm_term,
       utm_content,
       landing_url,
-      campaign_id
+      campaign_id,
+      status
     } = body;
 
-    // Validate required fields
+    // Validate required fields for full update
     if (!name || !landing_url) {
       return NextResponse.json(
         { success: false, error: 'UTM name and landing URL are required' },
@@ -123,7 +140,8 @@ export async function PUT(
         utm_campaign = ?,
         utm_term = ?,
         utm_content = ?,
-        landing_url = ?
+        landing_url = ?,
+        status = ?
       WHERE id = ?`,
       [
         name,
@@ -134,6 +152,7 @@ export async function PUT(
         utm_term || null,
         utm_content || null,
         landing_url,
+        status || 'active',
         id
       ]
     );

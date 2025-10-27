@@ -4,20 +4,39 @@ import { getPool } from '@/lib/mysql';
 
 export const dynamic = 'force-dynamic';
 
-// CORS headers for cross-origin requests from aptdecor.uz
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://aptdecor.uz', // Change to https:// if you use SSL
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+// CORS configuration for external tracking
+const ALLOWED_ORIGINS = [
+  'http://aptdecor.uz',
+  'https://aptdecor.uz',
+  'http://jcg.asia',
+  'https://jcg.asia',
+  'https://www.aptdecor.uz',
+  'https://www.jcg.asia',
+  'http://localhost:3000', // For local testing
+];
+
+// Dynamic CORS headers based on request origin
+function getCorsHeaders(origin: string | null) {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+}
 
 // Handle OPTIONS preflight request
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  return NextResponse.json({}, { headers: getCorsHeaders(origin) });
 }
 
 // Handle POST request - receive tracking events
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   try {
     // Parse request body
     const body = await request.json();

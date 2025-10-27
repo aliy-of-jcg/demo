@@ -237,6 +237,51 @@ export default function CampaignDetailsPage() {
     );
   };
 
+  const handleToggleStatus = async (id: number, currentStatus: string, name: string) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const action = newStatus === 'active' ? 'activate' : 'deactivate';
+
+    const result = await Swal.fire({
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Tracking Link?`,
+      html: `
+        <p>Are you sure you want to ${action} "${name}"?</p>
+        ${newStatus === 'inactive' ? '<p class="text-sm text-orange-600 mt-2">⚠️ The link will show an "expired" message to visitors.</p>' : '<p class="text-sm text-green-600 mt-2">✓ The link will redirect visitors normally.</p>'}
+      `,
+      icon: newStatus === 'inactive' ? 'warning' : 'info',
+      showCancelButton: true,
+      confirmButtonColor: newStatus === 'inactive' ? '#f59e0b' : '#10b981',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: `Yes, ${action} it`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    toast.promise(
+      (async () => {
+        const response = await fetch(`/api/utm-codes/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to update tracking link status');
+        }
+
+        await fetchTrackingLinks();
+        return data;
+      })(),
+      {
+        loading: `${action.charAt(0).toUpperCase() + action.slice(1)}ing tracking link...`,
+        success: `Tracking link ${action}d successfully!`,
+        error: (err) => err.message
+      }
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -580,13 +625,17 @@ export default function CampaignDetailsPage() {
                       {link.clicks.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        link.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
+                      <button
+                        onClick={() => handleToggleStatus(link.id, link.status, link.name)}
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full transition-all hover:ring-2 hover:ring-offset-1 cursor-pointer ${
+                          link.status === 'active' 
+                            ? 'bg-green-100 text-green-800 hover:ring-green-400' 
+                            : 'bg-gray-100 text-gray-800 hover:ring-gray-400'
+                        }`}
+                        title={`Click to ${link.status === 'active' ? 'deactivate' : 'activate'}`}
+                      >
                         {link.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">

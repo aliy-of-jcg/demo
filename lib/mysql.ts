@@ -8,8 +8,12 @@ const config = {
   password: process.env.MYSQL_PASSWORD || 'apppassword',
   database: process.env.MYSQL_DATABASE || 'appdb',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 50, // Increased from 10 to 50
+  maxIdle: 10, // Maximum idle connections
+  idleTimeout: 60000, // Close idle connections after 60 seconds
   queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
 };
 
 // Create connection pool
