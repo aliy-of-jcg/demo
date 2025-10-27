@@ -67,8 +67,6 @@ export async function GET(request: NextRequest) {
           GROUP BY tracking_code
         `;
 
-        console.log('Fetching clicks for tracking codes:', trackingCodes);
-
         const clickData = await clickhouse.query({
           query: clickQuery,
           format: 'JSONEachRow'
@@ -76,14 +74,11 @@ export async function GET(request: NextRequest) {
 
         const clickRows = await clickData.json() as any[];
         
-        console.log('Click data from ClickHouse:', clickRows);
-        
         clickRows.forEach((row: any) => {
           clickDataMap[row.tracking_code] = parseInt(row.total_clicks) || 0;
         });
       } catch (error) {
-        console.error('Error fetching clicks from ClickHouse:', error);
-        // Continue without click data - clicks will default to 0
+        // Silently fail - continue without click data
       }
     }
 
@@ -103,14 +98,8 @@ export async function GET(request: NextRequest) {
           if (utm.utm_content) url.searchParams.set('utm_content', utm.utm_content);
           fullUrl = url.toString();
         } catch (error) {
-          console.error('Invalid URL:', fullUrl);
+          // Invalid URL, keep as-is
         }
-      }
-
-      // Determine status based on clicks
-      let status = 'inactive';
-      if (clicks > 0) {
-        status = 'active';
       }
 
       return {
@@ -128,7 +117,7 @@ export async function GET(request: NextRequest) {
         full_url: fullUrl,
         created_at: utm.created_at,
         clicks: clicks,
-        status: status
+        status: utm.status || 'active' // Use status from database
       };
     });
 
@@ -155,7 +144,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching UTM codes:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch UTM codes' },
       { status: 500 }
@@ -259,7 +247,6 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Error creating UTM code:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to create UTM code' },
       { status: 500 }

@@ -26,47 +26,55 @@ export async function GET(
 
     // Fetch ALL tracking codes for this campaign (not just one)
     const [trackingCodes] = await pool.execute(
-      'SELECT tracking_code FROM utm_codes WHERE campaign_id = ? AND status = "active"',
+      'SELECT tracking_code FROM utm_codes WHERE campaign_id = ?',
       [id]
     );
 
     const trackingCodesList = (trackingCodes as any[]).map(tc => tc.tracking_code);
 
-    // Fetch analytics from ClickHouse for ALL tracking codes
+    // Fetch analytics from ClickHouse
     let clicks = 0;
     let visitors = 0;
 
     if (trackingCodesList.length > 0) {
-      // Build IN clause for multiple tracking codes
+      // Query 1: Get total clicks from tracking_events
       const placeholders = trackingCodesList.map((_, i) => `{code${i}:String}`).join(',');
       const queryParams: any = {};
       trackingCodesList.forEach((code, i) => {
         queryParams[`code${i}`] = code;
       });
 
-      const analyticsQuery = await clickhouse.query({
+      const clicksQuery = await clickhouse.query({
         query: `
           SELECT 
-            SUM(total_clicks) as total_clicks,
-            SUM(unique_visitors) as unique_visitors
-          FROM (
-            SELECT 
-              tracking_code,
-              COUNT(*) as total_clicks,
-              COUNT(DISTINCT ip_address) as unique_visitors
-            FROM analytics.tracking_events
-            WHERE tracking_code IN (${placeholders})
-            GROUP BY tracking_code
-          )
+            COUNT(*) as total_clicks
+          FROM analytics.tracking_events
+          WHERE tracking_code IN (${placeholders})
         `,
         query_params: queryParams,
         format: 'JSONEachRow'
       });
 
-      const analyticsData = await analyticsQuery.json();
-      if (analyticsData.length > 0) {
-        clicks = parseInt((analyticsData[0] as any).total_clicks || '0');
-        visitors = parseInt((analyticsData[0] as any).unique_visitors || '0');
+      const clicksData = await clicksQuery.json();
+      if (clicksData.length > 0) {
+        clicks = parseInt((clicksData[0] as any).total_clicks || '0');
+      }
+
+      // Query 2: Get unique visitors from visit_logs (UUID-based tracking)
+      const visitorsQuery = await clickhouse.query({
+        query: `
+          SELECT 
+            COUNT(DISTINCT user_id) as unique_visitors
+          FROM analytics.visit_logs
+          WHERE campaign_id = {campaignId:UInt32}
+        `,
+        query_params: { campaignId: parseInt(id) },
+        format: 'JSONEachRow'
+      });
+
+      const visitorsData = await visitorsQuery.json();
+      if (visitorsData.length > 0) {
+        visitors = parseInt((visitorsData[0] as any).unique_visitors || '0');
       }
     }
 

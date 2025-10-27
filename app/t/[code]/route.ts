@@ -9,15 +9,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { code: string } }
+  context: { params: Promise<{ code: string }> }
 ) {
   try {
+    const params = await context.params;
     const trackingCode = params.code;
-    
-    console.log("\n" + "=".repeat(50));
-    console.log("SHORT URL TRACKING REQUEST");
-    console.log("=".repeat(50));
-    console.log("Tracking Code:", trackingCode);
     
     if (!trackingCode) {
       return NextResponse.json({ error: "Missing tracking code" }, { status: 400 });
@@ -35,9 +31,11 @@ export async function GET(
         u.utm_campaign,
         u.utm_term,
         u.utm_content,
+        u.status as utm_status,
         c.id as campaign_id,
         c.name as campaign_name,
-        c.course_id
+        c.course_id,
+        c.status as campaign_status
       FROM utm_codes u
       LEFT JOIN campaigns c ON u.campaign_id = c.id
       WHERE u.tracking_code = ?
@@ -46,13 +44,47 @@ export async function GET(
     );
     
     if (!rows || (rows as any[]).length === 0) {
-      console.log("❌ Tracking code not found");
       return NextResponse.json({ error: "Invalid or expired tracking link" }, { status: 404 });
     }
 
     const trackingData = (rows as any[])[0];
-    const targetUrl = trackingData.target_url as string;
+    const utmStatus = trackingData.utm_status;
+    const campaignStatus = trackingData.campaign_status;
     const campaignName = trackingData.campaign_name as string;
+
+    // Check if UTM is inactive
+    if (utmStatus === 'inactive' || utmStatus === 'ended') {
+      const baseUrl = new URL(request.url).origin;
+      const expiredUrl = new URL(`${baseUrl}/link-expired`);
+      expiredUrl.searchParams.set('reason', 'inactive');
+      if (campaignName) {
+        expiredUrl.searchParams.set('campaign', campaignName);
+      }
+      return NextResponse.redirect(expiredUrl.toString(), 302);
+    }
+
+    // Check if campaign is inactive/ended/hidden
+    if (campaignStatus === 'hidden' || campaignStatus === 'ended') {
+      const baseUrl = new URL(request.url).origin;
+      const expiredUrl = new URL(`${baseUrl}/link-expired`);
+      expiredUrl.searchParams.set('reason', 'campaign_ended');
+      if (campaignName) {
+        expiredUrl.searchParams.set('campaign', campaignName);
+      }
+      return NextResponse.redirect(expiredUrl.toString(), 302);
+    }
+
+    if (campaignStatus === 'paused') {
+      const baseUrl = new URL(request.url).origin;
+      const expiredUrl = new URL(`${baseUrl}/link-expired`);
+      expiredUrl.searchParams.set('reason', 'campaign_paused');
+      if (campaignName) {
+        expiredUrl.searchParams.set('campaign', campaignName);
+      }
+      return NextResponse.redirect(expiredUrl.toString(), 302);
+    }
+
+    const targetUrl = trackingData.target_url as string;
     const campaign_id = trackingData.campaign_id || 0;
     const course_id = trackingData.course_id || 0;
     const utmSource = trackingData.utm_source || '';
@@ -61,16 +93,16 @@ export async function GET(
     const utmTerm = trackingData.utm_term || '';
     const utmContent = trackingData.utm_content || '';
     
-    console.log("✅ Found tracking data:");
-    console.log("- Target URL:", targetUrl);
-    console.log("- Campaign:", campaignName);
-    console.log("- Campaign ID:", campaign_id);
-    console.log("- Course ID:", course_id);
-    console.log("- UTM Source:", utmSource);
+    // Build final redirect URL with UTM parameters
+    // These are needed by the client-side tracking script to link the visit to the campaign
+    const redirectUrl = new URL(targetUrl);
+    if (utmCampaign) redirectUrl.searchParams.set('utm_campaign', utmCampaign);
+    if (utmSource) redirectUrl.searchParams.set('utm_source', utmSource);
+    if (utmMedium) redirectUrl.searchParams.set('utm_medium', utmMedium);
+    if (utmTerm) redirectUrl.searchParams.set('utm_term', utmTerm);
+    if (utmContent) redirectUrl.searchParams.set('utm_content', utmContent);
     
-    // Build final redirect URL (CLEAN - no UTM parameters visible)
-    const finalRedirectUrl = targetUrl;
-    console.log("🔗 Redirecting to:", finalRedirectUrl);
+    const finalRedirectUrl = redirectUrl.toString();
     
     // Log tracking event asynchronously (don't block redirect)
     setImmediate(async () => {
@@ -139,57 +171,12 @@ export async function GET(
           format: "JSONEachRow",
         });
         
-        console.log("✅ Click event logged to tracking_events");
-        
-        // 2. ✨ NEW: Also log a "visit" to visit_logs for course tracking
-        // This enables course visit counts even for external landing pages
-        if (campaign_id > 0) {
-          try {
-            // Generate a pseudo user_id based on IP (not as accurate as cookie, but works for external sites)
-            const pseudoUserId = `redirect_${ip.replace(/\./g, '_')}`;
-            const sessionId = nanoid();
-            
-            await clickhouse.insert({
-              table: "analytics.visit_logs",
-              values: [{
-                timestamp: Math.floor(Date.now() / 1000),
-                session_id: sessionId,
-                user_id: pseudoUserId, // Pseudo ID based on IP
-                page_url: targetUrl,
-                page_title: campaignName || '',
-                referrer: referrer || '',
-                utm_source: utmSource,
-                utm_medium: utmMedium,
-                utm_campaign: utmCampaign,
-                utm_term: utmTerm,
-                utm_content: utmContent,
-                campaign_id: campaign_id, // ✅ Populated from MySQL lookup
-                course_id: course_id,     // ✅ Populated from MySQL lookup
-                user_agent: userAgent,
-                device_type: parsedUA.deviceType,
-                os: parsedUA.os || '',
-                browser: parsedUA.browser || '',
-                screen_resolution: '',
-                visit_count: 1,
-                is_new_visitor: 1, // Assume new since we don't have cookie access
-                time_on_page: 0,
-                event_type: 'redirect_visit',
-                page_sequence: 1,
-                is_landing_page: 1,
-                is_exit_page: 0,
-                previous_page_url: referrer || ''
-              }],
-              format: "JSONEachRow",
-            });
-            
-            console.log(`✅ Visit logged to visit_logs (campaign_id: ${campaign_id}, course_id: ${course_id})`);
-          } catch (visitError) {
-            console.warn("⚠️  Failed to log visit to visit_logs:", visitError);
-          }
-        }
+        // Note: We no longer insert into visit_logs here (with pseudo user_id)
+        // The client-side tracking script will handle visit_logs insertion
+        // with the real UUID cookie after redirect, ensuring accurate unique visitor tracking
         
       } catch (e) {
-        console.error("❌ Failed to log tracking event:", e);
+        // Silently fail - don't log to console
       }
     });
     
@@ -197,9 +184,6 @@ export async function GET(
     return NextResponse.redirect(finalRedirectUrl, 302);
     
   } catch (error) {
-    console.error("\n❌ ERROR IN SHORT URL TRACKING:");
-    console.error(error);
-    
     return NextResponse.json({
       error: "Tracking failed",
       message: error instanceof Error ? error.message : String(error)

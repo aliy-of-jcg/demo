@@ -105,6 +105,13 @@ export default function UTMListPage() {
     }
   };
 
+  const getShortUrl = (trackingCode: string) => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/t/${trackingCode}`;
+    }
+    return `/t/${trackingCode}`;
+  };
+
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -150,6 +157,51 @@ export default function UTMListPage() {
       {
         loading: 'Deleting UTM code...',
         success: 'UTM code deleted successfully!',
+        error: (err) => `Error: ${err.message}`,
+      }
+    );
+  };
+
+  const handleToggleStatus = async (id: number, currentStatus: string, name: string) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const action = newStatus === 'active' ? 'activate' : 'deactivate';
+
+    const result = await Swal.fire({
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} UTM Link?`,
+      html: `
+        <p>Are you sure you want to ${action} "${name}"?</p>
+        ${newStatus === 'inactive' ? '<p class="text-sm text-orange-600 mt-2">⚠️ The link will show an "expired" message to visitors.</p>' : '<p class="text-sm text-green-600 mt-2">✓ The link will redirect visitors normally.</p>'}
+      `,
+      icon: newStatus === 'inactive' ? 'warning' : 'info',
+      showCancelButton: true,
+      confirmButtonColor: newStatus === 'inactive' ? '#f59e0b' : '#10b981',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: `Yes, ${action} it`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    toast.promise(
+      (async () => {
+        const response = await fetch(`/api/utm-codes/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Failed to update UTM status');
+        }
+
+        await fetchUTMCodes();
+        return data;
+      })(),
+      {
+        loading: `${action.charAt(0).toUpperCase() + action.slice(1)}ing UTM link...`,
+        success: `UTM link ${action}d successfully!`,
         error: (err) => `Error: ${err.message}`,
       }
     );
@@ -336,33 +388,29 @@ export default function UTMListPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600 truncate max-w-xs">
-                          {utm.landing_url || '-'}
+                        <span className="text-sm text-gray-600 truncate max-w-xs font-mono">
+                          {getShortUrl(utm.tracking_code)}
                         </span>
-                        {utm.full_url && (
-                          <>
-                            <button
-                              onClick={() => handleCopy(utm.full_url, utm.id)}
-                              className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
-                              title="Copy URL"
-                            >
-                              {copiedId === utm.id ? (
-                                <span className="text-green-600 text-xs">✓</span>
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </button>
-                            <a
-                              href={utm.full_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
-                              title="Open URL"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                          </>
-                        )}
+                        <button
+                          onClick={() => handleCopy(getShortUrl(utm.tracking_code), utm.id)}
+                          className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                          title="Copy Short URL"
+                        >
+                          {copiedId === utm.id ? (
+                            <span className="text-green-600 text-xs">✓</span>
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+                        <a
+                          href={getShortUrl(utm.tracking_code)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
+                          title="Open Tracking URL"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -374,9 +422,13 @@ export default function UTMListPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[utm.status]}`}>
+                      <button
+                        onClick={() => handleToggleStatus(utm.id, utm.status, utm.name)}
+                        className={`px-2 py-1 rounded-full text-xs font-medium transition-all hover:ring-2 hover:ring-offset-1 ${statusColors[utm.status]} ${utm.status === 'active' ? 'hover:ring-blue-400' : 'hover:ring-yellow-400'} cursor-pointer`}
+                        title={`Click to ${utm.status === 'active' ? 'deactivate' : 'activate'}`}
+                      >
                         {utm.status}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">

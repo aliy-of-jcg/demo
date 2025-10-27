@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       const [allPlatforms] = await pool.execute(
         `SELECT campaign_id, utm_source, utm_medium 
          FROM utm_codes 
-         WHERE campaign_id IN (${placeholders}) AND status = 'active'
+         WHERE campaign_id IN (${placeholders})
          GROUP BY campaign_id, utm_source, utm_medium
          ORDER BY campaign_id, utm_source`,
         campaignIds
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       const [allTrackingCodes] = await pool.execute(
         `SELECT campaign_id, tracking_code 
          FROM utm_codes
-         WHERE campaign_id IN (${placeholders}) AND status = 'active'
+         WHERE campaign_id IN (${placeholders})
          ORDER BY campaign_id`,
         campaignIds
       );
@@ -185,8 +185,8 @@ export async function GET(request: NextRequest) {
           trackingCodeClicks.set(result.tracking_code, parseInt(result.total_clicks));
         });
         
-        // Query 2: Get UNIQUE VISITORS from visit_logs (pageviews with UTM)
-        // This counts actual users who viewed pages after clicking tracking links
+        // Query 2: Get UNIQUE VISITORS from visit_logs (UUID-based tracking)
+        // This counts actual unique users tracked by client-side cookies
         const visitorsQuery = await clickhouse.query({
           query: `
             SELECT 
@@ -278,6 +278,19 @@ export async function GET(request: NextRequest) {
     const [summaryResult] = await pool.execute(summaryQuery);
     const summary = (summaryResult as any)[0];
 
+    // Calculate total clicks, visitors, and spent from analytics
+    let total_clicks = 0;
+    let total_visitors = 0;
+
+    campaignsWithPlatforms.forEach(campaign => {
+      total_clicks += campaign.clicks || 0;
+      total_visitors += campaign.visitors || 0;
+    });
+
+    // Calculate total spent based on actual clicks (demo calculation)
+    const DEMO_COST_PER_CLICK = 0.50;
+    const total_spent = total_clicks * DEMO_COST_PER_CLICK;
+
     return NextResponse.json({
       success: true,
       campaigns: campaignsWithPlatforms,
@@ -291,7 +304,12 @@ export async function GET(request: NextRequest) {
         total_campaigns: summary.total_campaigns,
         active_campaigns: summary.active_campaigns,
         total_budget: parseFloat(summary.total_budget),
-        avg_conversion_rate: 3.8 // Demo value
+        total_spent: total_spent,
+        total_clicks: total_clicks,
+        total_visitors: total_visitors,
+        avg_conversion_rate: total_clicks > 0 && total_visitors > 0
+          ? parseFloat(((total_visitors / total_clicks) * 100).toFixed(1))
+          : 0
       }
     });
   } catch (error) {

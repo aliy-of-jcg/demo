@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import { nanoid } from 'nanoid';
+import clickhouse from '@/lib/clickhouse';
 
 export async function GET(
   request: NextRequest,
