@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 interface Campaign {
   id: number;
@@ -65,8 +66,8 @@ export default function CampaignsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Immediate input value
+  const debouncedSearch = useDebounce(searchInput, 500); // Debounced search value
   const [filters, setFilters] = useState({
     source: '',
     medium: '',
@@ -105,15 +106,10 @@ export default function CampaignsPage() {
     };
   }, [actionMenuOpen]);
 
-  // Debounce function for search
+  // Reset to page 1 when search changes
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setSearch(searchInput);
-      setPage(1); // Reset to first page on new search
-    }, 500); // 0.5 seconds debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [searchInput]);
+    setPage(1);
+  }, [debouncedSearch]);
 
   // Reset to page 1 when limit changes
   useEffect(() => {
@@ -127,7 +123,7 @@ export default function CampaignsPage() {
 
   useEffect(() => {
     fetchCampaigns();
-  }, [page, limit, search, filters, sortBy, sortOrder]);
+  }, [page, limit, debouncedSearch, filters, sortBy, sortOrder]);
 
   const fetchCampaigns = async () => {
     setLoading(true);
@@ -135,22 +131,33 @@ export default function CampaignsPage() {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
-        search,
+        search: debouncedSearch,
         ...filters,
         sort_by: sortBy,
         sort_order: sortOrder
       });
 
       const response = await fetch(`/api/campaigns?${params}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
 
       if (data.success) {
         setCampaigns(data.campaigns);
         setSummary(data.summary);
         setTotal(data.pagination.total);
+      } else {
+        throw new Error(data.error || 'Failed to fetch campaigns');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching campaigns:', error);
+      toast.error(error.message || 'Failed to load campaigns');
+      setCampaigns([]);
+      setSummary(null);
+      setTotal(0);
     } finally {
       setLoading(false);
     }

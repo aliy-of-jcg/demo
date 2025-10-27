@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
-import clickhouse from "@/lib/clickhouse";
 import { getPool } from "@/lib/mysql";
 import { encrypt } from "@/lib/encryption";
 
@@ -43,27 +42,6 @@ export async function POST(request: NextRequest) {
     if (utmContent) urlObj.searchParams.set('utm_content', utmContent);
     if (utmTerm) urlObj.searchParams.set('utm_term', utmTerm);
     const fullUrlWithUtm = urlObj.toString();
-
-    try {
-      // Store in ClickHouse for analytics
-      await clickhouse.insert({
-        table: "analytics.tracking_codes",
-        values: [
-          {
-            id,
-            tracking_code: trackingCode,
-            campaign_name: campaignName,
-            target_url: targetUrl,
-            description: `${utmSource} - ${utmMedium} - ${utmCampaign}`,
-            created_by: "admin",
-            is_active: 1,
-          },
-        ],
-        format: "JSONEachRow",
-      });
-    } catch (error) {
-      console.warn("ClickHouse not available, continuing without analytics storage:", error);
-    }
 
     try {
       // Store in MySQL utm_codes table for campaign management

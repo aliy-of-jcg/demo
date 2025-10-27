@@ -24,12 +24,6 @@ interface Campaign {
   budget: number;
   spent: number;
   description: string;
-  utm_campaign: string;
-  utm_source: string;
-  utm_medium: string;
-  utm_term: string;
-  utm_content: string;
-  landing_url: string;
   daily_budget: number;
 }
 
@@ -50,8 +44,7 @@ export default function EditCampaignPage() {
     medium: useRef<HTMLSelectElement>(null),
     start_date: useRef<HTMLInputElement>(null),
     end_date: useRef<HTMLInputElement>(null),
-    budget: useRef<HTMLInputElement>(null),
-    landing_url: useRef<HTMLInputElement>(null),
+    budget: useRef<HTMLInputElement>(null)
   };
   
   const [formData, setFormData] = useState({
@@ -64,13 +57,7 @@ export default function EditCampaignPage() {
     end_date: '',
     budget: '',
     daily_budget: '',
-    description: '',
-    utm_campaign: '',
-    utm_source: '',
-    utm_medium: '',
-    utm_term: '',
-    utm_content: '',
-    landing_url: ''
+    description: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -130,13 +117,7 @@ export default function EditCampaignPage() {
           end_date: campaign.end_date ? campaign.end_date.split('T')[0] : '',
           budget: campaign.budget?.toString() || '',
           daily_budget: campaign.daily_budget?.toString() || '',
-          description: campaign.description || '',
-          utm_campaign: campaign.utm_campaign || '',
-          utm_source: campaign.utm_source || '',
-          utm_medium: campaign.utm_medium || '',
-          utm_term: campaign.utm_term || '',
-          utm_content: campaign.utm_content || '',
-          landing_url: campaign.landing_url || ''
+          description: campaign.description || ''
         });
       } else {
         toast.error('Campaign not found');
@@ -476,99 +457,6 @@ export default function EditCampaignPage() {
               </div>
             </div>
 
-            {/* UTM Parameters */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">UTM Parameters</h2>
-              <p className="text-sm text-gray-600 mb-4">Automatically generated based on campaign information</p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    UTM Campaign
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.utm_campaign}
-                    onChange={(e) => setFormData({ ...formData, utm_campaign: e.target.value })}
-                    placeholder="Auto-generated from campaign name"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      UTM Source
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.utm_source}
-                      onChange={(e) => setFormData({ ...formData, utm_source: e.target.value })}
-                      placeholder="Auto-generated from media"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      UTM Medium
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.utm_medium}
-                      onChange={(e) => setFormData({ ...formData, utm_medium: e.target.value })}
-                      placeholder="Auto-generated from ad type"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      UTM Term
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.utm_term}
-                      onChange={(e) => setFormData({ ...formData, utm_term: e.target.value })}
-                      placeholder="Optional: keyword terms"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      UTM Content
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.utm_content}
-                      onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
-                      placeholder="Optional: ad variation"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Landing URL <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    ref={fieldRefs.landing_url}
-                    type="url"
-                    value={formData.landing_url}
-                    onChange={(e) => setFormData({ ...formData, landing_url: e.target.value })}
-                    placeholder="https://example.com/landing-page"
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.landing_url ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.landing_url && <p className="text-red-500 text-sm mt-1">{errors.landing_url}</p>}
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Campaign Summary Panel */}

@@ -589,13 +589,22 @@ export default function CampaignDetailsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleDeleteTrackingLink(link.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/utm-tools/generator?edit=${link.id}`}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Edit UTM"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteTrackingLink(link.id)}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

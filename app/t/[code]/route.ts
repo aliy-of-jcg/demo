@@ -23,67 +23,50 @@ export async function GET(
       return NextResponse.json({ error: "Missing tracking code" }, { status: 400 });
     }
 
-    // Look up tracking code in database to get target URL and UTM info
-    const query = await clickhouse.query({
-      query: `
-        SELECT 
-          target_url,
-          campaign_name,
-          description
-        FROM analytics.tracking_codes
-        WHERE tracking_code = '${trackingCode}' 
-        AND is_active = 1
-        LIMIT 1
-      `,
-      format: "JSONEachRow",
-    });
-
-    const results = await query.json();
+    // Look up tracking code in MySQL database
+    const pool = getPool();
     
-    if (!results || results.length === 0) {
-      console.log("❌ Tracking code not found or inactive");
+    const [rows] = await pool.execute(
+      `SELECT 
+        u.tracking_code,
+        u.landing_url as target_url,
+        u.utm_source,
+        u.utm_medium,
+        u.utm_campaign,
+        u.utm_term,
+        u.utm_content,
+        c.id as campaign_id,
+        c.name as campaign_name,
+        c.course_id
+      FROM utm_codes u
+      LEFT JOIN campaigns c ON u.campaign_id = c.id
+      WHERE u.tracking_code = ?
+      LIMIT 1`,
+      [trackingCode]
+    );
+    
+    if (!rows || (rows as any[]).length === 0) {
+      console.log("❌ Tracking code not found");
       return NextResponse.json({ error: "Invalid or expired tracking link" }, { status: 404 });
     }
 
-    const trackingData = results[0] as any;
+    const trackingData = (rows as any[])[0];
     const targetUrl = trackingData.target_url as string;
     const campaignName = trackingData.campaign_name as string;
-    
-    // Extract UTM params from description (format: "source - medium - campaign")
-    const [utmSource, utmMedium, utmCampaign] = trackingData.description?.split(' - ') || ['', '', ''];
+    const campaign_id = trackingData.campaign_id || 0;
+    const course_id = trackingData.course_id || 0;
+    const utmSource = trackingData.utm_source || '';
+    const utmMedium = trackingData.utm_medium || '';
+    const utmCampaign = trackingData.utm_campaign || '';
+    const utmTerm = trackingData.utm_term || '';
+    const utmContent = trackingData.utm_content || '';
     
     console.log("✅ Found tracking data:");
     console.log("- Target URL:", targetUrl);
     console.log("- Campaign:", campaignName);
+    console.log("- Campaign ID:", campaign_id);
+    console.log("- Course ID:", course_id);
     console.log("- UTM Source:", utmSource);
-    
-    // ✨ NEW: Get campaign_id and course_id from MySQL for server-side tracking
-    let campaign_id = 0;
-    let course_id = 0;
-    
-    try {
-      const pool = getPool();
-      
-      // Match tracking code to campaign
-      const query = `
-        SELECT c.id as campaign_id, c.course_id, c.name as campaign_name
-        FROM utm_codes u
-        INNER JOIN campaigns c ON u.campaign_id = c.id
-        WHERE u.tracking_code = ?
-        LIMIT 1
-      `;
-      
-      const [rows] = await pool.execute(query, [trackingCode]);
-      
-      if ((rows as any[]).length > 0) {
-        const match = (rows as any[])[0];
-        campaign_id = match.campaign_id;
-        course_id = match.course_id || 0;
-        console.log(`✅ Linked to campaign_id: ${campaign_id}, course_id: ${course_id}`);
-      }
-    } catch (mysqlError) {
-      console.warn('⚠️  Failed to lookup campaign:', mysqlError);
-    }
     
     // Build final redirect URL (CLEAN - no UTM parameters visible)
     const finalRedirectUrl = targetUrl;
@@ -110,11 +93,11 @@ export async function GET(
             campaign_name: campaignName || "Unknown",
             
             // UTM Parameters
-            utm_source: utmSource || '',
-            utm_medium: utmMedium || '',
-            utm_campaign: utmCampaign || '',
-            utm_content: '',
-            utm_term: '',
+            utm_source: utmSource,
+            utm_medium: utmMedium,
+            utm_campaign: utmCampaign,
+            utm_content: utmContent,
+            utm_term: utmTerm,
             
             // Referrer Data
             referrer,
@@ -175,11 +158,11 @@ export async function GET(
                 page_url: targetUrl,
                 page_title: campaignName || '',
                 referrer: referrer || '',
-                utm_source: utmSource || '',
-                utm_medium: utmMedium || '',
-                utm_campaign: utmCampaign || '',
-                utm_term: '',
-                utm_content: '',
+                utm_source: utmSource,
+                utm_medium: utmMedium,
+                utm_campaign: utmCampaign,
+                utm_term: utmTerm,
+                utm_content: utmContent,
                 campaign_id: campaign_id, // ✅ Populated from MySQL lookup
                 course_id: course_id,     // ✅ Populated from MySQL lookup
                 user_agent: userAgent,

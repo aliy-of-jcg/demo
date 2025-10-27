@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import { nanoid } from 'nanoid';
-import clickhouse from '@/lib/clickhouse';
 
 export async function GET(
   request: NextRequest,
@@ -204,27 +203,6 @@ export async function POST(
     if (utm_content) urlObj.searchParams.set('utm_content', utm_content);
     if (utm_term) urlObj.searchParams.set('utm_term', utm_term);
     const fullUrlWithUtm = urlObj.toString();
-
-    try {
-      // Store in ClickHouse for analytics
-      await clickhouse.insert({
-        table: "analytics.tracking_codes",
-        values: [
-          {
-            id,
-            tracking_code: trackingCode,
-            campaign_name: name,
-            target_url: landing_url,
-            description: `${utm_source} - ${utm_medium} - ${utm_campaign}`,
-            created_by: "admin",
-            is_active: 1,
-          },
-        ],
-        format: "JSONEachRow",
-      });
-    } catch (error) {
-      console.warn("ClickHouse not available, continuing without analytics storage:", error);
-    }
 
     // Store in MySQL utm_codes table
     await pool.execute(

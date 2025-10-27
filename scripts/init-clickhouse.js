@@ -53,25 +53,6 @@ async function initSchema() {
     });
     console.log('✅ Table tracking_events created\n');
 
-    console.log('Creating table: tracking_codes');
-    await clickhouse.command({
-      query: `
-        CREATE TABLE IF NOT EXISTS analytics.tracking_codes (
-          id String,
-          tracking_code String,
-          campaign_name String,
-          target_url String,
-          description String,
-          created_by String,
-          created_at DateTime DEFAULT now(),
-          is_active UInt8 DEFAULT 1
-        ) ENGINE = ReplacingMergeTree(created_at)
-        ORDER BY (id)
-        SETTINGS index_granularity = 8192
-      `,
-    });
-    console.log('✅ Table tracking_codes created\n');
-
     console.log('Verifying tables...');
     const result = await clickhouse.query({
       query: 'SHOW TABLES FROM analytics',
