@@ -77,10 +77,10 @@ export async function PUT(
       name,
       utm_source,
       utm_medium,
-      utm_campaign,
       utm_term,
       utm_content,
-      landing_url
+      landing_url,
+      campaign_id
     } = body;
 
     // Validate required fields
@@ -91,10 +91,33 @@ export async function PUT(
       );
     }
 
+    if (!campaign_id) {
+      return NextResponse.json(
+        { success: false, error: 'Campaign selection is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get campaign name for utm_campaign
+    const [campaignRows] = await pool.execute(
+      'SELECT name FROM campaigns WHERE id = ?',
+      [campaign_id]
+    );
+
+    if (!campaignRows || (campaignRows as any[]).length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Selected campaign not found' },
+        { status: 404 }
+      );
+    }
+
+    const utm_campaign = (campaignRows as any[])[0].name;
+
     // Update the UTM code
     await pool.execute(
       `UPDATE utm_codes SET 
         name = ?,
+        campaign_id = ?,
         utm_source = ?,
         utm_medium = ?,
         utm_campaign = ?,
@@ -104,9 +127,10 @@ export async function PUT(
       WHERE id = ?`,
       [
         name,
+        campaign_id,
         utm_source || null,
         utm_medium || null,
-        utm_campaign || null,
+        utm_campaign,
         utm_term || null,
         utm_content || null,
         landing_url,

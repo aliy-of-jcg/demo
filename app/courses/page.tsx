@@ -5,6 +5,7 @@ import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen } from 'lu
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 interface Course {
   id: number;
@@ -45,8 +46,8 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState(''); // Immediate input value
+  const debouncedSearch = useDebounce(searchInput, 500); // Debounced search value
   const [statusFilter, setStatusFilter] = useState(''); // Status filter
   const [showModal, setShowModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
@@ -85,23 +86,14 @@ export default function CoursesPage() {
     };
   }, [showModal]);
 
-  // Debounce function for search
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setSearch(searchInput);
-    }, 500); // 0.5 seconds debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [searchInput]);
-
   useEffect(() => {
     fetchCourses();
-  }, [search, statusFilter]);
+  }, [debouncedSearch, statusFilter]);
 
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ search });
+      const params = new URLSearchParams({ search: debouncedSearch });
       if (statusFilter) {
         params.append('status', statusFilter);
       }

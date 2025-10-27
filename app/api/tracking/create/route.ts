@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import clickhouse from '@/lib/clickhouse';
 import { nanoid } from 'nanoid';
 
 export async function POST(request: NextRequest) {
@@ -57,27 +56,6 @@ export async function POST(request: NextRequest) {
         fullUrl
       ]
     );
-
-    // Also store in ClickHouse for tracking
-    try {
-      await clickhouse.insert({
-        table: "analytics.tracking_codes",
-        values: [
-          {
-            id,
-            tracking_code: trackingCode,
-            campaign_name: campaign_name,
-            target_url: fullUrl,
-            description: description || `${utm_source} - ${utm_medium} - ${utm_campaign}`,
-            created_by: "admin",
-            is_active: 1,
-          },
-        ],
-        format: "JSONEachRow",
-      });
-    } catch (error) {
-      console.warn("ClickHouse insert failed:", error);
-    }
 
     return NextResponse.json({
       success: true,

@@ -55,27 +55,36 @@ export async function GET(request: NextRequest) {
     let clickDataMap: { [key: string]: number } = {};
     
     if (trackingCodes.length > 0) {
-      const escapedCodes = trackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-      
-      const clickQuery = `
-        SELECT 
-          tracking_code,
-          COUNT(*) as total_clicks
-        FROM analytics.tracking_events
-        WHERE tracking_code IN (${escapedCodes})
-        GROUP BY tracking_code
-      `;
+      try {
+        const escapedCodes = trackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        
+        const clickQuery = `
+          SELECT 
+            tracking_code,
+            COUNT(*) as total_clicks
+          FROM analytics.tracking_events
+          WHERE tracking_code IN (${escapedCodes})
+          GROUP BY tracking_code
+        `;
 
-      const clickData = await clickhouse.query({
-        query: clickQuery,
-        format: 'JSONEachRow'
-      });
+        console.log('Fetching clicks for tracking codes:', trackingCodes);
 
-      const clickRows = await clickData.json() as any[];
-      
-      clickRows.forEach((row: any) => {
-        clickDataMap[row.tracking_code] = parseInt(row.total_clicks) || 0;
-      });
+        const clickData = await clickhouse.query({
+          query: clickQuery,
+          format: 'JSONEachRow'
+        });
+
+        const clickRows = await clickData.json() as any[];
+        
+        console.log('Click data from ClickHouse:', clickRows);
+        
+        clickRows.forEach((row: any) => {
+          clickDataMap[row.tracking_code] = parseInt(row.total_clicks) || 0;
+        });
+      } catch (error) {
+        console.error('Error fetching clicks from ClickHouse:', error);
+        // Continue without click data - clicks will default to 0
+      }
     }
 
     // Enhance UTM codes with click data and construct full URLs
@@ -149,6 +158,110 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching UTM codes:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch UTM codes' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const pool = getPool();
+
+    const {
+      name,
+      landing_url,
+      utm_source,
+      utm_medium,
+      utm_term,
+      utm_content,
+      campaign_id
+    } = body;
+
+    // Validate required fields
+    if (!name || !landing_url) {
+      return NextResponse.json(
+        { success: false, error: 'UTM name and landing URL are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!campaign_id) {
+      return NextResponse.json(
+        { success: false, error: 'Campaign selection is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get campaign name for utm_campaign
+    const [campaignRows] = await pool.execute(
+      'SELECT name FROM campaigns WHERE id = ?',
+      [campaign_id]
+    );
+
+    if (!campaignRows || (campaignRows as any[]).length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Selected campaign not found' },
+        { status: 404 }
+      );
+    }
+
+    const utm_campaign = (campaignRows as any[])[0].name;
+
+    // Generate a unique tracking code (shorter format)
+    const timestamp = Date.now().toString().slice(-8); // Last 8 digits
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 chars
+    const tracking_code = `${timestamp}${random}`; // e.g., 12345678ABCD (12 chars)
+
+    // Insert the new UTM code
+    const [result] = await pool.execute(
+      `INSERT INTO utm_codes (
+        name, 
+        tracking_code, 
+        campaign_id,
+        utm_source, 
+        utm_medium, 
+        utm_campaign, 
+        utm_term, 
+        utm_content, 
+        landing_url,
+        created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        name,
+        tracking_code,
+        campaign_id,
+        utm_source || null,
+        utm_medium || null,
+        utm_campaign,
+        utm_term || null,
+        utm_content || null,
+        landing_url
+      ]
+    );
+
+    const insertResult = result as any;
+
+    return NextResponse.json({
+      success: true,
+      message: 'UTM code created successfully',
+      utm_code: {
+        id: insertResult.insertId,
+        name,
+        tracking_code,
+        landing_url,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        utm_term,
+        utm_content
+      }
+    }, { status: 201 });
+
+  } catch (error) {
+    console.error('Error creating UTM code:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to create UTM code' },
       { status: 500 }
     );
   }

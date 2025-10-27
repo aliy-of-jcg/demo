@@ -124,25 +124,7 @@ async function initNewSchema() {
     });
     console.log('✅ Created table: visit_logs');
 
-    // Create tracking_codes table (for compatibility with existing system)
-    await client.command({
-      query: `
-      CREATE TABLE IF NOT EXISTS tracking_codes (
-        id String,
-        tracking_code String,
-        campaign_name String,
-        target_url String,
-        description String,
-        created_by String,
-        is_active UInt8,
-        created_at DateTime DEFAULT now()
-      ) ENGINE = MergeTree()
-      ORDER BY (tracking_code, created_at)
-      `
-    });
-    console.log('✅ Created table: tracking_codes');
-
-    // Create tracking_events table (for compatibility with existing system)
+    // Create tracking_events table
     await client.command({
       query: `
       CREATE TABLE IF NOT EXISTS tracking_events (

@@ -5,6 +5,7 @@ import { Search, Link as LinkIcon, Copy, Check, ExternalLink, Plus, Trash2 } fro
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 interface TrackingLink {
   id: number;
@@ -27,8 +28,8 @@ interface TrackingLink {
 export default function TrackingLinksPage() {
   const [trackingLinks, setTrackingLinks] = useState<TrackingLink[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput, 500); // Debounced search value
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -42,23 +43,15 @@ export default function TrackingLinksPage() {
     utm_content: ''
   });
 
-  // Debounce search
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setSearch(searchInput);
-    }, 500);
-    return () => clearTimeout(timeoutId);
-  }, [searchInput]);
-
   useEffect(() => {
     fetchTrackingLinks();
-  }, [search]);
+  }, [debouncedSearch]);
 
   const fetchTrackingLinks = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       
       const response = await fetch(`/api/tracking/links?${params}`);
       const data = await response.json();

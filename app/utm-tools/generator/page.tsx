@@ -16,21 +16,37 @@ export default function UTMGeneratorPage() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
+  const [trackingCode, setTrackingCode] = useState<string | null>(null);
+  const [campaigns, setCampaigns] = useState<Array<{ id: number; name: string }>>([]);
   const [formData, setFormData] = useState({
     name: '',
     landing_url: '',
-    utm_campaign: '',
     utm_source: '',
     utm_medium: '',
     utm_term: '',
-    utm_content: ''
+    utm_content: '',
+    campaign_id: ''
   });
 
   useEffect(() => {
+    fetchCampaigns();
     if (isEditMode) {
       fetchUTMData();
     }
   }, [editId]);
+
+  const fetchCampaigns = async () => {
+    try {
+      // Fetch campaigns
+      const campaignsRes = await fetch('/api/campaigns?limit=1000');
+      const campaignsData = await campaignsRes.json();
+      if (campaignsData.success && campaignsData.campaigns) {
+        setCampaigns(campaignsData.campaigns.map((c: any) => ({ id: c.id, name: c.name })));
+      }
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+    }
+  };
 
   const fetchUTMData = async () => {
     try {
@@ -45,12 +61,13 @@ export default function UTMGeneratorPage() {
       setFormData({
         name: data.utm_code.name || '',
         landing_url: data.utm_code.landing_url || '',
-        utm_campaign: data.utm_code.utm_campaign || '',
         utm_source: data.utm_code.utm_source || '',
         utm_medium: data.utm_code.utm_medium || '',
         utm_term: data.utm_code.utm_term || '',
-        utm_content: data.utm_code.utm_content || ''
+        utm_content: data.utm_code.utm_content || '',
+        campaign_id: data.utm_code.campaign_id?.toString() || ''
       });
+      setTrackingCode(data.utm_code.tracking_code || null);
     } catch (error: any) {
       console.error('Error fetching UTM code:', error);
       toast.error(error.message || 'Failed to load UTM code');
@@ -94,27 +111,39 @@ export default function UTMGeneratorPage() {
   ];
 
   const generateUTMUrl = () => {
-    const { landing_url, utm_campaign, utm_source, utm_medium, utm_term, utm_content } = formData;
+    const { landing_url, utm_source, utm_medium, utm_term, utm_content } = formData;
     
+    // Get campaign name from selected campaign
+    const selectedCampaign = campaigns.find(c => c.id.toString() === formData.campaign_id);
+    const utm_campaign = selectedCampaign ? selectedCampaign.name : '';
+    
+    // Return early if required fields are missing
     if (!landing_url || !utm_campaign || !utm_source || !utm_medium) {
       return landing_url || 'https://example.com';
     }
 
-    const url = new URL(landing_url);
-    
-    url.searchParams.set('utm_campaign', utm_campaign);
-    url.searchParams.set('utm_source', utm_source);
-    url.searchParams.set('utm_medium', utm_medium);
-    
-    if (utm_term) {
-      url.searchParams.set('utm_term', utm_term);
-    }
-    
-    if (utm_content) {
-      url.searchParams.set('utm_content', utm_content);
-    }
+    // Validate URL format before creating URL object
+    try {
+      const url = new URL(landing_url);
+      
+      url.searchParams.set('utm_campaign', utm_campaign);
+      url.searchParams.set('utm_source', utm_source);
+      url.searchParams.set('utm_medium', utm_medium);
+      
+      if (utm_term) {
+        url.searchParams.set('utm_term', utm_term);
+      }
+      
+      if (utm_content) {
+        url.searchParams.set('utm_content', utm_content);
+      }
 
-    return url.toString();
+      return url.toString();
+    } catch (error) {
+      // If URL is invalid, return the raw landing_url
+      console.warn('Invalid URL format:', landing_url);
+      return landing_url;
+    }
   };
 
   const generatedUrl = generateUTMUrl();
@@ -131,12 +160,13 @@ export default function UTMGeneratorPage() {
 
   const handleReset = () => {
     setFormData({
+      name: '',
       landing_url: '',
-      utm_campaign: '',
       utm_source: '',
       utm_medium: '',
       utm_term: '',
-      utm_content: ''
+      utm_content: '',
+      campaign_id: ''
     });
   };
 
@@ -148,6 +178,16 @@ export default function UTMGeneratorPage() {
     // Validation
     if (!formData.name || !formData.landing_url) {
       toast.error('UTM name and landing URL are required');
+      return;
+    }
+
+    if (!formData.campaign_id) {
+      toast.error('Please select a campaign to link this UTM code');
+      return;
+    }
+
+    if (!formData.utm_source || !formData.utm_medium) {
+      toast.error('Source and Medium are required');
       return;
     }
 
@@ -171,8 +211,17 @@ export default function UTMGeneratorPage() {
         throw new Error(data.error || `Failed to ${isEditMode ? 'update' : 'create'} UTM code`);
       }
 
+      // For new creations, store the tracking code
+      if (!isEditMode && data.utm_code && data.utm_code.tracking_code) {
+        setTrackingCode(data.utm_code.tracking_code);
+      }
+
       toast.success(`UTM code ${isEditMode ? 'updated' : 'created'} successfully!`);
-      router.push('/utm-tools');
+      
+      // Redirect after a short delay to show the success message
+      setTimeout(() => {
+        router.push('/utm-tools');
+      }, 1000);
     } catch (error: any) {
       console.error('Error saving UTM code:', error);
       toast.error(error.message || `Failed to ${isEditMode ? 'update' : 'create'} UTM code`);
@@ -248,19 +297,24 @@ export default function UTMGeneratorPage() {
                 <p className="text-xs text-gray-500 mt-1">The destination URL where users will land</p>
               </div>
 
-              {/* Campaign Name */}
+              {/* Link to Campaign (Required) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Campaign <span className="text-red-500">*</span>
+                  Link to Campaign <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={formData.utm_campaign}
-                  onChange={(e) => handleChange('utm_campaign', e.target.value)}
-                  placeholder="e.g., spring_sale_2025"
+                <select
+                  value={formData.campaign_id}
+                  onChange={(e) => handleChange('campaign_id', e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">Product, promo code, or campaign name (e.g., spring_sale)</p>
+                >
+                  <option value="">-- Select Campaign --</option>
+                  {campaigns.map((campaign) => (
+                    <option key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Link this UTM to a campaign for tracking and analytics (Required)</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -365,9 +419,28 @@ export default function UTMGeneratorPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Generated URL</h2>
             
+            {/* Tracking Code Display (for edit mode) */}
+            {trackingCode && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs font-medium text-blue-900 mb-1">Tracking Code</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm text-blue-700 font-mono">/t/{trackingCode}</code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/t/${trackingCode}`);
+                      toast.success('Tracking link copied!');
+                    }}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            )}
+            
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
               <p className="text-xs text-gray-600 mb-2 font-medium">Full Tracking URL:</p>
-              <div className="bg-white border border-gray-200 rounded p-3 break-all text-sm text-gray-700">
+              <div className="bg-white border border-gray-200 rounded p-3 break-all text-sm text-gray-700 max-h-40 overflow-y-auto">
                 {generatedUrl}
               </div>
             </div>
@@ -393,9 +466,19 @@ export default function UTMGeneratorPage() {
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">UTM Parameters:</h3>
               <div className="space-y-2">
+                {formData.name && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-600">Name:</span>
+                    <span className="text-gray-900 font-medium truncate ml-2">{formData.name}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Campaign:</span>
-                  <span className="text-gray-900 font-medium">{formData.utm_campaign || '-'}</span>
+                  <span className="text-gray-900 font-medium">
+                    {formData.campaign_id 
+                      ? campaigns.find(c => c.id.toString() === formData.campaign_id)?.name || '-'
+                      : '-'}
+                  </span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Source:</span>
@@ -419,7 +502,10 @@ export default function UTMGeneratorPage() {
             {/* Help Text */}
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-800">
-                <strong>Tip:</strong> Fill in all required fields (*) to generate a complete tracking URL. The generated URL can be used in your marketing campaigns to track performance.
+                <strong>Tip:</strong> Fill in all required fields (*) to generate a complete tracking URL. 
+                {isEditMode 
+                  ? ' Click "Update UTM Code" to save your changes.' 
+                  : ' Click "Create UTM Code" to save and generate a tracking link.'}
               </p>
             </div>
           </div>
