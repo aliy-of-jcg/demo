@@ -7,6 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
+      name,  // Added: Custom name for the tracking link
       campaignName,
       campaignId, // Optional: Link to specific campaign
       targetUrl,
@@ -47,8 +48,8 @@ export async function POST(request: NextRequest) {
       // Store in MySQL utm_codes table for campaign management
       const pool = getPool();
       
-      // Generate a descriptive name for the tracking link (only source, not medium)
-      const linkName = utmSource.charAt(0).toUpperCase() + utmSource.slice(1);
+      // Use provided name or generate a descriptive name (only source, not medium)
+      const linkName = name || (utmSource.charAt(0).toUpperCase() + utmSource.slice(1));
       
       await pool.execute(
         `INSERT INTO utm_codes 

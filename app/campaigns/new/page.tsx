@@ -36,6 +36,7 @@ export default function NewCampaignPage() {
   
   const [formData, setFormData] = useState({
     name: '',
+    utm_name: '',  // Added: Name for the tracking link/UTM code
     course_id: '',
     source: 'select',
     medium: 'select',
@@ -76,6 +77,7 @@ export default function NewCampaignPage() {
         // Populate form with campaign data except dates
         setFormData({
           name: campaign.name + ' (Copy)',
+          utm_name: '', // Leave empty for user to set
           course_id: campaign.course_id?.toString() || '',
           source: campaign.source || 'select',
           medium: campaign.medium || 'select',
@@ -103,7 +105,7 @@ export default function NewCampaignPage() {
   };
 
   useEffect(() => {
-    // Auto-generate UTM parameters
+    // Auto-generate UTM campaign from name
     if (formData.name) {
       const cleanName = formData.name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
       setFormData(prev => ({
@@ -112,6 +114,7 @@ export default function NewCampaignPage() {
       }));
     }
 
+    // Auto-generate UTM source from dropdown selection
     if (formData.source && formData.source !== 'select') {
       setFormData(prev => ({
         ...prev,
@@ -119,6 +122,7 @@ export default function NewCampaignPage() {
       }));
     }
 
+    // Auto-generate UTM medium from dropdown selection
     if (formData.medium && formData.medium !== 'select') {
       setFormData(prev => ({
         ...prev,
@@ -167,16 +171,21 @@ export default function NewCampaignPage() {
       newErrors.name = 'Only letters, numbers, and underscores are allowed';
     }
 
+    // UTM name is optional - will be auto-generated if not provided
+    if (formData.utm_name && !/^[a-zA-Z0-9_]+$/.test(formData.utm_name)) {
+      newErrors.utm_name = 'Only letters, numbers, and underscores are allowed';
+    }
+
     if (!formData.course_id) {
       newErrors.course_id = 'Please select a course';
     }
 
     if (formData.source === 'select') {
-      newErrors.source = 'Please select a media source';
+      newErrors.source = 'Please select a UTM source';
     }
 
     if (formData.medium === 'select') {
-      newErrors.medium = 'Please select an ad type';
+      newErrors.medium = 'Please select a UTM medium';
     }
 
     if (!formData.start_date) {
@@ -198,7 +207,7 @@ export default function NewCampaignPage() {
     }
 
     if (!formData.landing_url) {
-      newErrors.landing_url = 'Landing URL is required';
+      newErrors.landing_url = 'Target landing URL is required';
     }
 
     setErrors(newErrors);
@@ -335,6 +344,21 @@ export default function NewCampaignPage() {
                   <p className="text-xs text-gray-500 mt-1">Only letters, numbers, and underscores allowed</p>
                 </div>
 
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                    UTM Tracking Link Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.utm_name}
+                    onChange={(e) => setFormData({ ...formData, utm_name: e.target.value })}
+                    placeholder="e.g: 2501_ai_education_naver_search"
+                    className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.utm_name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                  />
+                  {errors.utm_name && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.utm_name}</p>}
+                  <p className="text-xs text-gray-500 mt-1">Unique identifier for the tracking link (will be auto-generated if left empty)</p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
@@ -382,56 +406,6 @@ export default function NewCampaignPage() {
                     rows={3}
                     className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                </div>
-              </div>
-            </div>
-
-            {/* Media & Ad Type */}
-            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                Media & Ad Type
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">Select the media platform and ad type</p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Media <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    ref={fieldRefs.source}
-                    value={formData.source}
-                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.source ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                  >
-                    <option value="select">Select</option>
-                    <option value="naver">Naver</option>
-                    <option value="kakao">Kakao</option>
-                    <option value="google">Google</option>
-                    <option value="youtube">YouTube</option>
-                    <option value="saramin">Saramin</option>
-                  </select>
-                  {errors.source && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.source}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Ad Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    ref={fieldRefs.medium}
-                    value={formData.medium}
-                    onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
-                    className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.medium ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-                  >
-                    <option value="select">Select</option>
-                    <option value="search">Search</option>
-                    <option value="banner">Banner</option>
-                    <option value="sns">SNS</option>
-                    <option value="video">Video</option>
-                  </select>
-                  {errors.medium && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.medium}</p>}
                 </div>
               </div>
             </div>
@@ -513,78 +487,101 @@ export default function NewCampaignPage() {
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                 UTM Parameters
               </h2>
-              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">UTM parameters are automatically generated for tracking</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">Configure UTM tracking parameters for this campaign</p>
 
               <div className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Landing URL <span className="text-red-500">*</span>
+                    Target Landing URL <span className="text-red-500">*</span>
                   </label>
                   <input
                     ref={fieldRefs.landing_url}
                     type="url"
                     value={formData.landing_url}
                     onChange={(e) => setFormData({ ...formData, landing_url: e.target.value })}
-                    placeholder="https://example.com/course"
+                    placeholder="https://www.example.com/page"
                     className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.landing_url ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
                   {errors.landing_url && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.landing_url}</p>}
+                  <p className="text-xs text-gray-500 mt-1">The destination URL where users will land</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Campaign</label>
-                    <input
-                      type="text"
-                      value={formData.utm_campaign}
-                      onChange={(e) => setFormData({ ...formData, utm_campaign: e.target.value })}
-                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      UTM Source <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      ref={fieldRefs.source}
+                      value={formData.source}
+                      onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                      className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.source ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    >
+                      <option value="select">Select source</option>
+                      <option value="google">Google</option>
+                      <option value="naver">Naver</option>
+                      <option value="kakao">Kakao</option>
+                      <option value="youtube">Youtube</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="saramin">Saramin</option>
+                      <option value="email">Email</option>
+                      <option value="other">Other</option>
+                    </select>
+                    {errors.source && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.source}</p>}
+                    <p className="text-xs text-gray-500 mt-1">Platform where the ad will run (e.g., Google, Naver, Kakao)</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Source</label>
-                    <input
-                      type="text"
-                      value={formData.utm_source}
-                      readOnly
-                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50"
-                    />
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      UTM Medium <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      ref={fieldRefs.medium}
+                      value={formData.medium}
+                      onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
+                      className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.medium ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    >
+                      <option value="select">Select medium</option>
+                      <option value="search">Search</option>
+                      <option value="display">Display</option>
+                      <option value="video">Video</option>
+                      <option value="social">Social</option>
+                      <option value="email">Email</option>
+                      <option value="banner">Banner</option>
+                      <option value="sns">SNS</option>
+                      <option value="referral">Referral</option>
+                      <option value="organic">Organic</option>
+                    </select>
+                    {errors.medium && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.medium}</p>}
+                    <p className="text-xs text-gray-500 mt-1">Ad format type (e.g., Search, Banner, Video, SNS)</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Medium</label>
-                    <input
-                      type="text"
-                      value={formData.utm_medium}
-                      readOnly
-                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50"
-                    />
-                  </div>
-
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Term</label>
                     <input
                       type="text"
                       value={formData.utm_term}
                       onChange={(e) => setFormData({ ...formData, utm_term: e.target.value })}
-                      placeholder="Optional"
+                      placeholder="e.g., running+shoes"
                       className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Identify paid search keywords (optional)</p>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Content</label>
-                  <input
-                    type="text"
-                    value={formData.utm_content}
-                    onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
-                    placeholder="Optional"
-                    className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Content</label>
+                    <input
+                      type="text"
+                      value={formData.utm_content}
+                      onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
+                      placeholder="e.g., banner_top, sidebar_ad"
+                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Differentiate similar content or links (optional)</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -677,6 +674,7 @@ export default function NewCampaignPage() {
                   onClick={() => {
                     setFormData({
                       name: '',
+                      utm_name: '',
                       course_id: '',
                       source: 'select',
                       medium: 'select',

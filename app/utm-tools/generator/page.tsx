@@ -28,6 +28,21 @@ export default function UTMGeneratorPage() {
     campaign_id: ''
   });
 
+  // Auto-fill only UTM name when campaign is selected (NOT source/medium)
+  useEffect(() => {
+    if (formData.campaign_id && !isEditMode) {
+      const selectedCampaign = campaigns.find(c => c.id.toString() === formData.campaign_id);
+      if (selectedCampaign) {
+        setFormData(prev => ({
+          ...prev,
+          name: selectedCampaign.name
+          // Do NOT auto-fill utm_source and utm_medium
+          // Users need to select different platforms for each UTM code
+        }));
+      }
+    }
+  }, [formData.campaign_id, campaigns, isEditMode]);
+
   useEffect(() => {
     fetchCampaigns();
     if (isEditMode) {
@@ -90,18 +105,20 @@ export default function UTMGeneratorPage() {
     { value: 'youtube', label: 'Youtube' },
     { value: 'facebook', label: 'Facebook' },
     { value: 'instagram', label: 'Instagram' },
+    { value: 'saramin', label: 'Saramin' },
     { value: 'email', label: 'Email' },
     { value: 'other', label: 'Other' }
   ];
 
   const mediumOptions = [
     { value: '', label: 'Select medium' },
-    { value: 'cpc', label: 'CPC (Cost Per Click)' },
+    { value: 'search', label: 'Search' },
     { value: 'display', label: 'Display' },
     { value: 'video', label: 'Video' },
     { value: 'social', label: 'Social' },
     { value: 'email', label: 'Email' },
     { value: 'banner', label: 'Banner' },
+    { value: 'sns', label: 'SNS' },
     { value: 'referral', label: 'Referral' },
     { value: 'organic', label: 'Organic' }
   ];
@@ -181,18 +198,19 @@ export default function UTMGeneratorPage() {
 
   const handleSave = async () => {
     // Validation
-    if (!formData.name || !formData.landing_url) {
-      toast.error('UTM name and landing URL are required');
-      return;
-    }
-
     if (!formData.campaign_id) {
-      toast.error('Please select a campaign to link this UTM code');
+      toast.error('Please select a campaign first');
       return;
     }
 
-    if (!formData.utm_source || !formData.utm_medium) {
-      toast.error('Source and Medium are required');
+    if (!formData.landing_url) {
+      toast.error('Target landing URL is required');
+      return;
+    }
+
+    // These should be auto-filled, but double-check
+    if (!formData.name || !formData.utm_source || !formData.utm_medium) {
+      toast.error('Please ensure a campaign is selected');
       return;
     }
 
@@ -272,37 +290,7 @@ export default function UTMGeneratorPage() {
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">UTM Parameters</h2>
             
             <div className="space-y-4 sm:space-y-6">
-              {/* UTM Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  UTM Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => handleChange('name', e.target.value)}
-                  placeholder="e.g., 2501_ai_education_naver_search"
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">A unique identifier for this UTM code</p>
-              </div>
-
-              {/* Landing URL */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Target Landing URL <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="url"
-                  value={formData.landing_url}
-                  onChange={(e) => handleChange('landing_url', e.target.value)}
-                  placeholder="https://www.example.com/page"
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">The destination URL where users will land</p>
-              </div>
-
-              {/* Link to Campaign (Required) */}
+              {/* Link to Campaign (First - Required) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Link to Campaign <span className="text-red-500">*</span>
@@ -320,76 +308,118 @@ export default function UTMGeneratorPage() {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Link this UTM to a campaign for tracking and analytics
+                  Select a campaign - UTM parameters will be auto-filled
                 </p>
               </div>
 
+              {/* UTM Name - Auto-filled from campaign */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  UTM Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  readOnly
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-50"
+                />
+                <p className="text-xs text-gray-500 mt-1">Auto-filled from selected campaign</p>
+              </div>
+
+              {/* Landing URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Target Landing URL <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  value={formData.landing_url}
+                  onChange={(e) => handleChange('landing_url', e.target.value)}
+                  placeholder="https://www.example.com/page"
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">The destination URL where users will land</p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                {/* Media (Source) */}
+                {/* UTM Source - Left side */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Media <span className="text-red-500">*</span>
+                    UTM Source <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.utm_source}
                     onChange={(e) => handleChange('utm_source', e.target.value)}
                     className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {sourceOptions.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
+                    <option value="">Select source</option>
+                    <option value="google">Google</option>
+                    <option value="naver">Naver</option>
+                    <option value="kakao">Kakao</option>
+                    <option value="youtube">Youtube</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="saramin">Saramin</option>
+                    <option value="email">Email</option>
+                    <option value="other">Other</option>
                   </select>
                   <p className="text-xs text-gray-500 mt-1">Platform where the ad will run (e.g., Google, Naver, Kakao)</p>
                 </div>
 
-                {/* Ad Type (Medium) */}
+                {/* UTM Medium - Right side */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ad Type <span className="text-red-500">*</span>
+                    UTM Medium <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.utm_medium}
                     onChange={(e) => handleChange('utm_medium', e.target.value)}
                     className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {mediumOptions.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
+                    <option value="">Select medium</option>
+                    <option value="search">Search</option>
+                    <option value="display">Display</option>
+                    <option value="video">Video</option>
+                    <option value="social">Social</option>
+                    <option value="email">Email</option>
+                    <option value="banner">Banner</option>
+                    <option value="sns">SNS</option>
+                    <option value="referral">Referral</option>
+                    <option value="organic">Organic</option>
                   </select>
                   <p className="text-xs text-gray-500 mt-1">Ad format type (e.g., Search, Banner, Video, SNS)</p>
                 </div>
               </div>
 
-              {/* Term */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Term (키워드)
-                </label>
-                <select
-                  value={formData.utm_term}
-                  onChange={(e) => handleChange('utm_term', e.target.value)}
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  {termOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">Identify paid search keywords (optional)</p>
-              </div>
+              {/* Term & Content - Side by side */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    UTM Term
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.utm_term}
+                    onChange={(e) => handleChange('utm_term', e.target.value)}
+                    placeholder="e.g., running+shoes"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Identify paid search keywords (optional)</p>
+                </div>
 
-              {/* Content */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Content (콘텐츠)
-                </label>
-                <input
-                  type="text"
-                  value={formData.utm_content}
-                  onChange={(e) => handleChange('utm_content', e.target.value)}
-                  placeholder="e.g., banner_top, sidebar_ad"
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500 mt-1">Differentiate similar content or links (optional)</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    UTM Content
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.utm_content}
+                    onChange={(e) => handleChange('utm_content', e.target.value)}
+                    placeholder="e.g., banner_top, sidebar_ad"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Differentiate similar content or links (optional)</p>
+                </div>
               </div>
 
               {/* Action Buttons */}
@@ -473,6 +503,14 @@ export default function UTMGeneratorPage() {
             <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200">
               <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3">UTM Parameters:</h3>
               <div className="space-y-2">
+                {formData.campaign_id && (
+                  <div className="flex justify-between text-xs gap-2">
+                    <span className="text-gray-600">Campaign:</span>
+                    <span className="text-gray-900 font-medium truncate ml-2">
+                      {campaigns.find(c => c.id.toString() === formData.campaign_id)?.name || '-'}
+                    </span>
+                  </div>
+                )}
                 {formData.name && (
                   <div className="flex justify-between text-xs gap-2">
                     <span className="text-gray-600">Name:</span>
@@ -480,7 +518,7 @@ export default function UTMGeneratorPage() {
                   </div>
                 )}
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">Campaign:</span>
+                  <span className="text-gray-600">UTM Campaign:</span>
                   <span className="text-gray-900 font-medium truncate">
                     {formData.campaign_id 
                       ? campaigns.find(c => c.id.toString() === formData.campaign_id)?.name || '-'
@@ -488,19 +526,19 @@ export default function UTMGeneratorPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">Source:</span>
+                  <span className="text-gray-600">UTM Source:</span>
                   <span className="text-gray-900 font-medium">{formData.utm_source || '-'}</span>
                 </div>
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">Medium:</span>
+                  <span className="text-gray-600">UTM Medium:</span>
                   <span className="text-gray-900 font-medium">{formData.utm_medium || '-'}</span>
                 </div>
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">Term:</span>
+                  <span className="text-gray-600">UTM Term:</span>
                   <span className="text-gray-900 font-medium">{formData.utm_term || '-'}</span>
                 </div>
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">Content:</span>
+                  <span className="text-gray-600">UTM Content:</span>
                   <span className="text-gray-900 font-medium truncate">{formData.utm_content || '-'}</span>
                 </div>
               </div>
