@@ -131,8 +131,8 @@ export default function ChannelPerformancePage() {
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">매체별 상세분석</h1>
-        <p className="text-gray-600 mt-1">Channel Performance Detail Analysis</p>
+        <h1 className="text-3xl font-bold text-gray-900">Channel Performance</h1>
+        <p className="text-gray-600 mt-1">Detailed analysis of campaign performance by media channel</p>
       </div>
 
       {/* Filters */}
@@ -162,19 +162,19 @@ export default function ChannelPerformancePage() {
               onClick={() => setQuickRange(7)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Last 7 days
+              Last 7 Days
             </button>
             <button
               onClick={() => setQuickRange(30)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Last 30 days
+              Last 30 Days
             </button>
             <button
               onClick={() => setQuickRange(90)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Last 3 months
+              Last 3 Months
             </button>
           </div>
         </div>
@@ -201,7 +201,8 @@ export default function ChannelPerformancePage() {
           {/* Chart Section - Channel Comparison */}
           {data.chartData && data.chartData.length > 0 && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">매체별 성과 비교 (Channel Performance Comparison)</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Channel Performance Comparison</h2>
+              <p className="text-sm text-gray-600 mb-4">Compare visits, conversions, and ad cost across channels</p>
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={data.chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -215,9 +216,9 @@ export default function ChannelPerformancePage() {
                     }}
                   />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="visits" fill="#3b82f6" name="방문수 (Visits)" />
-                  <Bar yAxisId="left" dataKey="conversions" fill="#f59e0b" name="전환수 (Conversions)" />
-                  <Bar yAxisId="right" dataKey="adCost" fill="#10b981" name="광고비 (Ad Cost)" />
+                  <Bar yAxisId="left" dataKey="visits" fill="#3b82f6" name="Visits" />
+                  <Bar yAxisId="left" dataKey="conversions" fill="#f59e0b" name="Conversions" />
+                  <Bar yAxisId="right" dataKey="adCost" fill="#10b981" name="Ad Cost (₩)" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -250,19 +251,19 @@ export default function ChannelPerformancePage() {
                       </div>
                       <div className="grid grid-cols-4 gap-6 text-right">
                         <div>
-                          <p className="text-xs text-gray-600">총 방문수</p>
+                          <p className="text-xs text-gray-600">Total Visits</p>
                           <p className="text-xl font-bold text-gray-900">{channelData.total_visits.toLocaleString()}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600">총 전환수</p>
+                          <p className="text-xs text-gray-600">Total Conversions</p>
                           <p className="text-xl font-bold text-gray-900">{channelData.total_conversions}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600">총 광고비</p>
+                          <p className="text-xs text-gray-600">Total Ad Cost</p>
                           <p className="text-xl font-bold text-gray-900">{formatCurrency(channelData.total_ad_cost)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600">평균 CTR</p>
+                          <p className="text-xs text-gray-600">Avg CTR</p>
                           <p className={`text-xl font-bold ${colors.text}`}>{channelData.avg_ctr}%</p>
                         </div>
                       </div>
@@ -275,28 +276,28 @@ export default function ChannelPerformancePage() {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            캠페인명<br/><span className="text-xs normal-case font-normal text-gray-400">Campaign</span>
+                            Campaign
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            매체 유형<br/><span className="text-xs normal-case font-normal text-gray-400">Ad Type</span>
+                            Ad Type
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            방문수<br/><span className="text-xs normal-case font-normal text-gray-400">Visits</span>
+                            Visits
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            전환수<br/><span className="text-xs normal-case font-normal text-gray-400">Conversions</span>
+                            Conversions
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            전환율<br/><span className="text-xs normal-case font-normal text-gray-400">Conv. Rate</span>
+                            Conv. Rate
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            광고비<br/><span className="text-xs normal-case font-normal text-gray-400">Ad Cost</span>
+                            Ad Cost
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             CTR
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            상태<br/><span className="text-xs normal-case font-normal text-gray-400">Status</span>
+                            Status
                           </th>
                         </tr>
                       </thead>
