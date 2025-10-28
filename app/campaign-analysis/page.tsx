@@ -146,20 +146,20 @@ export default function CampaignAnalysisPage() {
     : displayedPlatforms.filter(p => p.toLowerCase() === selectedPlatform.toLowerCase());
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Campaign Performance Analysis</h1>
-        <p className="text-gray-600 mt-1">Detailed performance metrics for individual campaigns</p>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Campaign Performance Analysis</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">Detailed performance metrics for individual campaigns</p>
       </div>
 
       {/* Campaign Selector */}
-      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Campaign</label>
+      <div className="mb-4 sm:mb-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Select Campaign</label>
         <select
           value={selectedCampaign}
           onChange={(e) => setSelectedCampaign(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           {campaigns.length === 0 && <option value="">No campaigns available</option>}
           {campaigns.map((campaign) => (
@@ -171,11 +171,11 @@ export default function CampaignAnalysisPage() {
 
         {/* Campaign Info with Platform Badges */}
         {data && (
-          <div className="mt-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">{data.campaign.name}</h3>
-              <p className="text-sm text-gray-600">{data.campaign.course_name || 'No course linked'}</p>
-              <div className="flex gap-2 mt-2">
+          <div className="mt-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">{data.campaign.name}</h3>
+              <p className="text-xs sm:text-sm text-gray-600">{data.campaign.course_name || 'No course linked'}</p>
+              <div className="flex gap-2 mt-2 flex-wrap">
                 {filteredPlatforms.map((platform, idx) => (
                   <span key={idx} className={`px-2 py-1 rounded text-xs font-medium ${getPlatformBadgeColor(platform)}`}>
                     {platform}
@@ -183,9 +183,9 @@ export default function CampaignAnalysisPage() {
                 ))}
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Budget</p>
-              <p className="text-xl font-bold text-gray-900">₩{(data.campaign.budget / 10000).toFixed(0)}만</p>
+            <div className="text-left lg:text-right">
+              <p className="text-xs sm:text-sm text-gray-600">Budget</p>
+              <p className="text-lg sm:text-xl font-bold text-gray-900">₩{(data.campaign.budget / 10000).toFixed(0)}만</p>
               <p className="text-xs text-gray-500">Spent: ₩{(data.campaign.spent / 10000).toFixed(0)}만</p>
             </div>
           </div>
@@ -193,13 +193,13 @@ export default function CampaignAnalysisPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between gap-4">
-          {/* Chart/Table Toggle - Left */}
+      <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-col gap-3">
+          {/* Chart/Table Toggle - Top */}
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('chart')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 viewMode === 'chart' 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -209,7 +209,7 @@ export default function CampaignAnalysisPage() {
             </button>
             <button
               onClick={() => setViewMode('table')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 viewMode === 'table' 
                   ? 'bg-blue-600 text-white' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -219,13 +219,13 @@ export default function CampaignAnalysisPage() {
             </button>
           </div>
 
-          {/* Date Range - Right */}
-          <div className="flex items-center gap-4">
+          {/* Filters - Bottom */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 sm:gap-4">
             {/* Platform Filter */}
             <select
               value={selectedPlatform}
               onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
             >
               <option value="all">All Platforms</option>
               {displayedPlatforms.map((platform, idx) => (
@@ -233,40 +233,42 @@ export default function CampaignAnalysisPage() {
               ))}
             </select>
 
-            <Calendar className="w-5 h-5 text-gray-500" />
-            <input 
-              type="date" 
-              value={dateRange.start}
-              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-            <span className="text-gray-500">~</span>
-            <input 
-              type="date" 
-              value={dateRange.end}
-              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
+              <input 
+                type="date" 
+                value={dateRange.start}
+                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+              />
+              <span className="text-gray-500">~</span>
+              <input 
+                type="date" 
+                value={dateRange.end}
+                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+              />
 
-            {/* Quick Range Buttons */}
-            <button
-              onClick={() => setQuickRange(7)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Last 7 days
-            </button>
-            <button
-              onClick={() => setQuickRange(30)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Last 30 days
-            </button>
-            <button
-              onClick={() => setQuickRange(90)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Last 3 months
-            </button>
+              {/* Quick Range Buttons */}
+              <button
+                onClick={() => setQuickRange(7)}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                Last 7 days
+              </button>
+              <button
+                onClick={() => setQuickRange(30)}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                Last 30 days
+              </button>
+              <button
+                onClick={() => setQuickRange(90)}
+                className="hidden sm:inline-block px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                Last 3 months
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -289,77 +291,77 @@ export default function CampaignAnalysisPage() {
       {!loading && !error && data && (
         <>
           {/* Metric Cards - 6 columns */}
-          <div className="grid grid-cols-6 gap-4 mb-6">
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-purple-100 rounded flex items-center justify-center">
-                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-purple-100 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 </div>
                 <p className="text-xs text-gray-600">Visitors</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{data.metrics.visitors.toLocaleString()}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{data.metrics.visitors.toLocaleString()}</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
-                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-100 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <p className="text-xs text-gray-600">Conversions</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{data.metrics.conversions}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{data.metrics.conversions}</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-pink-100 rounded flex items-center justify-center">
-                  <svg className="w-4 h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-pink-100 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
                 <p className="text-xs text-gray-600">Conv. Rate</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{data.metrics.conversionRate}%</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{data.metrics.conversionRate}%</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
-                  <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-orange-100 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <p className="text-xs text-gray-600">Budget</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900">₩{(data.campaign.budget / 10000).toFixed(0)}만</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">₩{(data.campaign.budget / 10000).toFixed(0)}만</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
-                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-100 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
                 <p className="text-xs text-gray-600">Spend</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900">₩{(data.campaign.spent / 10000).toFixed(0)}만</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">₩{(data.campaign.spent / 10000).toFixed(0)}만</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
-                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
                   </svg>
                 </div>
                 <p className="text-xs text-gray-600">CTR</p>
               </div>
-              <p className="text-2xl font-bold text-gray-900">{data.metrics.ctr}%</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{data.metrics.ctr}%</p>
             </div>
           </div>
 
@@ -367,33 +369,33 @@ export default function CampaignAnalysisPage() {
           {viewMode === 'chart' && (
             <>
               {data.dailyData.length > 0 ? (
-                <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                   {/* Daily Visitors Chart */}
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-base font-semibold text-gray-900">Daily Visitors</h3>
-                      <div className="flex items-center gap-3 text-sm">
+                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">Daily Visitors</h3>
+                      <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
                         <div className="flex items-center gap-1">
-                          <div className="w-3 h-0.5 bg-blue-500"></div>
+                          <div className="w-2.5 h-0.5 sm:w-3 sm:h-0.5 bg-blue-500"></div>
                           <span className="text-gray-600">Visitors</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <div className="w-3 h-0.5 bg-green-500"></div>
+                          <div className="w-2.5 h-0.5 sm:w-3 sm:h-0.5 bg-green-500"></div>
                           <span className="text-gray-600">Conversions</span>
                         </div>
                       </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={280}>
+                    <ResponsiveContainer width="100%" height={240}>
                       <LineChart data={data.dailyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis 
                           dataKey="date" 
-                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          tick={{ fontSize: 9, fill: '#6b7280' }}
                           tickLine={false}
                           axisLine={{ stroke: '#e5e7eb' }}
                         />
                         <YAxis 
-                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          tick={{ fontSize: 9, fill: '#6b7280' }}
                           tickLine={false}
                           axisLine={{ stroke: '#e5e7eb' }}
                         />
@@ -402,7 +404,7 @@ export default function CampaignAnalysisPage() {
                             backgroundColor: 'white', 
                             border: '1px solid #e5e7eb',
                             borderRadius: '6px',
-                            fontSize: '12px'
+                            fontSize: '11px'
                           }}
                         />
                         <Line 
@@ -410,41 +412,41 @@ export default function CampaignAnalysisPage() {
                           dataKey="visitors" 
                           stroke="#3b82f6" 
                           strokeWidth={2}
-                          dot={{ fill: '#3b82f6', r: 3 }}
-                          activeDot={{ r: 5 }}
+                          dot={{ fill: '#3b82f6', r: 2 }}
+                          activeDot={{ r: 4 }}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="conversions" 
                           stroke="#10b981" 
                           strokeWidth={2}
-                          dot={{ fill: '#10b981', r: 3 }}
-                          activeDot={{ r: 5 }}
+                          dot={{ fill: '#10b981', r: 2 }}
+                          activeDot={{ r: 4 }}
                         />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
 
                   {/* Daily Cost Chart */}
-                  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-base font-semibold text-gray-900">Daily Cost</h3>
-                      <div className="flex items-center gap-1 text-sm">
-                        <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">Daily Cost</h3>
+                      <div className="flex items-center gap-1 text-xs sm:text-sm">
+                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-orange-500 rounded"></div>
                         <span className="text-gray-600">Cost (₩)</span>
                       </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={280}>
+                    <ResponsiveContainer width="100%" height={240}>
                       <BarChart data={data.dailyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis 
                           dataKey="date" 
-                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          tick={{ fontSize: 9, fill: '#6b7280' }}
                           tickLine={false}
                           axisLine={{ stroke: '#e5e7eb' }}
                         />
                         <YAxis 
-                          tick={{ fontSize: 11, fill: '#6b7280' }}
+                          tick={{ fontSize: 9, fill: '#6b7280' }}
                           tickLine={false}
                           axisLine={{ stroke: '#e5e7eb' }}
                         />
@@ -453,7 +455,7 @@ export default function CampaignAnalysisPage() {
                             backgroundColor: 'white', 
                             border: '1px solid #e5e7eb',
                             borderRadius: '6px',
-                            fontSize: '12px'
+                            fontSize: '11px'
                           }}
                           formatter={(value: number) => [`₩${(value / 10000).toFixed(0)}만`, 'Cost']}
                         />
@@ -467,9 +469,9 @@ export default function CampaignAnalysisPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center mb-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center mb-4 sm:mb-6">
                   <p className="text-gray-500">No performance data available for this campaign</p>
-                  <p className="text-sm text-gray-400 mt-1">Try selecting a different date range or campaign</p>
+                  <p className="text-xs sm:text-sm text-gray-400 mt-1">Try selecting a different date range or campaign</p>
                 </div>
               )}
             </>
@@ -477,11 +479,13 @@ export default function CampaignAnalysisPage() {
 
           {/* Daily Performance Table - Always Shown */}
           {data.dailyData.length > 0 ? (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="text-base font-semibold text-gray-900">Daily Performance Data</h3>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+              <div className="p-3 sm:p-4 border-b border-gray-200">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900">Daily Performance Data</h3>
               </div>
-              <div className="overflow-x-auto">
+              
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
@@ -513,11 +517,41 @@ export default function CampaignAnalysisPage() {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Mobile/Tablet Card View */}
+              <div className="lg:hidden divide-y divide-gray-200">
+                {data.dailyData.map((row, idx) => (
+                  <div key={idx} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-900">{row.date}</span>
+                      <span className="text-sm font-medium text-green-600">{row.conversions} conversions</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-500 text-xs">Visitors</span>
+                        <p className="font-medium text-gray-900">{row.visitors.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Conv. Rate</span>
+                        <p className="font-medium text-gray-900">{row.conversionRate}%</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Cost</span>
+                        <p className="font-medium text-gray-900">₩{(row.cost / 10000).toFixed(1)}만</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Avg. CPC</span>
+                        <p className="font-medium text-gray-900">₩{row.visitors > 0 ? ((row.cost / row.visitors) / 10).toFixed(0) : 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center mb-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center mb-4 sm:mb-6">
               <p className="text-gray-500">No performance data available for this campaign</p>
-              <p className="text-sm text-gray-400 mt-1">Try selecting a different date range or campaign</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">Try selecting a different date range or campaign</p>
             </div>
           )}
         </>

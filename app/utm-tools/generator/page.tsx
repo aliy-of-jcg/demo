@@ -237,41 +237,41 @@ export default function UTMGeneratorPage() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading UTM code...</p>
+          <p className="text-sm sm:text-base text-gray-600">Loading UTM code...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <Link 
           href="/utm-tools"
-          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
+          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-3 sm:mb-4 text-sm sm:text-base"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to UTM List</span>
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           {isEditMode ? 'Edit UTM Code' : 'UTM Code Generator'}
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-sm sm:text-base text-gray-600 mt-1">
           {isEditMode ? 'Update tracking URL with UTM parameters' : 'Create tracking URLs with UTM parameters for campaign attribution'}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Form Section */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">UTM Parameters</h2>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">UTM Parameters</h2>
             
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* UTM Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -282,7 +282,7 @@ export default function UTMGeneratorPage() {
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
                   placeholder="e.g., 2501_ai_education_naver_search"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">A unique identifier for this UTM code</p>
               </div>
@@ -297,7 +297,7 @@ export default function UTMGeneratorPage() {
                   value={formData.landing_url}
                   onChange={(e) => handleChange('landing_url', e.target.value)}
                   placeholder="https://www.example.com/page"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">The destination URL where users will land</p>
               </div>
@@ -310,7 +310,7 @@ export default function UTMGeneratorPage() {
                 <select
                   value={formData.campaign_id}
                   onChange={(e) => handleChange('campaign_id', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">-- Select Campaign --</option>
                   {campaigns.map((campaign) => (
@@ -324,7 +324,7 @@ export default function UTMGeneratorPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {/* Media (Source) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -333,7 +333,7 @@ export default function UTMGeneratorPage() {
                   <select
                     value={formData.utm_source}
                     onChange={(e) => handleChange('utm_source', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     {sourceOptions.map(option => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -350,7 +350,7 @@ export default function UTMGeneratorPage() {
                   <select
                     value={formData.utm_medium}
                     onChange={(e) => handleChange('utm_medium', e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     {mediumOptions.map(option => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -368,7 +368,7 @@ export default function UTMGeneratorPage() {
                 <select
                   value={formData.utm_term}
                   onChange={(e) => handleChange('utm_term', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   {termOptions.map(option => (
                     <option key={option.value} value={option.value}>{option.label}</option>
@@ -387,17 +387,17 @@ export default function UTMGeneratorPage() {
                   value={formData.utm_content}
                   onChange={(e) => handleChange('utm_content', e.target.value)}
                   placeholder="e.g., banner_top, sidebar_ad"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">Differentiate similar content or links (optional)</p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 pt-4">
                 <button
                   onClick={handleReset}
                   disabled={saving}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-6 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <span>Reset</span>
@@ -405,7 +405,7 @@ export default function UTMGeneratorPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="w-full sm:w-auto px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {saving ? (
                     <>
@@ -423,38 +423,38 @@ export default function UTMGeneratorPage() {
 
         {/* Preview Section */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Generated URL</h2>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-8">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Generated URL</h2>
             
             {/* Tracking Code Display (for edit mode) */}
             {trackingCode && (
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="mb-3 sm:mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-xs font-medium text-blue-900 mb-1">Tracking Code</p>
                 <div className="flex items-center gap-2">
-                  <code className="text-sm text-blue-700 font-mono">/t/{trackingCode}</code>
+                  <code className="text-xs sm:text-sm text-blue-700 font-mono break-all">/t/{trackingCode}</code>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(`${window.location.origin}/t/${trackingCode}`);
                       toast.success('Tracking link copied!');
                     }}
-                    className="text-blue-600 hover:text-blue-800"
+                    className="text-blue-600 hover:text-blue-800 flex-shrink-0"
                   >
-                    <Copy className="w-3 h-3" />
+                    <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                 </div>
               </div>
             )}
             
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
               <p className="text-xs text-gray-600 mb-2 font-medium">Full Tracking URL:</p>
-              <div className="bg-white border border-gray-200 rounded p-3 break-all text-sm text-gray-700 max-h-40 overflow-y-auto">
+              <div className="bg-white border border-gray-200 rounded p-2 sm:p-3 break-all text-xs sm:text-sm text-gray-700 max-h-32 sm:max-h-40 overflow-y-auto">
                 {generatedUrl}
               </div>
             </div>
 
             <button
               onClick={handleCopy}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
             >
               {copied ? (
                 <>
@@ -470,44 +470,44 @@ export default function UTMGeneratorPage() {
             </button>
 
             {/* UTM Parameters Preview */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">UTM Parameters:</h3>
+            <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200">
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3">UTM Parameters:</h3>
               <div className="space-y-2">
                 {formData.name && (
-                  <div className="flex justify-between text-xs">
+                  <div className="flex justify-between text-xs gap-2">
                     <span className="text-gray-600">Name:</span>
                     <span className="text-gray-900 font-medium truncate ml-2">{formData.name}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs gap-2">
                   <span className="text-gray-600">Campaign:</span>
-                  <span className="text-gray-900 font-medium">
+                  <span className="text-gray-900 font-medium truncate">
                     {formData.campaign_id 
                       ? campaigns.find(c => c.id.toString() === formData.campaign_id)?.name || '-'
                       : '-'}
                   </span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs gap-2">
                   <span className="text-gray-600">Source:</span>
                   <span className="text-gray-900 font-medium">{formData.utm_source || '-'}</span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs gap-2">
                   <span className="text-gray-600">Medium:</span>
                   <span className="text-gray-900 font-medium">{formData.utm_medium || '-'}</span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs gap-2">
                   <span className="text-gray-600">Term:</span>
                   <span className="text-gray-900 font-medium">{formData.utm_term || '-'}</span>
                 </div>
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between text-xs gap-2">
                   <span className="text-gray-600">Content:</span>
-                  <span className="text-gray-900 font-medium">{formData.utm_content || '-'}</span>
+                  <span className="text-gray-900 font-medium truncate">{formData.utm_content || '-'}</span>
                 </div>
               </div>
             </div>
 
             {/* Help Text */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-800">
                 <strong>Tip:</strong> Fill in all required fields (*) to generate a complete tracking URL. 
                 {isEditMode 
@@ -520,7 +520,7 @@ export default function UTMGeneratorPage() {
       </div>
 
       {/* Footer */}
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <PageFooter />
       </div>
     </div>

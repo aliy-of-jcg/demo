@@ -219,16 +219,16 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Course Management</h1>
-          <p className="text-gray-600 mt-1">Manage courses and course information in use</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Course Management</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage courses and course information in use</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
         >
           <span>+ Add Course</span>
         </button>
@@ -236,51 +236,51 @@ export default function CoursesPage() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Courses</p>
-                <p className="text-3xl font-bold text-gray-900">{summary.total_courses}</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Courses</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.total_courses}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Active Courses</p>
-                <p className="text-3xl font-bold text-gray-900">{summary.active_courses}</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">Active Courses</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.active_courses}</p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-green-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Active Campaigns</p>
-                <p className="text-3xl font-bold text-gray-900">{summary.total_campaigns}</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">Active Campaigns</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.total_campaigns}</p>
               </div>
-              <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-pink-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-pink-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Visits</p>
-                <p className="text-3xl font-bold text-gray-900">{summary.total_visits}</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Visits</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.total_visits}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-purple-600" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
               </div>
             </div>
           </div>
@@ -288,8 +288,8 @@ export default function CoursesPage() {
       )}
 
       {/* Search and Filter */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -297,7 +297,7 @@ export default function CoursesPage() {
               placeholder="Search by course name or code..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           
@@ -305,7 +305,7 @@ export default function CoursesPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
@@ -319,12 +319,13 @@ export default function CoursesPage() {
 
       {/* Courses Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Course List</h3>
-          <p className="text-sm text-gray-600 mt-1">Search by course name or code...</p>
+        <div className="p-3 sm:p-4 border-b border-gray-200">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900">Course List</h3>
+          <p className="text-xs sm:text-sm text-gray-600 mt-1">Search by course name or code...</p>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table - Hidden on mobile/tablet */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -420,19 +421,95 @@ export default function CoursesPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile/Tablet Card View - Visible only on mobile and tablet */}
+        <div className="lg:hidden divide-y divide-gray-200">
+          {loading ? (
+            <div className="px-4 py-12 text-center text-gray-500">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            </div>
+          ) : courses.length === 0 ? (
+            <div className="px-4 py-12 text-center text-gray-500">
+              No courses found
+            </div>
+          ) : (
+            courses.map((course) => (
+              <div key={course.id} className="p-4 hover:bg-gray-50">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-base font-semibold text-gray-900 truncate">{course.name}</h4>
+                    <p className="text-xs text-gray-500 mt-1">{course.code}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-3">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[course.status] || 'bg-gray-100 text-gray-800'}`}>
+                      {statusLabels[course.status] || course.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                  <div>
+                    <span className="text-xs text-gray-500">Category:</span>
+                    <p className="text-sm text-gray-900 mt-0.5">{course.category || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500">Duration:</span>
+                    <p className="text-sm text-gray-900 mt-0.5">{course.duration || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500">Price:</span>
+                    <p className="text-sm text-gray-900 mt-0.5">
+                      {course.price ? `${course.price.toLocaleString()}원` : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500">Campaigns:</span>
+                    <p className="text-sm text-blue-600 font-medium mt-0.5">
+                      {course.active_campaigns ?? 0}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="text-xs text-gray-600">
+                    <span className="font-medium">Total Visits:</span> {course.total_visits?.toLocaleString() ?? 0}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleOpenModal(course)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      aria-label="Edit course"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(course.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                      aria-label="Delete course"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div ref={modalRef} className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div ref={modalRef} className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
               {editingCourse ? 'Edit Course' : 'Add Course'}
             </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Course Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -440,12 +517,12 @@ export default function CoursesPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Course Code <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -453,24 +530,24 @@ export default function CoursesPage() {
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Category
                 </label>
                 <input
                   type="text"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Duration
                 </label>
                 <input
@@ -478,30 +555,30 @@ export default function CoursesPage() {
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                   placeholder="e.g: 3 months"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Price
                 </label>
                 <input
                   type="number"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   Status
                 </label>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="active">Active</option>
                   <option value="waiting">Waiting</option>
@@ -510,17 +587,17 @@ export default function CoursesPage() {
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-4 pt-4">
+              <div className="flex items-center justify-end gap-3 sm:gap-4 pt-3 sm:pt-4">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 sm:px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-3 sm:px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   {editingCourse ? 'Update' : 'Add'}
                 </button>
@@ -531,7 +608,7 @@ export default function CoursesPage() {
       )}
 
       {/* Footer with extra spacing */}
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <PageFooter />
       </div>
     </div>
