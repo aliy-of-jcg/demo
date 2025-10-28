@@ -291,36 +291,36 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-6">
-        <Link href="/campaigns" className="flex items-center text-gray-600 hover:text-gray-900 mb-2">
-          <ChevronLeft className="w-5 h-5" />
+      <div className="mb-4 sm:mb-6">
+        <Link href="/campaigns" className="flex items-center text-gray-600 hover:text-gray-900 mb-2 text-sm sm:text-base">
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           <span>Back to List</span>
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           {duplicateId ? 'Duplicate Campaign' : 'Create New Campaign'}
         </h1>
-        <p className="text-gray-600 mt-1">
+        <p className="text-sm sm:text-base text-gray-600 mt-1">
           {duplicateId ? 'Review and update the campaign details below' : 'Please register a new campaign'}
         </p>
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Left side - Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Basic Information */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                 Basic Information
               </h2>
-              <p className="text-sm text-gray-600 mb-6">Enter the basic information for the campaign</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">Enter the basic information for the campaign</p>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Campaign Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -329,22 +329,22 @@ export default function NewCampaignPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g: 2501_ai_education"
-                    className={`w-full px-4 py-2 border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
-                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                  {errors.name && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.name}</p>}
                   <p className="text-xs text-gray-500 mt-1">Only letters, numbers, and underscores allowed</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                       Course <span className="text-red-500">*</span>
                     </label>
                     <select
                       ref={fieldRefs.course_id}
                       value={formData.course_id}
                       onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
-                      className={`w-full px-4 py-2 border ${errors.course_id ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                      className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.course_id ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     >
                       <option value="">Select</option>
                       {courses.map(course => (
@@ -353,17 +353,17 @@ export default function NewCampaignPage() {
                         </option>
                       ))}
                     </select>
-                    {errors.course_id && <p className="text-red-500 text-sm mt-1">{errors.course_id}</p>}
+                    {errors.course_id && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.course_id}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                       Status <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="waiting">Waiting</option>
                       <option value="active">Active</option>
@@ -374,36 +374,36 @@ export default function NewCampaignPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Description</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Enter a brief description of the campaign"
                     rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
             </div>
 
             {/* Media & Ad Type */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                 Media & Ad Type
               </h2>
-              <p className="text-sm text-gray-600 mb-6">Select the media platform and ad type</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">Select the media platform and ad type</p>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Media <span className="text-red-500">*</span>
                   </label>
                   <select
                     ref={fieldRefs.source}
                     value={formData.source}
                     onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    className={`w-full px-4 py-2 border ${errors.source ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.source ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   >
                     <option value="select">Select</option>
                     <option value="naver">Naver</option>
@@ -412,18 +412,18 @@ export default function NewCampaignPage() {
                     <option value="youtube">YouTube</option>
                     <option value="saramin">Saramin</option>
                   </select>
-                  {errors.source && <p className="text-red-500 text-sm mt-1">{errors.source}</p>}
+                  {errors.source && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.source}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Ad Type <span className="text-red-500">*</span>
                   </label>
                   <select
                     ref={fieldRefs.medium}
                     value={formData.medium}
                     onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
-                    className={`w-full px-4 py-2 border ${errors.medium ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.medium ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   >
                     <option value="select">Select</option>
                     <option value="search">Search</option>
@@ -431,48 +431,48 @@ export default function NewCampaignPage() {
                     <option value="sns">SNS</option>
                     <option value="video">Video</option>
                   </select>
-                  {errors.medium && <p className="text-red-500 text-sm mt-1">{errors.medium}</p>}
+                  {errors.medium && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.medium}</p>}
                 </div>
               </div>
             </div>
 
             {/* Period & Budget */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                 Period & Budget
               </h2>
-              <p className="text-sm text-gray-600 mb-6">Set the campaign period and budget</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">Set the campaign period and budget</p>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Campaign Period <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <input
                       ref={fieldRefs.start_date}
                       type="date"
                       value={formData.start_date}
                       onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      className={`w-full px-4 py-2 border ${errors.start_date ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                      className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.start_date ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     />
                     <input
                       ref={fieldRefs.end_date}
                       type="date"
                       value={formData.end_date}
                       onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      className={`w-full px-4 py-2 border ${errors.end_date ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                      className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.end_date ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     />
                   </div>
                   {(errors.start_date || errors.end_date) && (
-                    <p className="text-red-500 text-sm mt-1">{errors.start_date || errors.end_date}</p>
+                    <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.start_date || errors.end_date}</p>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                       Total Budget <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -481,43 +481,43 @@ export default function NewCampaignPage() {
                       value={formData.budget}
                       onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
                       placeholder="5000000"
-                      className={`w-full px-4 py-2 border ${errors.budget ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                      className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.budget ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     />
                     <p className="text-xs text-gray-500 mt-1">₩</p>
-                    {errors.budget && <p className="text-red-500 text-sm mt-1">{errors.budget}</p>}
+                    {errors.budget && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.budget}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                       Daily Budget (Optional)
                     </label>
                     <input
                       type="text"
                       value={formData.daily_budget ? `${parseInt(formData.daily_budget).toLocaleString()}` : 'Auto-calculated'}
                       readOnly
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50"
                     />
                     <p className="text-xs text-gray-500 mt-1">₩</p>
                   </div>
                 </div>
 
                 {campaignPeriod > 0 && (
-                  <p className="text-sm text-blue-600">Total Budget ÷ Campaign Days</p>
+                  <p className="text-xs sm:text-sm text-blue-600">Total Budget ÷ Campaign Days</p>
                 )}
               </div>
             </div>
 
             {/* UTM Parameters */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                 UTM Parameters
               </h2>
-              <p className="text-sm text-gray-600 mb-6">UTM parameters are automatically generated for tracking</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">UTM parameters are automatically generated for tracking</p>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                     Landing URL <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -526,81 +526,81 @@ export default function NewCampaignPage() {
                     value={formData.landing_url}
                     onChange={(e) => setFormData({ ...formData, landing_url: e.target.value })}
                     placeholder="https://example.com/course"
-                    className={`w-full px-4 py-2 border ${errors.landing_url ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.landing_url ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
-                  {errors.landing_url && <p className="text-red-500 text-sm mt-1">{errors.landing_url}</p>}
+                  {errors.landing_url && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.landing_url}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">UTM Campaign</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Campaign</label>
                     <input
                       type="text"
                       value={formData.utm_campaign}
                       onChange={(e) => setFormData({ ...formData, utm_campaign: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">UTM Source</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Source</label>
                     <input
                       type="text"
                       value={formData.utm_source}
                       readOnly
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">UTM Medium</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Medium</label>
                     <input
                       type="text"
                       value={formData.utm_medium}
                       readOnly
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">UTM Term</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Term</label>
                     <input
                       type="text"
                       value={formData.utm_term}
                       onChange={(e) => setFormData({ ...formData, utm_term: e.target.value })}
                       placeholder="Optional"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">UTM Content</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Content</label>
                   <input
                     type="text"
                     value={formData.utm_content}
                     onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
                     placeholder="Optional"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-4">
               <Link
                 href="/campaigns"
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="w-full sm:w-auto px-5 sm:px-6 py-2 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-center"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto px-5 sm:px-6 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Saving...' : 'Save'}
               </button>
@@ -608,70 +608,70 @@ export default function NewCampaignPage() {
           </div>
 
           {/* Right side - Campaign Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 sticky top-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Campaign Summary</h2>
+          <div className="lg:col-span-1 order-first lg:order-last">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 lg:sticky lg:top-8">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Campaign Summary</h2>
               
-              <div className="space-y-4 mb-6">
+              <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 <div>
-                  <p className="text-sm text-gray-600">Media</p>
-                  <p className="text-base font-medium text-gray-900 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600">Media</p>
+                  <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.source !== 'select' ? formData.source.charAt(0).toUpperCase() + formData.source.slice(1) : '-'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600">Course</p>
-                  <p className="text-base font-medium text-gray-900 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600">Course</p>
+                  <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {selectedCourse ? selectedCourse.name : '-'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600">Ad Type</p>
-                  <p className="text-base font-medium text-gray-900 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600">Ad Type</p>
+                  <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.medium !== 'select' ? formData.medium.charAt(0).toUpperCase() + formData.medium.slice(1) : '-'}
                   </p>
                 </div>
 
-                <div className="border-t border-gray-200 pt-4">
-                  <p className="text-sm text-gray-600">Start Date</p>
-                  <p className="text-base font-medium text-gray-900 mt-1">
+                <div className="border-t border-gray-200 pt-3 sm:pt-4">
+                  <p className="text-xs sm:text-sm text-gray-600">Start Date</p>
+                  <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.start_date ? new Date(formData.start_date).toLocaleDateString('en-CA').replace(/-/g, '.') : '-'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600">End Date</p>
-                  <p className="text-base font-medium text-gray-900 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600">End Date</p>
+                  <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.end_date ? new Date(formData.end_date).toLocaleDateString('en-CA').replace(/-/g, '.') : '-'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600">Campaign Period</p>
-                  <p className="text-base font-medium text-gray-900 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600">Campaign Period</p>
+                  <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {campaignPeriod > 0 ? `${campaignPeriod} days` : '-'}
                   </p>
                 </div>
 
-                <div className="border-t border-gray-200 pt-4">
-                  <p className="text-sm text-gray-600">Total Budget</p>
-                  <p className="text-base font-medium text-gray-900 mt-1">
+                <div className="border-t border-gray-200 pt-3 sm:pt-4">
+                  <p className="text-xs sm:text-sm text-gray-600">Total Budget</p>
+                  <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.budget ? `${parseInt(formData.budget).toLocaleString()}₩` : '0₩'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600">Daily Budget</p>
-                  <p className="text-base font-medium text-gray-900 mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600">Daily Budget</p>
+                  <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.daily_budget ? `${parseInt(formData.daily_budget).toLocaleString()}₩` : '0₩'}
                   </p>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-3 pt-4 border-t border-gray-200">
+              {/* Action Buttons - Hidden on mobile (form buttons are used instead) */}
+              <div className="hidden lg:flex flex-col gap-3 pt-3 sm:pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -695,14 +695,14 @@ export default function NewCampaignPage() {
                     });
                     setErrors({});
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Saving...' : 'Save'}
                 </button>
@@ -713,7 +713,7 @@ export default function NewCampaignPage() {
       </form>
 
       {/* Footer with extra spacing */}
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <PageFooter />
       </div>
     </div>

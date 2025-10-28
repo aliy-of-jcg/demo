@@ -135,57 +135,57 @@ export default function PerformanceAnalysisPage() {
   })) || [];
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Performance Dashboard</h1>
-        <p className="text-gray-600 mt-1">Overall marketing campaign performance analysis</p>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">Overall marketing campaign performance analysis</p>
       </div>
 
       {/* Date Range Picker */}
-      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between gap-4">
+      <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
           {/* Left: Date Range Picker */}
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-gray-500" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
             <input 
-                  type="date"
+              type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
             <input 
-                  type="date"
+              type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-              </div>
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+            />
+          </div>
 
           {/* Right: Quick Range Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setQuickRange(7)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               Last 7 days
             </button>
             <button
               onClick={() => setQuickRange(30)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               Last 30 days
             </button>
             <button
               onClick={() => setQuickRange(90)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               Last 3 months
             </button>
           </div>
-            </div>
-          </div>
+        </div>
+      </div>
 
       {/* Loading State */}
       {loading && (
@@ -206,52 +206,52 @@ export default function PerformanceAnalysisPage() {
       {!loading && !error && data && (
         <>
           {/* Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
             {/* Total Visitors */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Users className="w-5 h-5 text-purple-600" />
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg flex-shrink-0">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
                 </div>
-                <span className="text-sm text-gray-600">Total Visitors</span>
+                <span className="text-xs sm:text-sm text-gray-600">Total Visitors</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{data.metrics.totalVisitors.toLocaleString()}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{data.metrics.totalVisitors.toLocaleString()}</p>
               <p className="text-xs text-gray-500 mt-1">Total unique visitors</p>
             </div>
 
             {/* Conversions */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Target className="w-5 h-5 text-green-600" />
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg flex-shrink-0">
+                  <Target className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                 </div>
-                <span className="text-sm text-gray-600">Conversions</span>
+                <span className="text-xs sm:text-sm text-gray-600">Conversions</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{data.metrics.conversions.toLocaleString()}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{data.metrics.conversions.toLocaleString()}</p>
               <p className="text-xs text-gray-500 mt-1">Total conversions</p>
             </div>
 
             {/* Conversion Rate */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
-                <span className="text-sm text-gray-600">Conversion Rate</span>
+                <span className="text-xs sm:text-sm text-gray-600">Conversion Rate</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{data.metrics.conversionRate}%</p>
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">{data.metrics.conversionRate}%</p>
               <p className="text-xs text-gray-500 mt-1">Average conversion rate</p>
             </div>
 
             {/* Revenue */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <DollarSign className="w-5 h-5 text-orange-600" />
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
                 </div>
-                <span className="text-sm text-gray-600">Revenue</span>
+                <span className="text-xs sm:text-sm text-gray-600">Revenue</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 ₩{data.metrics.revenue > 0 ? (data.metrics.revenue / 10000).toFixed(0) + 'M' : '0'}
               </p>
               <p className="text-xs text-gray-500 mt-1">Total revenue</p>
@@ -259,25 +259,24 @@ export default function PerformanceAnalysisPage() {
       </div>
 
           {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             {/* Visitor Trend Chart */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Visitor Trend by Date</h2>
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900">Visitor Trend by Date</h2>
                 <span className="text-xs text-gray-500">Period comparison</span>
               </div>
-              <div className="h-64">
-                {lineChartData.length > 0 ? (
+              <div className="h-48 sm:h-56 lg:h-64">{lineChartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={lineChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
                     dataKey="date" 
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 10 }}
                         stroke="#9CA3AF"
                       />
                       <YAxis 
-                        tick={{ fontSize: 12 }}
+                        tick={{ fontSize: 10 }}
                         stroke="#9CA3AF"
                       />
                   <Tooltip 
@@ -285,11 +284,12 @@ export default function PerformanceAnalysisPage() {
                           backgroundColor: 'white',
                           border: '1px solid #e5e7eb',
                           borderRadius: '8px',
-                          padding: '8px 12px'
+                          padding: '8px 12px',
+                          fontSize: '12px'
                         }}
                       />
                       <Legend 
-                        wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                        wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
                       />
                       <Line 
                         type="monotone" 
@@ -297,8 +297,8 @@ export default function PerformanceAnalysisPage() {
                         stroke="#3B82F6" 
                         strokeWidth={2}
                         name="Current Period"
-                        dot={{ fill: '#3B82F6', r: 4 }}
-                        activeDot={{ r: 6 }}
+                        dot={{ fill: '#3B82F6', r: 3 }}
+                        activeDot={{ r: 5 }}
                       />
                       <Line 
                         type="monotone" 
@@ -306,8 +306,8 @@ export default function PerformanceAnalysisPage() {
                         stroke="#10B981" 
                         strokeWidth={2}
                         name="Previous Period"
-                        dot={{ fill: '#10B981', r: 4 }}
-                        activeDot={{ r: 6 }}
+                        dot={{ fill: '#10B981', r: 3 }}
+                        activeDot={{ r: 5 }}
                         strokeDasharray="5 5"
                       />
                 </LineChart>
@@ -315,8 +315,8 @@ export default function PerformanceAnalysisPage() {
             ) : (
                   <div className="flex items-center justify-center h-full text-gray-400">
                 <div className="text-center">
-                      <TrendingUp className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No trend data available</p>
+                      <TrendingUp className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-xs sm:text-sm">No trend data available</p>
                 </div>
               </div>
             )}
@@ -324,24 +324,24 @@ export default function PerformanceAnalysisPage() {
             </div>
 
             {/* Donut Chart - Channel Distribution */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Visitors by Channel</h2>
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900">Visitors by Channel</h2>
                 <span className="text-xs text-gray-500">Current period breakdown</span>
               </div>
-              <div className="h-64">
+              <div className="min-h-[250px] sm:min-h-[280px]">
                 {pieChartData.length > 0 ? (
-                  <div className="flex items-center gap-8 h-full">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-8">
                     {/* Pie Chart */}
-                    <div className="flex-shrink-0">
-                      <ResponsiveContainer width={200} height={200}>
+                    <div className="flex-shrink-0 relative w-[180px] h-[180px] sm:w-[200px] sm:h-[200px] mx-auto sm:mx-0">
+                      <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={pieChartData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={90}
+                            innerRadius={50}
+                            outerRadius={75}
                             paddingAngle={2}
                             dataKey="value"
                           >
@@ -354,34 +354,35 @@ export default function PerformanceAnalysisPage() {
                               backgroundColor: 'white',
                               border: '1px solid #e5e7eb',
                               borderRadius: '8px',
-                              padding: '8px 12px'
+                              padding: '8px 12px',
+                              fontSize: '12px'
                             }}
                           />
                         </PieChart>
-              </ResponsiveContainer>
-                      <div className="text-center -mt-36">
-                        <p className="text-2xl font-bold text-gray-900">{totalVisitors}</p>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <p className="text-xl sm:text-2xl font-bold text-gray-900">{totalVisitors}</p>
                         <p className="text-xs text-gray-500">Total</p>
                       </div>
                     </div>
                     
                     {/* Legend */}
-                    <div className="flex-1 grid grid-cols-2 gap-3 content-center">
+                    <div className="flex-1 grid grid-cols-2 gap-2 sm:gap-3 w-full">
                       {pieChartData.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
+                        <div key={idx} className="flex items-center gap-2 min-w-0">
                           <div 
-                            className="w-3 h-3 rounded-sm flex-shrink-0" 
+                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm flex-shrink-0" 
                             style={{ backgroundColor: item.color }}
                           ></div>
-                          <span className="text-xs text-gray-600 truncate">{item.name}</span>
-                          <span className="text-xs font-medium text-gray-900 ml-auto">{item.percentage}%</span>
+                          <span className="text-xs text-gray-600 truncate flex-1">{item.name}</span>
+                          <span className="text-xs font-medium text-gray-900 flex-shrink-0">{item.percentage}%</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-400">
-                    <p className="text-sm">No channel data available</p>
+                    <p className="text-xs sm:text-sm">No channel data available</p>
                   </div>
                 )}
                 </div>
@@ -390,10 +391,12 @@ export default function PerformanceAnalysisPage() {
 
           {/* Channel Performance Table */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Channel Performance Ranking</h2>
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Channel Performance Ranking</h2>
             </div>
-            <div className="overflow-x-auto">
+            
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -453,6 +456,47 @@ export default function PerformanceAnalysisPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+            
+            {/* Mobile/Tablet Card View */}
+            <div className="lg:hidden divide-y divide-gray-200">
+              {channelDataWithColors.length > 0 ? (
+                channelDataWithColors.map((item, idx) => (
+                  <div key={idx} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 ${item.bgColor} rounded-full`}></div>
+                        <span className="text-sm font-semibold text-gray-900">{item.channel}</span>
+                      </div>
+                      <span className="text-sm font-medium text-green-600">{item.rate}%</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-500 text-xs">Visitors</span>
+                        <p className="font-medium text-gray-900">{item.visitors.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Conversions</span>
+                        <p className="font-medium text-gray-900">{item.conversions}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Revenue</span>
+                        <p className="font-medium text-gray-900">₩{(item.revenue / 10000).toFixed(2)}M</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">CPA</span>
+                        <p className="font-medium text-gray-900">
+                          ₩{item.cpa > 0 ? (item.cpa / 10000).toFixed(0) + '만' : '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-gray-500">
+                  No channel data available for this period
+                </div>
+              )}
             </div>
             </div>
         </>

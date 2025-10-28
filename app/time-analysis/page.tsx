@@ -97,56 +97,56 @@ export default function TimeAnalysisPage() {
   }, [dateRange]);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-gray-900">Time-based Analysis</h1>
-          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Time-based Analysis</h1>
+          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium rounded-full inline-block w-fit">
             KST (UTC+9)
           </span>
         </div>
-        <p className="text-gray-600 mt-1">Visitor behavior patterns by time and day</p>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">Visitor behavior patterns by time and day</p>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between gap-4">
+      <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
           {/* Left: Date Range Picker */}
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-gray-500" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
             <input 
               type="date" 
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
             <input 
               type="date" 
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
           </div>
 
           {/* Right: Quick Range Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setQuickRange(7)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               Last 7 days
             </button>
             <button
               onClick={() => setQuickRange(30)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               Last 30 days
             </button>
             <button
               onClick={() => setQuickRange(90)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               Last 3 months
             </button>
@@ -173,26 +173,26 @@ export default function TimeAnalysisPage() {
         <>
           {/* Insights Cards */}
           {data.insights && (
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Peak Hours</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 sm:p-6 rounded-lg border border-blue-200">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">Peak Hours</h3>
                 <div className="space-y-2">
                   {data.insights.peakHours.map((peak, idx) => (
                     <div key={idx} className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">{peak.hourLabel}</span>
-                      <span className="text-sm font-bold text-blue-600">{peak.visitors} visitors</span>
+                      <span className="text-xs sm:text-sm font-medium text-gray-700">{peak.hourLabel}</span>
+                      <span className="text-xs sm:text-sm font-bold text-blue-600">{peak.visitors} visitors</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Peak Days</h3>
+              <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 sm:p-6 rounded-lg border border-green-200">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">Peak Days</h3>
                 <div className="space-y-2">
                   {data.insights.peakDays.map((peak, idx) => (
                     <div key={idx} className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">{peak.day}</span>
-                      <span className="text-sm font-bold text-green-600">{peak.visitors} visitors</span>
+                      <span className="text-xs sm:text-sm font-medium text-gray-700">{peak.day}</span>
+                      <span className="text-xs sm:text-sm font-bold text-green-600">{peak.visitors} visitors</span>
                     </div>
                   ))}
                 </div>
@@ -201,64 +201,65 @@ export default function TimeAnalysisPage() {
           )}
 
           {/* Hourly Trend */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Hourly Visitor Trend <span className="text-sm font-normal text-gray-500">(KST)</span>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
+              Hourly Visitor Trend <span className="text-xs sm:text-sm font-normal text-gray-500">(KST)</span>
             </h2>
             {data.hourly.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={data.hourly}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="hour" 
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 10 }}
                     tickFormatter={(hour) => `${hour.toString().padStart(2, '0')}:00`}
                   />
-                  <YAxis />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip 
                     labelFormatter={(hour) => `Hour: ${hour.toString().padStart(2, '0')}:00 KST`}
+                    contentStyle={{ fontSize: '12px' }}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
                   <Bar dataKey="visitors" fill="#3b82f6" name="Visitors" />
                   <Bar dataKey="conversions" fill="#10b981" name="Conversions" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-center text-gray-500 py-12">No hourly data available</p>
+              <p className="text-center text-gray-500 py-12 text-sm">No hourly data available</p>
             )}
           </div>
 
           {/* Day of Week Trend */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Day of Week Trend</h2>
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Day of Week Trend</h2>
             {data.dayOfWeek.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={data.dayOfWeek}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
+                  <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={{ fontSize: '12px' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
                   <Bar dataKey="visitors" fill="#8b5cf6" name="Visitors" />
                   <Bar dataKey="conversions" fill="#f59e0b" name="Conversions" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-center text-gray-500 py-12">No day-of-week data available</p>
+              <p className="text-center text-gray-500 py-12 text-sm">No day-of-week data available</p>
             )}
           </div>
 
           {/* Daily Trend over Period */}
           {data.dailyTrend.length > 0 && (
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Daily Trend</h2>
-              <ResponsiveContainer width="100%" height={300}>
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Daily Trend</h2>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={data.dailyTrend}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={{ fontSize: '12px' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
                   <Line type="monotone" dataKey="visitors" stroke="#3b82f6" strokeWidth={2} name="Visitors" />
                   <Line type="monotone" dataKey="conversions" stroke="#10b981" strokeWidth={2} name="Conversions" />
                 </LineChart>
@@ -267,13 +268,14 @@ export default function TimeAnalysisPage() {
           )}
 
           {/* Hourly Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Hourly Details <span className="text-sm font-normal text-gray-500">(KST)</span>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+            <div className="p-3 sm:p-4 border-b border-gray-200">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">
+                Hourly Details <span className="text-xs sm:text-sm font-normal text-gray-500">(KST)</span>
               </h2>
             </div>
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -303,14 +305,44 @@ export default function TimeAnalysisPage() {
                 </tbody>
               </table>
             </div>
+            {/* Mobile/Tablet Card View */}
+            <div className="lg:hidden divide-y divide-gray-200">
+              {data.hourly.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 text-sm">No data available</div>
+              ) : (
+                data.hourly.map((row, idx) => (
+                  <div key={idx} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-900">{row.hour.toString().padStart(2, '0')}:00 KST</span>
+                      <span className="text-sm font-medium text-green-600">{row.conversions} conversions</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-500 text-xs">Visitors</span>
+                        <p className="font-medium text-gray-900">{row.visitors.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Pageviews</span>
+                        <p className="font-medium text-gray-900">{row.pageviews.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Conv. Rate</span>
+                        <p className="font-medium text-gray-900">{row.conversionRate}%</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           {/* Day of Week Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Day of Week Details</h2>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+            <div className="p-3 sm:p-4 border-b border-gray-200">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Day of Week Details</h2>
             </div>
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
@@ -339,6 +371,35 @@ export default function TimeAnalysisPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+            {/* Mobile/Tablet Card View */}
+            <div className="lg:hidden divide-y divide-gray-200">
+              {data.dayOfWeek.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 text-sm">No data available</div>
+              ) : (
+                data.dayOfWeek.map((row, idx) => (
+                  <div key={idx} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold text-gray-900">{row.day}</span>
+                      <span className="text-sm font-medium text-green-600">{row.conversions} conversions</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-500 text-xs">Visitors</span>
+                        <p className="font-medium text-gray-900">{row.visitors.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Pageviews</span>
+                        <p className="font-medium text-gray-900">{row.pageviews.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 text-xs">Conv. Rate</span>
+                        <p className="font-medium text-gray-900">{row.conversionRate}%</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

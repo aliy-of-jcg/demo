@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,6 +13,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const isPublicPage = isAuthPage || isResetPasswordPage;
   const [isAuthenticating, setIsAuthenticating] = useState(!isPublicPage);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     // Skip auth check for public pages (auth and reset password)
@@ -68,6 +69,11 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timeout);
   }, [isPublicPage]);
 
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [pathname]);
+
   // Public pages (auth and reset password): no sidebar, full screen
   if (isPublicPage) {
     return <>{children}</>;
@@ -89,9 +95,20 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   // Authenticated: show admin panel with sidebar
   if (isAuthenticated) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
+      <div className="flex h-screen bg-gray-50 overflow-hidden">
+        <Sidebar 
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileClose={() => setIsMobileSidebarOpen(false)}
+        />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
+          {/* Mobile Menu Button - Fixed at top */}
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="lg:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu className="w-6 h-6 text-gray-700" />
+          </button>
           {children}
         </main>
       </div>
