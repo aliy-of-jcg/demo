@@ -169,10 +169,6 @@ export default function EditCampaignPage() {
       newErrors.budget = 'Budget must be greater than 0';
     }
 
-    if (!formData.landing_url) {
-      newErrors.landing_url = 'Landing URL is required';
-    }
-
     setErrors(newErrors);
     
     // Scroll to first error field
