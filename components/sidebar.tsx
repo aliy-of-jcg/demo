@@ -15,7 +15,7 @@ const campaignManagementItems = [
   { name: "Campaign List", href: "/campaigns" },
   { name: "Create New Campaign", href: "/campaigns/new" },
   { name: "Course Management", href: "/courses" },
-  { name: "Tracking Links", href: "/tracking" },
+
 ];
 
 const utmToolsItems = [
@@ -25,7 +25,7 @@ const utmToolsItems = [
 
 const logAnalysisItems = [
   { name: "Performance Dashboard", href: "/performance" },
-  { name: "Source & Media Analysis", href: "/source-analysis" },
+  { name: "Channel Performance", href: "/channel-performance" },
   { name: "Campaign Analysis", href: "/campaign-analysis" },
   { name: "Environment Analysis", href: "/environment-analysis" },
   { name: "Time-based Analysis", href: "/time-analysis" },

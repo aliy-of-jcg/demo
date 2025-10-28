@@ -24,3 +24,6 @@ SELECT
 FROM analytics.visit_logs;
 
 
+
+
+

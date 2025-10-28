@@ -1,50 +1,44 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar, ArrowRight } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface PageData {
   page: string;
-  sessions: number;
-  visitors: number;
-  conversions?: number;
-  conversionRate?: string;
+  visits: number;
+  avgPageviews: number;
+  bounceRate: number;
   avgTimeOnPage: number;
-  bounceRate?: string;
-  exitRate?: string;
 }
 
-interface NavigationPattern {
-  from: string;
-  to: string;
-  transitions: number;
-  uniqueUsers: number;
-}
-
-interface PopularPage {
+interface ExitPageData {
   page: string;
-  pageviews: number;
-  uniqueVisitors: number;
-  avgTimeOnPage: number;
+  exits: number;
+  exitRate: number;
+}
+
+interface UTMBreakdown {
+  utm_source: string;
+  total_sessions: number;
+  total_pageviews: number;
+  avg_pageviews_per_session: number;
 }
 
 interface ApiResponse {
   success: boolean;
   landingPages: PageData[];
-  exitPages: PageData[];
-  navigationPatterns: NavigationPattern[];
-  popularPages: PopularPage[];
+  exitPages: ExitPageData[];
+  utmBreakdown: UTMBreakdown[];
   insights: {
-    avgSessionDepth: string;
-    overallBounceRate: string;
     totalSessions: number;
-    depthDistribution: Array<{ depth: string; count: number }>;
+    totalPageviews: number;
+    avgPageviewsPerSession: string;
+    uniqueLandingPagesCount: number;
+    avgSessionDepth: string;
   };
 }
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function PageFlowAnalysisPage() {
   const [dateRange, setDateRange] = useState({
@@ -107,12 +101,19 @@ export default function PageFlowAnalysisPage() {
     return url.substring(0, maxLength) + '...';
   };
 
+  // Format seconds to Korean time format
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}분 ${secs}초`;
+  };
+
   return (
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Page Flow Analysis</h1>
-        <p className="text-gray-600 mt-1">Landing pages, exit pages, and navigation patterns</p>
+        <h1 className="text-3xl font-bold text-gray-900">UTM별 상세 분석</h1>
+        <p className="text-gray-600 mt-1">UTM Performance Detail Analysis</p>
       </div>
 
       {/* Filters */}
@@ -142,19 +143,19 @@ export default function PageFlowAnalysisPage() {
               onClick={() => setQuickRange(7)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Last 7 days
+              최근 7일
             </button>
             <button
               onClick={() => setQuickRange(30)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Last 30 days
+              최근 30일
             </button>
             <button
               onClick={() => setQuickRange(90)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              Last 3 months
+              최근 3개월
             </button>
           </div>
         </div>
@@ -177,117 +178,87 @@ export default function PageFlowAnalysisPage() {
       {/* Data Display */}
       {!loading && !error && data && (
         <>
-          {/* Insights Cards */}
-          <div className="grid grid-cols-3 gap-6 mb-6">
+          {/* 4 Summary Cards */}
+          <div className="grid grid-cols-4 gap-4 mb-6">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Avg. Session Depth</h3>
-              <p className="text-3xl font-bold text-blue-600">{data.insights.avgSessionDepth}</p>
-              <p className="text-xs text-gray-600 mt-1">pages per session</p>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">총 세션수</h3>
+              <p className="text-3xl font-bold text-blue-600">{data.insights.totalSessions.toLocaleString()}</p>
+              <p className="text-xs text-gray-600 mt-1">Total Sessions</p>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Bounce Rate</h3>
-              <p className="text-3xl font-bold text-orange-600">{data.insights.overallBounceRate}%</p>
-              <p className="text-xs text-gray-600 mt-1">single page sessions</p>
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">총 페이지뷰</h3>
+              <p className="text-3xl font-bold text-purple-600">{data.insights.totalPageviews.toLocaleString()}</p>
+              <p className="text-xs text-gray-600 mt-1">Total Pageviews</p>
             </div>
 
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Total Sessions</h3>
-              <p className="text-3xl font-bold text-green-600">{data.insights.totalSessions.toLocaleString()}</p>
-              <p className="text-xs text-gray-600 mt-1">in selected period</p>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">평균 페이지뷰</h3>
+              <p className="text-3xl font-bold text-green-600">{data.insights.avgPageviewsPerSession}</p>
+              <p className="text-xs text-gray-600 mt-1">Avg Pages per Session</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">주요 랜딩수</h3>
+              <p className="text-3xl font-bold text-orange-600">{data.insights.uniqueLandingPagesCount}</p>
+              <p className="text-xs text-gray-600 mt-1">Main Landing Pages</p>
             </div>
           </div>
 
-          {/* Session Depth Distribution */}
-          {data.insights.depthDistribution.length > 0 && (
+          {/* UTM별 평균 페이지뷰 비교 Chart */}
+          {data.utmBreakdown && data.utmBreakdown.length > 0 && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Session Depth Distribution</h2>
-              <div className="grid grid-cols-2 gap-6">
-                {/* Pie Chart */}
-                <div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={data.insights.depthDistribution}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="count"
-                        nameKey="depth"
-                      >
-                        {data.insights.depthDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                
-                {/* Legend Table */}
-                <div className="flex items-center">
-                  <div className="w-full">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pages</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Sessions</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">%</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {data.insights.depthDistribution.map((item, idx) => {
-                          const total = data.insights.depthDistribution.reduce((sum, d) => sum + d.count, 0);
-                          const percentage = total > 0 ? ((item.count / total) * 100).toFixed(1) : '0.0';
-                          return (
-                            <tr key={idx} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 text-sm">
-                                <div className="flex items-center gap-2">
-                                  <div 
-                                    className="w-3 h-3 rounded-full" 
-                                    style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-                                  />
-                                  <span className="font-medium text-gray-900">{item.depth}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-gray-900">{item.count.toLocaleString()}</td>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{percentage}%</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">UTM별 평균 페이지뷰 비교</h2>
+              <p className="text-sm text-gray-600 mb-4">Average page views per session by UTM source</p>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={data.utmBreakdown}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="utm_source" 
+                    label={{ value: 'UTM Source', position: 'insideBottom', offset: -5 }}
+                  />
+                  <YAxis 
+                    label={{ value: '평균 페이지뷰', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    formatter={(value: any, name: string) => {
+                      if (name === 'avg_pageviews_per_session') return [value, '평균 페이지뷰'];
+                      return [value, name];
+                    }}
+                    labelFormatter={(label) => `UTM Source: ${label}`}
+                  />
+                  <Bar 
+                    dataKey="avg_pageviews_per_session" 
+                    fill="#3b82f6" 
+                    name="평균 페이지뷰"
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           )}
 
           {/* Landing Pages */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
             <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Top Landing Pages</h2>
-              <p className="text-sm text-gray-600">First page visitors see when entering your site</p>
+              <h2 className="text-lg font-semibold text-gray-900">주요 랜딩 페이지</h2>
+              <p className="text-sm text-gray-600">Top Landing Pages</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Page</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sessions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Visitors</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conversions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conv. Rate</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avg. Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">페이지명</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">방문수</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 페이지뷰</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이탈률</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 체류시간</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {data.landingPages.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">No landing page data</td>
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No landing page data</td>
                     </tr>
                   ) : (
                     data.landingPages.map((page, idx) => (
@@ -295,11 +266,14 @@ export default function PageFlowAnalysisPage() {
                         <td className="px-6 py-4 text-sm text-gray-900" title={page.page}>
                           {truncateUrl(page.page, 60)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.sessions.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.visitors.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-green-600 font-medium">{page.conversions || 0}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.conversionRate || '0.00'}%</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.avgTimeOnPage}s</td>
+                        <td className="px-6 py-4 text-sm font-medium text-blue-600">{page.visits.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{page.avgPageviews.toFixed(2)}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <span className={page.bounceRate > 70 ? 'text-red-600 font-medium' : 'text-gray-900'}>
+                            {page.bounceRate.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{formatTime(page.avgTimeOnPage)}</td>
                       </tr>
                     ))
                   )}
@@ -311,23 +285,22 @@ export default function PageFlowAnalysisPage() {
           {/* Exit Pages */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
             <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Top Exit Pages</h2>
-              <p className="text-sm text-gray-600">Last page visitors see before leaving your site</p>
+              <h2 className="text-lg font-semibold text-gray-900">주요 이탈 페이지</h2>
+              <p className="text-sm text-gray-600">Top Exit Pages</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Page</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sessions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Visitors</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avg. Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">페이지명</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이탈수</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이탈률</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {data.exitPages.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No exit page data</td>
+                      <td colSpan={3} className="px-6 py-8 text-center text-gray-500">No exit page data</td>
                     </tr>
                   ) : (
                     data.exitPages.map((page, idx) => (
@@ -335,9 +308,12 @@ export default function PageFlowAnalysisPage() {
                         <td className="px-6 py-4 text-sm text-gray-900" title={page.page}>
                           {truncateUrl(page.page, 60)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.sessions.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.visitors.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.avgTimeOnPage}s</td>
+                        <td className="px-6 py-4 text-sm font-medium text-orange-600">{page.exits.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <span className={page.exitRate > 50 ? 'text-red-600 font-medium' : 'text-gray-900'}>
+                            {page.exitRate.toFixed(1)}%
+                          </span>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -345,90 +321,12 @@ export default function PageFlowAnalysisPage() {
               </table>
             </div>
           </div>
-
-          {/* Navigation Patterns */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Page Navigation Patterns</h2>
-              <p className="text-sm text-gray-600">Most common page-to-page transitions</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">From Page</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase"></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">To Page</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transitions</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unique Users</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {data.navigationPatterns.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No navigation pattern data</td>
-                    </tr>
-                  ) : (
-                    data.navigationPatterns.map((pattern, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900" title={pattern.from}>
-                          {truncateUrl(pattern.from, 40)}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <ArrowRight className="w-4 h-4 text-gray-400 mx-auto" />
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900" title={pattern.to}>
-                          {truncateUrl(pattern.to, 40)}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-medium text-blue-600">{pattern.transitions.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{pattern.uniqueUsers.toLocaleString()}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Popular Pages */}
-          {data.popularPages.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">Most Popular Pages</h2>
-                <p className="text-sm text-gray-600">Pages with highest pageviews</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Page</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pageviews</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unique Visitors</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avg. Time</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {data.popularPages.map((page, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900" title={page.page}>
-                          {truncateUrl(page.page, 60)}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-medium text-blue-600">{page.pageviews.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.uniqueVisitors.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{page.avgTimeOnPage}s</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* Empty State */}
-          {data.landingPages.length === 0 && data.exitPages.length === 0 && data.navigationPatterns.length === 0 && (
+          {data.landingPages.length === 0 && data.exitPages.length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-              <p className="text-gray-500">No page flow data available</p>
-              <p className="text-sm text-gray-400 mt-1">Data will appear as visitors navigate your site</p>
+              <p className="text-gray-500">데이터가 없습니다</p>
+              <p className="text-sm text-gray-400 mt-1">방문자가 사이트를 탐색하면 데이터가 표시됩니다</p>
             </div>
           )}
         </>

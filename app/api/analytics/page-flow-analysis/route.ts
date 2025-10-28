@@ -17,19 +17,73 @@ export async function GET(request: NextRequest) {
       whereClause += ` AND toDate(timestamp) <= '${endDate}'`;
     }
 
-    // 1. Landing Pages (first page of session)
-    const landingPagesQuery = `
-      SELECT 
-        page_url,
-        COUNT(DISTINCT session_id) as sessions,
-        COUNT(DISTINCT user_id) as visitors,
-        countIf(event_type = 'conversion') as conversions,
-        AVG(time_on_page) as avg_time_on_page
-      FROM visit_logs
+    // 1. Total Pageviews
+    const totalPageviewsQuery = `
+      SELECT COUNT(*) as total_pageviews
+      FROM analytics.visit_logs
       WHERE ${whereClause}
-        AND is_landing_page = 1
-      GROUP BY page_url
-      ORDER BY sessions DESC
+    `;
+
+    const totalPageviewsResult = await clickhouse.query({
+      query: totalPageviewsQuery,
+      format: 'JSONEachRow',
+    });
+
+    const totalPageviewsJson = await totalPageviewsResult.json();
+    const totalPageviews = totalPageviewsJson[0]?.total_pageviews || 0;
+
+    // 2. UTM Source Breakdown with avg pageviews per session
+    const utmBreakdownQuery = `
+      SELECT 
+        CASE 
+          WHEN utm_source = '' THEN 'Direct'
+          ELSE utm_source
+        END as utm_source,
+        COUNT(DISTINCT session_id) as total_sessions,
+        COUNT(*) as total_pageviews,
+        ROUND(COUNT(*) / COUNT(DISTINCT session_id), 2) as avg_pageviews_per_session
+      FROM analytics.visit_logs
+      WHERE ${whereClause}
+      GROUP BY utm_source
+      HAVING total_sessions > 0
+      ORDER BY total_sessions DESC
+      LIMIT 10
+    `;
+
+    const utmBreakdownResult = await clickhouse.query({
+      query: utmBreakdownQuery,
+      format: 'JSONEachRow',
+    });
+
+    const utmBreakdownJson = await utmBreakdownResult.json();
+    const utmBreakdown = utmBreakdownJson.map((row: any) => ({
+      utm_source: row.utm_source,
+      total_sessions: row.total_sessions || 0,
+      total_pageviews: row.total_pageviews || 0,
+      avg_pageviews_per_session: parseFloat(row.avg_pageviews_per_session) || 0,
+    }));
+
+    // 3. Landing Pages with bounce rate and avg pageviews
+    const landingPagesQuery = `
+      WITH session_stats AS (
+        SELECT 
+          session_id,
+          MIN(page_url) as landing_page,
+          COUNT(*) as pages_in_session,
+          SUM(time_on_page) as total_time
+        FROM analytics.visit_logs
+        WHERE ${whereClause}
+        GROUP BY session_id
+      )
+      SELECT 
+        landing_page as page_url,
+        COUNT(*) as visits,
+        ROUND(AVG(pages_in_session), 2) as avg_pageviews,
+        ROUND(countIf(pages_in_session = 1) / COUNT(*) * 100, 1) as bounce_rate,
+        ROUND(AVG(total_time), 0) as avg_time_on_page
+      FROM session_stats
+      GROUP BY landing_page
+      ORDER BY visits DESC
       LIMIT 20
     `;
 
@@ -41,28 +95,28 @@ export async function GET(request: NextRequest) {
     const landingPagesJson = await landingPagesResult.json();
     const landingPages = landingPagesJson.map((row: any) => ({
       page: row.page_url,
-      sessions: row.sessions || 0,
-      visitors: row.visitors || 0,
-      conversions: row.conversions || 0,
-      conversionRate: row.sessions > 0 
-        ? ((row.conversions / row.sessions) * 100).toFixed(2) 
-        : '0.00',
+      visits: row.visits || 0,
+      avgPageviews: parseFloat(row.avg_pageviews) || 0,
+      bounceRate: parseFloat(row.bounce_rate) || 0,
       avgTimeOnPage: Math.round(row.avg_time_on_page || 0),
-      bounceRate: '0.00',
     }));
 
-    // 2. Exit Pages (last page of session or exit event)
+    // 4. Exit Pages with exit count and exit rate
     const exitPagesQuery = `
+      WITH total_sessions AS (
+        SELECT COUNT(DISTINCT session_id) as cnt
+        FROM analytics.visit_logs
+        WHERE ${whereClause}
+      )
       SELECT 
         page_url,
-        COUNT(DISTINCT session_id) as sessions,
-        COUNT(DISTINCT user_id) as visitors,
-        AVG(time_on_page) as avg_time_on_page
-      FROM visit_logs
+        COUNT(*) as exits,
+        ROUND(COUNT(*) / (SELECT cnt FROM total_sessions) * 100, 1) as exit_rate
+      FROM analytics.visit_logs
       WHERE ${whereClause}
-        AND (is_exit_page = 1 OR event_type = 'page_exit')
+        AND is_exit_page = 1
       GROUP BY page_url
-      ORDER BY sessions DESC
+      ORDER BY exits DESC
       LIMIT 20
     `;
 
@@ -74,66 +128,8 @@ export async function GET(request: NextRequest) {
     const exitPagesJson = await exitPagesResult.json();
     const exitPages = exitPagesJson.map((row: any) => ({
       page: row.page_url,
-      sessions: row.sessions || 0,
-      visitors: row.visitors || 0,
-      avgTimeOnPage: Math.round(row.avg_time_on_page || 0),
-      exitRate: '0.00',
-    }));
-
-    // 3. Page Navigation Patterns (most common page sequences)
-    const navigationPatternsQuery = `
-      SELECT 
-        previous_page_url,
-        page_url as current_page,
-        COUNT(*) as transitions,
-        COUNT(DISTINCT user_id) as unique_users
-      FROM visit_logs
-      WHERE ${whereClause}
-        AND previous_page_url != ''
-        AND page_sequence > 1
-      GROUP BY previous_page_url, current_page
-      ORDER BY transitions DESC
-      LIMIT 30
-    `;
-
-    const navigationPatternsResult = await clickhouse.query({
-      query: navigationPatternsQuery,
-      format: 'JSONEachRow',
-    });
-
-    const navigationPatternsJson = await navigationPatternsResult.json();
-    const navigationPatterns = navigationPatternsJson.map((row: any) => ({
-      from: row.previous_page_url,
-      to: row.current_page,
-      transitions: row.transitions || 0,
-      uniqueUsers: row.unique_users || 0,
-    }));
-
-    // 4. Popular Pages (most viewed)
-    const popularPagesQuery = `
-      SELECT 
-        page_url,
-        COUNT(*) as pageviews,
-        COUNT(DISTINCT user_id) as unique_visitors,
-        AVG(time_on_page) as avg_time_on_page
-      FROM visit_logs
-      WHERE ${whereClause}
-      GROUP BY page_url
-      ORDER BY pageviews DESC
-      LIMIT 20
-    `;
-
-    const popularPagesResult = await clickhouse.query({
-      query: popularPagesQuery,
-      format: 'JSONEachRow',
-    });
-
-    const popularPagesJson = await popularPagesResult.json();
-    const popularPages = popularPagesJson.map((row: any) => ({
-      page: row.page_url,
-      pageviews: row.pageviews || 0,
-      uniqueVisitors: row.unique_visitors || 0,
-      avgTimeOnPage: Math.round(row.avg_time_on_page || 0),
+      exits: row.exits || 0,
+      exitRate: parseFloat(row.exit_rate) || 0,
     }));
 
     // 5. Average session depth (pages per session)
@@ -141,7 +137,7 @@ export async function GET(request: NextRequest) {
       SELECT 
         session_id,
         MAX(page_sequence) as max_sequence
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
       GROUP BY session_id
     `;
@@ -154,37 +150,30 @@ export async function GET(request: NextRequest) {
     const sessionDepthJson = await sessionDepthResult.json();
     
     const sessionDepths = sessionDepthJson.map((row: any) => row.max_sequence || 1);
-    const avgSessionDepth = sessionDepths.length > 0 
-      ? (sessionDepths.reduce((sum: number, depth: number) => sum + depth, 0) / sessionDepths.length).toFixed(2)
-      : '0.00';
-
-    // Calculate bounce rate (sessions with only 1 page)
-    const singlePageSessions = sessionDepths.filter((depth: number) => depth === 1).length;
     const totalSessions = sessionDepths.length;
-    const overallBounceRate = totalSessions > 0 
-      ? ((singlePageSessions / totalSessions) * 100).toFixed(2)
+    const avgSessionDepth = totalSessions > 0 
+      ? (sessionDepths.reduce((sum: number, depth: number) => sum + depth, 0) / totalSessions).toFixed(2)
       : '0.00';
 
-    // 6. Page depth distribution
-    const depthDistribution = [
-      { depth: '1 page', count: sessionDepths.filter((d: number) => d === 1).length },
-      { depth: '2-3 pages', count: sessionDepths.filter((d: number) => d >= 2 && d <= 3).length },
-      { depth: '4-5 pages', count: sessionDepths.filter((d: number) => d >= 4 && d <= 5).length },
-      { depth: '6-10 pages', count: sessionDepths.filter((d: number) => d >= 6 && d <= 10).length },
-      { depth: '11+ pages', count: sessionDepths.filter((d: number) => d > 10).length },
-    ];
+    // Calculate average pageviews per session
+    const avgPageviewsPerSession = totalSessions > 0 
+      ? (totalPageviews / totalSessions).toFixed(2)
+      : '0.00';
+
+    // Calculate unique landing pages count
+    const uniqueLandingPagesCount = landingPages.length;
 
     return NextResponse.json({
       success: true,
       landingPages,
       exitPages,
-      navigationPatterns,
-      popularPages,
+      utmBreakdown,
       insights: {
-        avgSessionDepth,
-        overallBounceRate,
         totalSessions,
-        depthDistribution,
+        totalPageviews,
+        avgPageviewsPerSession,
+        uniqueLandingPagesCount,
+        avgSessionDepth,
       },
     });
 
