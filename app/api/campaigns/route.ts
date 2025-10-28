@@ -326,6 +326,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       name,
+      utm_name,  // Added: Name for the tracking link
       course_id,
       source,
       medium,
@@ -374,6 +375,9 @@ export async function POST(request: NextRequest) {
     let trackingLink = null;
     if (landing_url && utm_campaign && utm_source && utm_medium) {
       try {
+        // Auto-generate UTM name if not provided
+        const finalUtmName = utm_name || `${name}_${utm_source}_${utm_medium}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const trackingResponse = await fetch(`${appUrl}/api/tracking/generate`, {
           method: 'POST',
@@ -381,6 +385,7 @@ export async function POST(request: NextRequest) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            name: finalUtmName,  // Pass the UTM name
             campaignName: name,
             campaignId: insertId,
             targetUrl: landing_url,

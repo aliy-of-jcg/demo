@@ -27,3 +27,4 @@ FROM analytics.visit_logs;
 
 
 
+
