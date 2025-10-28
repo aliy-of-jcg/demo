@@ -101,19 +101,19 @@ export default function PageFlowAnalysisPage() {
     return url.substring(0, maxLength) + '...';
   };
 
-  // Format seconds to Korean time format
+  // Format seconds to time string
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}분 ${secs}초`;
+    return `${mins}m ${secs}s`;
   };
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">UTM별 상세 분석</h1>
-        <p className="text-gray-600 mt-1">UTM Performance Detail Analysis</p>
+        <h1 className="text-3xl font-bold text-gray-900">UTM Performance Analysis</h1>
+        <p className="text-gray-600 mt-1">Detailed analysis of landing pages, exit pages, and UTM performance</p>
       </div>
 
       {/* Filters */}
@@ -143,19 +143,19 @@ export default function PageFlowAnalysisPage() {
               onClick={() => setQuickRange(7)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              최근 7일
+              Last 7 Days
             </button>
             <button
               onClick={() => setQuickRange(30)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              최근 30일
+              Last 30 Days
             </button>
             <button
               onClick={() => setQuickRange(90)}
               className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              최근 3개월
+              Last 3 Months
             </button>
           </div>
         </div>
@@ -181,34 +181,34 @@ export default function PageFlowAnalysisPage() {
           {/* 4 Summary Cards */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">총 세션수</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Total Sessions</h3>
               <p className="text-3xl font-bold text-blue-600">{data.insights.totalSessions.toLocaleString()}</p>
-              <p className="text-xs text-gray-600 mt-1">Total Sessions</p>
+              <p className="text-xs text-gray-600 mt-1">unique user sessions</p>
             </div>
 
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">총 페이지뷰</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Total Pageviews</h3>
               <p className="text-3xl font-bold text-purple-600">{data.insights.totalPageviews.toLocaleString()}</p>
-              <p className="text-xs text-gray-600 mt-1">Total Pageviews</p>
+              <p className="text-xs text-gray-600 mt-1">all page views</p>
             </div>
 
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">평균 페이지뷰</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Avg Pages per Session</h3>
               <p className="text-3xl font-bold text-green-600">{data.insights.avgPageviewsPerSession}</p>
-              <p className="text-xs text-gray-600 mt-1">Avg Pages per Session</p>
+              <p className="text-xs text-gray-600 mt-1">pages viewed on average</p>
             </div>
 
             <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">주요 랜딩수</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Landing Pages</h3>
               <p className="text-3xl font-bold text-orange-600">{data.insights.uniqueLandingPagesCount}</p>
-              <p className="text-xs text-gray-600 mt-1">Main Landing Pages</p>
+              <p className="text-xs text-gray-600 mt-1">unique entry points</p>
             </div>
           </div>
 
-          {/* UTM별 평균 페이지뷰 비교 Chart */}
+          {/* UTM Performance Comparison Chart */}
           {data.utmBreakdown && data.utmBreakdown.length > 0 && (
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">UTM별 평균 페이지뷰 비교</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">UTM Performance Comparison</h2>
               <p className="text-sm text-gray-600 mb-4">Average page views per session by UTM source</p>
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={data.utmBreakdown}>
@@ -218,11 +218,11 @@ export default function PageFlowAnalysisPage() {
                     label={{ value: 'UTM Source', position: 'insideBottom', offset: -5 }}
                   />
                   <YAxis 
-                    label={{ value: '평균 페이지뷰', angle: -90, position: 'insideLeft' }}
+                    label={{ value: 'Avg Pages per Session', angle: -90, position: 'insideLeft' }}
                   />
                   <Tooltip 
                     formatter={(value: any, name: string) => {
-                      if (name === 'avg_pageviews_per_session') return [value, '평균 페이지뷰'];
+                      if (name === 'avg_pageviews_per_session') return [value, 'Avg Pages per Session'];
                       return [value, name];
                     }}
                     labelFormatter={(label) => `UTM Source: ${label}`}
@@ -230,7 +230,7 @@ export default function PageFlowAnalysisPage() {
                   <Bar 
                     dataKey="avg_pageviews_per_session" 
                     fill="#3b82f6" 
-                    name="평균 페이지뷰"
+                    name="Avg Pages per Session"
                     radius={[8, 8, 0, 0]}
                   />
                 </BarChart>
@@ -241,18 +241,18 @@ export default function PageFlowAnalysisPage() {
           {/* Landing Pages */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
             <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">주요 랜딩 페이지</h2>
-              <p className="text-sm text-gray-600">Top Landing Pages</p>
+              <h2 className="text-lg font-semibold text-gray-900">Top Landing Pages</h2>
+              <p className="text-sm text-gray-600">Pages where users first enter your site</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">페이지명</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">방문수</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 페이지뷰</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이탈률</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">평균 체류시간</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Page</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Visits</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avg Pages</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bounce Rate</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avg Time</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -285,16 +285,16 @@ export default function PageFlowAnalysisPage() {
           {/* Exit Pages */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
             <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">주요 이탈 페이지</h2>
-              <p className="text-sm text-gray-600">Top Exit Pages</p>
+              <h2 className="text-lg font-semibold text-gray-900">Top Exit Pages</h2>
+              <p className="text-sm text-gray-600">Pages where users most often leave your site</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">페이지명</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이탈수</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이탈률</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Page</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exits</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exit Rate</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -325,8 +325,8 @@ export default function PageFlowAnalysisPage() {
           {/* Empty State */}
           {data.landingPages.length === 0 && data.exitPages.length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-              <p className="text-gray-500">데이터가 없습니다</p>
-              <p className="text-sm text-gray-400 mt-1">방문자가 사이트를 탐색하면 데이터가 표시됩니다</p>
+              <p className="text-gray-500">No data available</p>
+              <p className="text-sm text-gray-400 mt-1">Data will appear as visitors navigate your site</p>
             </div>
           )}
         </>
