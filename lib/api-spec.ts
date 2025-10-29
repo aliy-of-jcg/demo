@@ -2,7 +2,7 @@ export const apiSpec = {
   openapi: "3.0.0",
   info: {
     title: "CosMos AI Analytics & Tracking API",
-    version: "2.0.0",
+    version: "1.0.0",
     description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, and campaign management capabilities.",
     contact: {
       name: "CosMos AI Support",
@@ -15,7 +15,7 @@ export const apiSpec = {
       description: "Development server",
     },
     {
-      url: "https://aptdecor.uz",
+      url: "http://aptdecor.uz",
       description: "Production server",
     },
   ],

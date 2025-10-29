@@ -163,7 +163,7 @@ export default function SignupForm() {
                     });
                 }
 
-                // Redirect to dashboard
+                // Redirect to success page
                 window.location.href = '/welcome';
             } else {
                 alert('Signup failed');
