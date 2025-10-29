@@ -389,7 +389,7 @@
     //
     // Example usage:
     //   window.CosmosTracker.trackConversion({ type: 'signup', value: 0 });
-    //   window.CosmosTracker.trackConversion({ type: 'purchase', value: 99.99 });
+    //   window.CosmosTracker.trackConversion({ type: 'purchase', value: 99.99, metadata: { product: 'premium' } });
     //
     trackConversion: function(conversionData) {
       conversionData = conversionData || {};
@@ -406,6 +406,11 @@
         console.warn('[CosMos] Conversion not tracked - no UTM parameters found. User did not come via tracking link.');
         return;
       }
+      
+      // Prepare conversion metadata
+      const conversionType = conversionData.type || 'generic';
+      const conversionValue = conversionData.value || 0;
+      const conversionMetadata = conversionData.metadata ? JSON.stringify(conversionData.metadata) : '';
       
       const eventData = {
         // Timestamp
@@ -451,6 +456,11 @@
         // Event Type
         event_type: 'conversion',
         
+        // Conversion Details (NEW)
+        conversion_type: conversionType,
+        conversion_value: conversionValue,
+        conversion_metadata: conversionMetadata,
+        
         // Time on page (time since page loaded)
         time_on_page: Math.floor((Date.now() - this.pageLoadTime) / 1000)
       };
@@ -458,11 +468,12 @@
       this.sendEvent(eventData);
       
       console.log('[CosMos] ✅ Conversion tracked:', {
-        type: conversionData.type || 'generic',
-        value: conversionData.value || 0,
+        type: conversionType,
+        value: conversionValue,
         campaign: finalUTMCampaign,
         source: finalUTMSource,
-        medium: finalUTMMedium
+        medium: finalUTMMedium,
+        metadata: conversionMetadata
       });
       
       // Return success

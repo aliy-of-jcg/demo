@@ -69,8 +69,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 3. Extract unique platforms and build filter
-    const allPlatforms = [...new Set(trackingCodes.map(tc => tc.utm_medium || tc.utm_source))].filter(Boolean);
-    const utmCampaigns = [...new Set(trackingCodes.map(tc => tc.utm_campaign))].filter(Boolean);
+    const allPlatforms = Array.from(new Set(trackingCodes.map(tc => tc.utm_medium || tc.utm_source))).filter(Boolean);
+    const utmCampaigns = Array.from(new Set(trackingCodes.map(tc => tc.utm_campaign))).filter(Boolean);
 
     // Build WHERE clause without parameterized IN
     const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const visitData = await visitResult.json();
+    const visitData = await visitResult.json() as Array<{ unique_visitors: number; conversions: number }>;
     const visitors = visitData[0]?.unique_visitors || 0;
     const conversions = visitData[0]?.conversions || 0;
     const conversionRate = visitors > 0 ? ((conversions / visitors) * 100).toFixed(2) : '0.00';
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const clickData = await clickResult.json();
+    const clickData = await clickResult.json() as Array<{ total_clicks: number }>;
     const clicks = clickData[0]?.total_clicks || 0;
     const ctr = visitors > 0 ? ((clicks / visitors) * 100).toFixed(2) : '0.00';
 
