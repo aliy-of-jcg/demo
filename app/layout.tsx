@@ -23,8 +23,7 @@ export default function RootLayout({
         <LayoutWrapper>{children}</LayoutWrapper>
         <Toaster position="top-right" richColors />
         
-        {/* CosMos Tracking Script - For local testing */}
-        <Script src="/cosmos-track.js" strategy="afterInteractive" />
+        {/* Tracking script removed - should only run on external landing pages */}
       </body>
     </html>
   );
