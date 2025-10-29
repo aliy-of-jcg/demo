@@ -119,8 +119,8 @@ document.getElementById('signupForm').addEventListener('submit', async function(
                 });
             }
             
-            // Redirect to success page or dashboard
-            window.location.href = '/dashboard';
+            // Redirect to success page
+            window.location.href = '/welcome';
         } else {
             alert('Signup failed. Please try again.');
         }
@@ -164,7 +164,7 @@ export default function SignupForm() {
                 }
 
                 // Redirect to dashboard
-                window.location.href = '/dashboard';
+                window.location.href = '/welcome';
             } else {
                 alert('Signup failed');
             }
@@ -216,7 +216,8 @@ async function handlePurchase(cartTotal) {
                 });
             }
 
-            window.location.href = '/thank-you';
+            // window.location.href = '/thank-you';
+            window.location.href = '/my-orders';
         }
     } catch (error) {
         console.error(error);
@@ -253,10 +254,10 @@ document.getElementById('contactForm').addEventListener('submit', async function
 
 ## 🎨 Conversion Types
 
-You can track different types of conversions:
+You can track different types of conversions with structured data:
 
 ```javascript
-// Signup
+// Signup (no monetary value)
 window.CosmosTracker.trackConversion({
     type: 'signup',
     value: 0
@@ -268,10 +269,25 @@ window.CosmosTracker.trackConversion({
     value: 99.99
 });
 
-// Free trial
+// Purchase with metadata (for advanced tracking)
+window.CosmosTracker.trackConversion({
+    type: 'purchase',
+    value: 99.99,
+    metadata: {
+        product: 'Premium Plan',
+        quantity: 1,
+        currency: 'USD'
+    }
+});
+
+// Free trial with metadata
 window.CosmosTracker.trackConversion({
     type: 'trial_start',
-    value: 0
+    value: 0,
+    metadata: {
+        plan: '14-day trial',
+        features: 'all'
+    }
 });
 
 // Newsletter signup
@@ -280,20 +296,51 @@ window.CosmosTracker.trackConversion({
     value: 0
 });
 
-// Download
+// Download with metadata
 window.CosmosTracker.trackConversion({
     type: 'download',
-    value: 0
+    value: 0,
+    metadata: {
+        file: 'product-catalog.pdf',
+        size: '2.5MB'
+    }
 });
 
-// Booking
+// Booking with value and metadata
 window.CosmosTracker.trackConversion({
     type: 'booking',
-    value: 0
+    value: 150.00,
+    metadata: {
+        service: 'consultation',
+        duration: '60min',
+        date: '2025-11-15'
+    }
 });
 ```
 
-**Note:** The `type` and `value` parameters are optional and for your own tracking purposes. CosMos AI tracks all conversions with `event_type = 'conversion'` in the database.
+### Conversion Type Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `type` | string | Yes | The type of conversion (e.g., 'signup', 'purchase', 'trial_start') |
+| `value` | number | No | Monetary value of the conversion (default: 0) |
+| `metadata` | object | No | Additional custom data about the conversion (stored as JSON) |
+
+### Recommended Conversion Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| `signup` | Account registration | User creates an account |
+| `purchase` | Product/service purchase | User completes a transaction |
+| `trial_start` | Free trial activation | User starts a trial period |
+| `newsletter` | Newsletter subscription | User subscribes to mailing list |
+| `download` | File/resource download | User downloads a resource |
+| `booking` | Appointment/reservation | User books a service |
+| `contact_form` | Contact form submission | User submits contact form |
+| `demo_request` | Demo request | User requests a product demo |
+| `quote_request` | Quote request | User requests a price quote |
+
+**Note:** You can use any string value for `type` - these are recommendations for consistency.
 
 ---
 
@@ -355,20 +402,38 @@ After implementing conversion tracking, you can view the data in several places:
 - See conversion count and conversion rate per campaign
 - Formula: `Conversion Rate = (Conversions / Unique Visitors) × 100%`
 
-### 2. Environment Analysis
+### 2. Conversion Type Analysis (NEW)
+- Go to **Analytics → Conversion Analysis**
+- See breakdown by conversion type (signup, purchase, etc.)
+- View total conversions and revenue per type
+- Analyze conversion trends over time
+- See which traffic sources drive which conversion types
+- **Example insights:**
+  - "Instagram ads drive 60% of signups but only 20% of purchases"
+  - "Email campaigns have highest conversion value ($150 avg)"
+  - "Mobile users prefer trial_start over direct purchase"
+
+### 3. Environment Analysis
 - Go to **Analytics → Environment Analysis**
 - See conversions by device, browser, OS
 - Identify which platforms convert best
+- **Example insights:**
+  - "Desktop users have 3x higher purchase conversion rate"
+  - "iOS users spend 50% more on average"
 
-### 3. Time Analysis
+### 4. Time Analysis
 - Go to **Analytics → Time Analysis**
 - See conversions by hour, day, week
 - Identify best times for conversions
+- **Example insights:**
+  - "Most purchases happen Tuesday 2-4 PM KST"
+  - "Weekend signups convert to paid 2x more"
 
-### 4. Performance Dashboard
+### 5. Performance Dashboard
 - Go to **Analytics → Performance**
 - See overall conversion metrics
 - Track conversion trends over time
+- Compare conversion rates across channels
 
 ---
 
@@ -505,16 +570,79 @@ Track different conversion types in the same campaign:
 
 ```javascript
 // On signup page
-window.CosmosTracker.trackConversion({ type: 'signup', value: 0 });
+window.CosmosTracker.trackConversion({ 
+    type: 'signup', 
+    value: 0 
+});
 
 // On purchase page
-window.CosmosTracker.trackConversion({ type: 'purchase', value: 199.99 });
+window.CosmosTracker.trackConversion({ 
+    type: 'purchase', 
+    value: 199.99,
+    metadata: {
+        product: 'Annual Subscription',
+        plan: 'Premium'
+    }
+});
 
 // On trial start
-window.CosmosTracker.trackConversion({ type: 'trial', value: 0 });
+window.CosmosTracker.trackConversion({ 
+    type: 'trial_start', 
+    value: 0,
+    metadata: {
+        duration: '14 days'
+    }
+});
 ```
 
-All will be counted as conversions for the campaign.
+All will be counted as conversions for the campaign, but you can analyze each type separately.
+
+### Using Conversion Metadata
+
+Metadata allows you to store additional context about conversions:
+
+```javascript
+// E-commerce purchase with detailed metadata
+window.CosmosTracker.trackConversion({
+    type: 'purchase',
+    value: 299.99,
+    metadata: {
+        product_id: 'PROD-12345',
+        product_name: 'Premium Subscription',
+        category: 'subscription',
+        quantity: 1,
+        currency: 'USD',
+        discount_code: 'SUMMER20',
+        discount_amount: 60.00,
+        payment_method: 'credit_card'
+    }
+});
+
+// Lead generation with qualification data
+window.CosmosTracker.trackConversion({
+    type: 'contact_form',
+    value: 0,
+    metadata: {
+        company_size: '50-100',
+        industry: 'technology',
+        budget_range: '10k-50k',
+        timeline: 'Q1 2026',
+        lead_score: 85
+    }
+});
+
+// Event registration
+window.CosmosTracker.trackConversion({
+    type: 'event_registration',
+    value: 0,
+    metadata: {
+        event_name: 'Product Launch Webinar',
+        event_date: '2025-12-15',
+        attendee_type: 'existing_customer',
+        interests: ['AI', 'automation', 'analytics']
+    }
+});
+```
 
 ### Conditional Tracking
 
@@ -527,7 +655,11 @@ if (campaign === 'special-promo') {
     // Track with special handling
     window.CosmosTracker.trackConversion({ 
         type: 'promo_signup',
-        value: 0 
+        value: 0,
+        metadata: {
+            promo: 'black-friday-2025',
+            discount: '50%'
+        }
     });
 } else {
     // Regular tracking
@@ -536,6 +668,70 @@ if (campaign === 'special-promo') {
         value: 0 
     });
 }
+```
+
+### A/B Testing with Conversion Types
+
+Track different conversion paths for A/B testing:
+
+```javascript
+// Variant A: Single-step signup
+window.CosmosTracker.trackConversion({
+    type: 'signup',
+    value: 0,
+    metadata: {
+        variant: 'single_step',
+        test_id: 'signup_flow_v2'
+    }
+});
+
+// Variant B: Multi-step signup
+window.CosmosTracker.trackConversion({
+    type: 'signup',
+    value: 0,
+    metadata: {
+        variant: 'multi_step',
+        test_id: 'signup_flow_v2',
+        steps_completed: 3
+    }
+});
+```
+
+### Conversion Value Tracking
+
+Track revenue and lifetime value:
+
+```javascript
+// Initial purchase
+window.CosmosTracker.trackConversion({
+    type: 'purchase',
+    value: 49.99,
+    metadata: {
+        plan: 'monthly',
+        is_trial_conversion: true
+    }
+});
+
+// Upsell
+window.CosmosTracker.trackConversion({
+    type: 'upsell',
+    value: 199.99,
+    metadata: {
+        from_plan: 'monthly',
+        to_plan: 'annual',
+        savings: 99.89
+    }
+});
+
+// Add-on purchase
+window.CosmosTracker.trackConversion({
+    type: 'addon_purchase',
+    value: 29.99,
+    metadata: {
+        addon: 'premium_support',
+        base_plan: 'annual'
+    }
+});
 ```
 
 ---
@@ -547,10 +743,25 @@ if (campaign === 'special-promo') {
 1. **Ensure tracking script is loaded on aptdecor.uz**
 2. **When user successfully signs up, call:**
    ```javascript
-   window.CosmosTracker.trackConversion({ type: 'signup', value: 0 });
+   window.CosmosTracker.trackConversion({ 
+       type: 'signup', 
+       value: 0 
+   });
    ```
-3. **Conversion is automatically attributed to the correct campaign** based on UTM parameters
-4. **View results in Campaign Analysis** → See conversion count and rate
+3. **For purchases with revenue tracking:**
+   ```javascript
+   window.CosmosTracker.trackConversion({ 
+       type: 'purchase', 
+       value: 199.99,
+       metadata: {
+           product: 'Premium Plan',
+           currency: 'USD'
+       }
+   });
+   ```
+4. **Conversion is automatically attributed to the correct campaign** based on UTM parameters
+5. **View results in Campaign Analysis** → See conversion count and rate
+6. **View detailed breakdown in Conversion Analysis** → See performance by conversion type
 
 ### Key Benefits:
 
@@ -558,7 +769,18 @@ if (campaign === 'special-promo') {
 - ✅ **Session persistence** - Works across multiple pages
 - ✅ **Easy implementation** - One line of code
 - ✅ **Flexible** - Track any type of conversion
+- ✅ **Structured data** - Conversion types, values, and metadata
+- ✅ **Rich analytics** - Analyze by type, source, time, device
+- ✅ **Revenue tracking** - Track monetary value per conversion
 - ✅ **Secure** - Only tracks users from tracking links
+
+### New Features in v2.1:
+
+- ✨ **Conversion Types** - Structured tracking (signup, purchase, trial, etc.)
+- ✨ **Conversion Values** - Track revenue and monetary value
+- ✨ **Conversion Metadata** - Store custom data with each conversion
+- ✨ **Conversion Analytics API** - Dedicated endpoint for conversion analysis
+- ✨ **Advanced Filtering** - Analyze conversions by type, source, campaign
 
 ---
 
@@ -571,7 +793,7 @@ if (campaign === 'special-promo') {
 
 ---
 
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Last Updated:** October 29, 2025
 
 ---

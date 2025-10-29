@@ -27,7 +27,10 @@ export async function POST(request: NextRequest) {
       browser,
       screen_resolution,
       user_agent,
-      time_on_page
+      time_on_page,
+      conversion_type,
+      conversion_value,
+      conversion_metadata
     } = data;
 
     // Validate required fields
@@ -64,7 +67,10 @@ export async function POST(request: NextRequest) {
           visit_count: visit_count || 1,
           is_new_visitor: is_new_visitor || 0,
           time_on_page: time_on_page || 0,
-          event_type: event_type || 'pageview'
+          event_type: event_type || 'pageview',
+          conversion_type: conversion_type || '',
+          conversion_value: conversion_value || 0,
+          conversion_metadata: conversion_metadata || ''
         }],
         format: 'JSONEachRow'
       });

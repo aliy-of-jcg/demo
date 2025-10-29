@@ -26,6 +26,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# Cursor agent rules
+.cursor/rules/
+
 # vercel
 .vercel
 

@@ -405,7 +405,7 @@ export default function CampaignDetailsPage() {
               <p className="text-sm font-medium text-gray-600">Media Sources</p>
               <div className="mt-1 flex flex-wrap gap-2">
                 {trackingLinks.length > 0 ? (
-                  [...new Set(trackingLinks.map(link => link.utm_source))].map((source, idx) => (
+                  Array.from(new Set(trackingLinks.map(link => link.utm_source))).map((source, idx) => (
                     <span key={idx} className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
                       {source}
                     </span>
@@ -419,7 +419,7 @@ export default function CampaignDetailsPage() {
               <p className="text-sm font-medium text-gray-600">Ad Types</p>
               <div className="mt-1 flex flex-wrap gap-2">
                 {trackingLinks.length > 0 ? (
-                  [...new Set(trackingLinks.map(link => link.utm_medium))].map((medium, idx) => (
+                  Array.from(new Set(trackingLinks.map(link => link.utm_medium))).map((medium, idx) => (
                     <span key={idx} className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 capitalize">
                       {medium}
                     </span>

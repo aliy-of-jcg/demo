@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Link2, TrendingUp, BarChart3, Megaphone, ChevronDown, ChevronUp, FileText, Target, X } from "lucide-react";
+import { LayoutDashboard, BarChart3, Megaphone, ChevronDown, ChevronUp, FileText, Target, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./user-menu";
 import { useState, useEffect } from "react";
