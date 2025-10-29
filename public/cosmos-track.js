@@ -1,9 +1,9 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 1.0.0
+ * Version: 2.0.0
  * 
  * This script tracks pageviews, sessions, and user behavior
- * for analytics on aptdecor.uz
+ * Only tracks on authorized external landing pages
  */
 
 (function() {
@@ -11,7 +11,24 @@
 
   // Configuration
   const CONFIG = {
-    apiEndpoint: '/api/log', // Will send to cosmos.kr/api/log
+    // ONLY track on these authorized domains (external landing pages)
+    allowedDomains: [
+      'aptdecor.uz',
+      'www.aptdecor.uz',
+      'jcg.asia',
+      'www.jcg.asia',
+      'localhost:3001', // For testing external site locally
+      // Add more external landing page domains here
+    ],
+    
+    // API endpoints
+    apiEndpoint: '/api/track', // Production endpoint
+    apiEndpointInternal: '/api/track-internal', // For local testing on CosMos AI itself
+    
+    // Domain and UTM validation
+    requireUTMParams: true, // Only track visitors who came via UTM links
+    enableDomainValidation: true, // Only track on allowed domains
+    
     cookieDomain: window.location.hostname,
     visitorCookieName: 'cosmos_visitor_id',
     sessionCookieName: 'cosmos_session_id',
@@ -22,6 +39,33 @@
     sessionTimeoutMinutes: 30,
     pageViewDebounceMs: 500, // Prevent duplicate pageviews
   };
+
+  // ============================================================
+  // DOMAIN VALIDATION - Only track on authorized domains
+  // ============================================================
+  const currentDomain = window.location.hostname + (window.location.port ? ':' + window.location.port : '');
+  const isAllowedDomain = CONFIG.allowedDomains.some(function(domain) {
+    return currentDomain === domain || currentDomain.endsWith('.' + domain);
+  });
+  
+  // Check if running on CosMos AI internal domain (for testing)
+  const isInternalDomain = currentDomain.includes('localhost:3000') || 
+                          currentDomain.includes('cosmos') || 
+                          currentDomain.includes('vercel.app');
+  
+  // If domain validation is enabled and not on allowed domain, exit
+  if (CONFIG.enableDomainValidation && !isAllowedDomain && !isInternalDomain) {
+    console.log('[CosMos] Tracking disabled - unauthorized domain:', currentDomain);
+    return; // EXIT - Don't track on unauthorized domains
+  }
+  
+  // Determine which API endpoint to use
+  if (isInternalDomain) {
+    CONFIG.apiEndpoint = CONFIG.apiEndpointInternal; // Use internal testing endpoint
+    console.log('[CosMos] Using internal testing endpoint:', CONFIG.apiEndpoint);
+  } else {
+    console.log('[CosMos] Using production endpoint:', CONFIG.apiEndpoint);
+  }
 
   // Utility Functions
   const utils = {
@@ -218,6 +262,39 @@
 
       const urlParams = utils.getUrlParams();
       
+      // ============================================================
+      // UTM PARAMETER VALIDATION
+      // ============================================================
+      // Check if user has UTM parameters in URL
+      const hasUTMParams = urlParams.utm_campaign || urlParams.utm_source || urlParams.utm_medium;
+      
+      // Check if UTM parameters were stored from previous page in this session
+      const storedUTMSource = sessionStorage.getItem('cosmos_utm_source') || '';
+      const storedUTMCampaign = sessionStorage.getItem('cosmos_utm_campaign') || '';
+      const hasStoredUTM = storedUTMSource || storedUTMCampaign;
+      
+      // For first page of session: require UTM params if validation is enabled
+      if (CONFIG.requireUTMParams && this.pageSequence === 1 && !hasUTMParams && !hasStoredUTM) {
+        console.log('[CosMos] Skipping tracking - no UTM parameters on landing page');
+        return; // EXIT - Don't track visitors who didn't come via UTM link
+      }
+      
+      // Store UTM params in session storage for subsequent pages
+      if (hasUTMParams) {
+        sessionStorage.setItem('cosmos_utm_source', urlParams.utm_source || '');
+        sessionStorage.setItem('cosmos_utm_medium', urlParams.utm_medium || '');
+        sessionStorage.setItem('cosmos_utm_campaign', urlParams.utm_campaign || '');
+        sessionStorage.setItem('cosmos_utm_term', urlParams.utm_term || '');
+        sessionStorage.setItem('cosmos_utm_content', urlParams.utm_content || '');
+      }
+      
+      // Use stored UTM params if current page doesn't have them
+      const finalUTMSource = urlParams.utm_source || storedUTMSource;
+      const finalUTMMedium = urlParams.utm_medium || sessionStorage.getItem('cosmos_utm_medium') || '';
+      const finalUTMCampaign = urlParams.utm_campaign || storedUTMCampaign;
+      const finalUTMTerm = urlParams.utm_term || sessionStorage.getItem('cosmos_utm_term') || '';
+      const finalUTMContent = urlParams.utm_content || sessionStorage.getItem('cosmos_utm_content') || '';
+      
       // Get previous page URL from sessionStorage
       const previousPageUrl = sessionStorage.getItem('cosmos_last_page') || '';
       const isLandingPage = this.pageSequence === 1 ? 1 : 0;
@@ -246,12 +323,12 @@
         referrer: document.referrer || '',
         referrer_domain: utils.getReferrerDomain(),
         
-        // UTM Parameters
-        utm_source: urlParams.utm_source || '',
-        utm_medium: urlParams.utm_medium || '',
-        utm_campaign: urlParams.utm_campaign || '',
-        utm_term: urlParams.utm_term || '',
-        utm_content: urlParams.utm_content || '',
+        // UTM Parameters (use final values from session or URL)
+        utm_source: finalUTMSource,
+        utm_medium: finalUTMMedium,
+        utm_campaign: finalUTMCampaign,
+        utm_term: finalUTMTerm,
+        utm_content: finalUTMContent,
         
         // User Agent & Device
         user_agent: navigator.userAgent,
@@ -304,6 +381,94 @@
       }
     },
 
+    // ============================================================
+    // CONVERSION TRACKING
+    // ============================================================
+    // Track conversion event (signup, purchase, etc.)
+    // Call this from your landing page when a conversion occurs
+    //
+    // Example usage:
+    //   window.CosmosTracker.trackConversion({ type: 'signup', value: 0 });
+    //   window.CosmosTracker.trackConversion({ type: 'purchase', value: 99.99 });
+    //
+    trackConversion: function(conversionData) {
+      conversionData = conversionData || {};
+      
+      // Get stored UTM params from session (they persist even if URL changes)
+      const finalUTMSource = sessionStorage.getItem('cosmos_utm_source') || '';
+      const finalUTMMedium = sessionStorage.getItem('cosmos_utm_medium') || '';
+      const finalUTMCampaign = sessionStorage.getItem('cosmos_utm_campaign') || '';
+      const finalUTMTerm = sessionStorage.getItem('cosmos_utm_term') || '';
+      const finalUTMContent = sessionStorage.getItem('cosmos_utm_content') || '';
+      
+      // Validate that we have UTM parameters (user must have come via tracking link)
+      if (!finalUTMCampaign && !finalUTMSource && !finalUTMMedium) {
+        console.warn('[CosMos] Conversion not tracked - no UTM parameters found. User did not come via tracking link.');
+        return;
+      }
+      
+      const eventData = {
+        // Timestamp
+        timestamp: utils.getTimestamp(),
+        
+        // Session & Visitor
+        session_id: this.sessionId,
+        user_id: this.visitorId,
+        visit_count: this.visitCount,
+        is_new_visitor: this.isNewVisitor ? 1 : 0,
+        
+        // Page Info
+        page_url: window.location.href,
+        page_title: document.title,
+        page_path: window.location.pathname,
+        
+        // Page Flow Tracking
+        page_sequence: this.pageSequence,
+        is_landing_page: 0, // Conversions usually happen after landing
+        previous_page_url: sessionStorage.getItem('cosmos_last_page') || '',
+        
+        // Referrer
+        referrer: document.referrer || '',
+        referrer_domain: utils.getReferrerDomain(),
+        
+        // UTM Parameters (from session storage - persists across pages)
+        utm_source: finalUTMSource,
+        utm_medium: finalUTMMedium,
+        utm_campaign: finalUTMCampaign,
+        utm_term: finalUTMTerm,
+        utm_content: finalUTMContent,
+        
+        // User Agent & Device
+        user_agent: navigator.userAgent,
+        device_type: utils.getDeviceType(),
+        screen_resolution: utils.getScreenResolution(),
+        browser: utils.getBrowser(),
+        os: utils.getOS(),
+        
+        // Browser Info
+        language: navigator.language || '',
+        
+        // Event Type
+        event_type: 'conversion',
+        
+        // Time on page (time since page loaded)
+        time_on_page: Math.floor((Date.now() - this.pageLoadTime) / 1000)
+      };
+
+      this.sendEvent(eventData);
+      
+      console.log('[CosMos] ✅ Conversion tracked:', {
+        type: conversionData.type || 'generic',
+        value: conversionData.value || 0,
+        campaign: finalUTMCampaign,
+        source: finalUTMSource,
+        medium: finalUTMMedium
+      });
+      
+      // Return success
+      return true;
+    },
+
     // Send event to API
     sendEvent: function(data) {
       // Use sendBeacon if available (for reliability)
@@ -334,6 +499,13 @@
         // Send final event with time on page
         const urlParams = utils.getUrlParams();
         
+        // Use stored UTM params (consistent with pageview tracking)
+        const finalUTMSource = urlParams.utm_source || sessionStorage.getItem('cosmos_utm_source') || '';
+        const finalUTMMedium = urlParams.utm_medium || sessionStorage.getItem('cosmos_utm_medium') || '';
+        const finalUTMCampaign = urlParams.utm_campaign || sessionStorage.getItem('cosmos_utm_campaign') || '';
+        const finalUTMTerm = urlParams.utm_term || sessionStorage.getItem('cosmos_utm_term') || '';
+        const finalUTMContent = urlParams.utm_content || sessionStorage.getItem('cosmos_utm_content') || '';
+        
         // Get previous page URL from sessionStorage
         const previousPageUrl = sessionStorage.getItem('cosmos_last_page') || '';
         const isLandingPage = self.pageSequence === 1 ? 1 : 0;
@@ -355,11 +527,11 @@
           
           referrer: document.referrer || '',
           referrer_domain: utils.getReferrerDomain(),
-          utm_source: urlParams.utm_source || '',
-          utm_medium: urlParams.utm_medium || '',
-          utm_campaign: urlParams.utm_campaign || '',
-          utm_term: urlParams.utm_term || '',
-          utm_content: urlParams.utm_content || '',
+          utm_source: finalUTMSource,
+          utm_medium: finalUTMMedium,
+          utm_campaign: finalUTMCampaign,
+          utm_term: finalUTMTerm,
+          utm_content: finalUTMContent,
           user_agent: navigator.userAgent,
           device_type: utils.getDeviceType(),
           screen_resolution: utils.getScreenResolution(),

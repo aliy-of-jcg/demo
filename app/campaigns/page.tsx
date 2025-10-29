@@ -400,18 +400,7 @@ export default function CampaignsPage() {
         {/* Desktop Table - Hidden on mobile */}
         <div className="hidden lg:block overflow-x-auto">
           <table className="w-full table-fixed">
-            <colgroup>
-              <col className="w-[18%]" /> {/* Campaign Name */}
-              <col className="w-[12%]" /> {/* Course */}
-              <col className="w-[8%]" />  {/* Media */}
-              <col className="w-[8%]" />  {/* Ad Type */}
-              <col className="w-[8%]" />  {/* Status */}
-              <col className="w-[12%]" /> {/* Period */}
-              <col className="w-[9%]" />  {/* Budget */}
-              <col className="w-[10%]" /> {/* Performance */}
-              <col className="w-[8%]" />  {/* Tracking Link */}
-              <col className="w-[7%]" />  {/* Action */}
-            </colgroup>
+            <colgroup><col className="w-[18%]" /><col className="w-[12%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[12%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[8%]" /><col className="w-[7%]" /></colgroup>
             <thead className="bg-gray-50">
               <tr>
                 <th 
