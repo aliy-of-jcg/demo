@@ -16,8 +16,7 @@ fi
 
 # Git operations
 echo "📥 Updating code..."
-
-git checkout feature
+git checkout feature  # 
 git pull origin feature
 
 # Docker operations
