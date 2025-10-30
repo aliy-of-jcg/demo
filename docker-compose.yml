@@ -52,7 +52,7 @@ services:
     profiles: ["dev", "prod"]
 
   app:
-    build: .
+    image: centras-ai.kr.ncr.ntruss.com/centras-ai/cosmos-ai:latest
     container_name: cosmos-ai-app
     ports:
       - "3000:3000"
@@ -132,7 +132,7 @@ services:
     profiles: ["prod-only"]
 
   app-prod:
-    build: .
+    image: centras-ai.kr.ncr.ntruss.com/centras-ai/cosmos-ai:prod-latest
     container_name: cosmos-ai-app-prod
     ports:
       - "3000:3000"
