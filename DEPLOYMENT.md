@@ -54,16 +54,16 @@ If you prefer using Docker Compose directly:
 
 ```bash
 # Development (with port exposure for debugging)
-docker-compose --profile dev up -d
+docker compose --profile dev up -d
 
 # Production (no database port exposure)
-docker-compose --profile prod-only up -d
+docker compose --profile prod-only up -d
 
 # Check status
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs -f app
+docker compose logs -f app
 
 # Test the application
 curl http://localhost:3000/api/health
@@ -95,7 +95,7 @@ curl http://localhost:3000/api/health
 3. **Upload your project files** to the VM
 4. **Run the production compose file:**
    ```bash
-   docker-compose -f docker-compose.prod.yml up -d
+   docker compose --profile prod-only up -d
    ```
 
 ## Service Management
@@ -104,23 +104,23 @@ curl http://localhost:3000/api/health
 
 ```bash
 # View all services
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs -f [service-name]
+docker compose logs -f [service-name]
 
 # Restart a service
-docker-compose restart [service-name]
+docker compose restart [service-name]
 
 # Stop all services
-docker-compose down
+docker compose down
 
 # Stop and remove volumes (WARNING: deletes data)
-docker-compose down -v
+docker compose down -v
 
 # Update and restart services
-docker-compose pull
-docker-compose up -d
+docker compose pull
+docker compose up -d
 ```
 
 ### Health Checks
@@ -142,12 +142,12 @@ docker-compose up -d
 ### Common Issues
 
 1. **Database connection errors:**
-   - Check if databases are healthy: `docker-compose ps`
+   - Check if databases are healthy: `docker compose ps`
    - Verify environment variables
    - Check network connectivity
 
 2. **App won't start:**
-   - Check logs: `docker-compose logs app`
+   - Check logs: `docker compose logs app`
    - Verify all required environment variables are set
    - Ensure databases are healthy before app starts
 
@@ -159,15 +159,15 @@ docker-compose up -d
 
 ```bash
 # View all logs
-docker-compose logs
+docker compose logs
 
 # View specific service logs
-docker-compose logs app
-docker-compose logs mysql
-docker-compose logs clickhouse
+docker compose logs app
+docker compose logs mysql
+docker compose logs clickhouse
 
 # Follow logs in real-time
-docker-compose logs -f app
+docker compose logs -f app
 ```
 
 ## Backup and Recovery
@@ -176,10 +176,10 @@ docker-compose logs -f app
 
 ```bash
 # MySQL backup
-docker-compose exec mysql mysqldump -u root -p appdb > backup.sql
+docker compose exec mysql mysqldump -u root -p appdb > backup.sql
 
 # ClickHouse backup
-docker-compose exec clickhouse clickhouse-client --query "BACKUP DATABASE analytics TO Disk('backups', 'analytics_backup')"
+docker compose exec clickhouse clickhouse-client --query "BACKUP DATABASE analytics TO Disk('backups', 'analytics_backup')"
 ```
 
 ### Volume Backups
