@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const totalPageviewsJson = await totalPageviewsResult.json();
+    const totalPageviewsJson = await totalPageviewsResult.json() as Array<{ total_pageviews: number }>;
     const totalPageviews = totalPageviewsJson[0]?.total_pageviews || 0;
 
     // 2. UTM Source Breakdown with avg pageviews per session
@@ -55,8 +57,13 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const utmBreakdownJson = await utmBreakdownResult.json();
-    const utmBreakdown = utmBreakdownJson.map((row: any) => ({
+    const utmBreakdownJson = await utmBreakdownResult.json() as Array<{
+      utm_source: string;
+      total_sessions: number;
+      total_pageviews: number;
+      avg_pageviews_per_session: string;
+    }>;
+    const utmBreakdown = utmBreakdownJson.map((row) => ({
       utm_source: row.utm_source,
       total_sessions: row.total_sessions || 0,
       total_pageviews: row.total_pageviews || 0,
@@ -92,8 +99,14 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const landingPagesJson = await landingPagesResult.json();
-    const landingPages = landingPagesJson.map((row: any) => ({
+    const landingPagesJson = await landingPagesResult.json() as Array<{
+      page_url: string;
+      visits: number;
+      avg_pageviews: string;
+      bounce_rate: string;
+      avg_time_on_page: number;
+    }>;
+    const landingPages = landingPagesJson.map((row) => ({
       page: row.page_url,
       visits: row.visits || 0,
       avgPageviews: parseFloat(row.avg_pageviews) || 0,
@@ -125,8 +138,12 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const exitPagesJson = await exitPagesResult.json();
-    const exitPages = exitPagesJson.map((row: any) => ({
+    const exitPagesJson = await exitPagesResult.json() as Array<{
+      page_url: string;
+      exits: number;
+      exit_rate: string;
+    }>;
+    const exitPages = exitPagesJson.map((row) => ({
       page: row.page_url,
       exits: row.exits || 0,
       exitRate: parseFloat(row.exit_rate) || 0,
@@ -147,9 +164,12 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const sessionDepthJson = await sessionDepthResult.json();
+    const sessionDepthJson = await sessionDepthResult.json() as Array<{
+      session_id: string;
+      max_sequence: number;
+    }>;
     
-    const sessionDepths = sessionDepthJson.map((row: any) => row.max_sequence || 1);
+    const sessionDepths = sessionDepthJson.map((row) => row.max_sequence || 1);
     const totalSessions = sessionDepths.length;
     const avgSessionDepth = totalSessions > 0 
       ? (sessionDepths.reduce((sum: number, depth: number) => sum + depth, 0) / totalSessions).toFixed(2)

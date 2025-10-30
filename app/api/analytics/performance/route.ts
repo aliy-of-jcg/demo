@@ -39,8 +39,12 @@ export async function GET(request: NextRequest) {
       query: metricsQuery,
       format: 'JSONEachRow'
     });
-    const metricsData = await metricsResult.json();
-    const metrics = metricsData[0] || { total_visitors: 0, conversions: 0, conversion_rate: 0 };
+    const metricsData = await metricsResult.json() as Array<{
+      total_visitors: number;
+      conversions: number;
+      conversion_rate: string;
+    }>;
+    const metrics = metricsData[0] || { total_visitors: 0, conversions: 0, conversion_rate: '0' };
 
     // Query 2: Get revenue from MySQL campaigns (budget spent)
     const pool = getPool();
@@ -73,11 +77,16 @@ export async function GET(request: NextRequest) {
       query: channelQuery,
       format: 'JSONEachRow'
     });
-    const channelData = await channelResult.json() as any[];
+    const channelData = await channelResult.json() as Array<{
+      channel: string;
+      visitors: number;
+      conversions: number;
+      conversion_rate: string;
+    }>;
 
     // Get campaign budgets for each channel to calculate CPA
     const channelDataEnhanced = await Promise.all(
-      channelData.map(async (channel: any) => {
+      channelData.map(async (channel) => {
         const [budgetResult] = await pool.execute(`
           SELECT COALESCE(SUM(spent), 0) as channel_spent
           FROM campaigns
@@ -90,8 +99,8 @@ export async function GET(request: NextRequest) {
 
         return {
           channel: channel.channel,
-          visitors: parseInt(channel.visitors),
-          conversions: parseInt(channel.conversions),
+          visitors: channel.visitors,
+          conversions: channel.conversions,
           rate: parseFloat(channel.conversion_rate).toFixed(2),
           revenue: spent, // Using spent as revenue for now
           cpa: Math.round(cpa)
@@ -114,7 +123,10 @@ export async function GET(request: NextRequest) {
       query: trendQuery,
       format: 'JSONEachRow'
     });
-    const trendData = await trendResult.json() as any[];
+    const trendData = await trendResult.json() as Array<{
+      date: string;
+      visitors: number;
+    }>;
 
     // Query 5: Comparison Period Trend
     const comparisonTrendQuery = `
@@ -131,7 +143,10 @@ export async function GET(request: NextRequest) {
       query: comparisonTrendQuery,
       format: 'JSONEachRow'
     });
-    const comparisonTrendData = await comparisonTrendResult.json() as any[];
+    const comparisonTrendData = await comparisonTrendResult.json() as Array<{
+      date: string;
+      visitors: number;
+    }>;
 
     // Format response
     const response = {
@@ -141,20 +156,20 @@ export async function GET(request: NextRequest) {
         end: endDate
       },
       metrics: {
-        totalVisitors: parseInt(metrics.total_visitors) || 0,
-        conversions: parseInt(metrics.conversions) || 0,
+        totalVisitors: metrics.total_visitors || 0,
+        conversions: metrics.conversions || 0,
         conversionRate: parseFloat(metrics.conversion_rate || '0').toFixed(2),
         revenue: parseFloat(revenue)
       },
       channelData: channelDataEnhanced,
       visitorTrend: {
-        current: trendData.map((item: any) => ({
+        current: trendData.map((item) => ({
           date: item.date,
-          visitors: parseInt(item.visitors)
+          visitors: parseInt(item.visitors.toString())
         })),
-        comparison: comparisonTrendData.map((item: any) => ({
+        comparison: comparisonTrendData.map((item) => ({
           date: item.date,
-          visitors: parseInt(item.visitors)
+          visitors: parseInt(item.visitors.toString())
         }))
       }
     };

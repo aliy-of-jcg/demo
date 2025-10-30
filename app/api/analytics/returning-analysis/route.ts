@@ -1,6 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 
+// Type definitions for the analytics data
+interface VisitorData {
+  is_new_visitor: number;
+  visitors: number;
+  pageviews: number;
+  conversions: number;
+  avg_time_on_page: number;
+}
+
+interface NewVsReturningData {
+  new: {
+    visitors: number;
+    pageviews: number;
+    conversions: number;
+    conversionRate: string;
+    avgTimeOnPage: number;
+    percentage: string;
+  };
+  returning: {
+    visitors: number;
+    pageviews: number;
+    conversions: number;
+    conversionRate: string;
+    avgTimeOnPage: number;
+    percentage: string;
+  };
+}
+
+interface FrequencyBucket {
+  label: string;
+  min: number;
+  max: number;
+  users: number;
+}
+
+interface IntervalBucket {
+  label: string;
+  min: number;
+  max: number;
+  users: number;
+}
+
+interface DailyTrendData {
+  date: string;
+  newVisitors: number;
+  returningVisitors: number;
+}
+
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -35,38 +85,46 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const newVsReturningJson = await newVsReturningResult.json();
+    const newVsReturningJson = await newVsReturningResult.json() as VisitorData[];
     
-    const newVisitors = newVsReturningJson.find((row: any) => row.is_new_visitor === 1) || {
-      visitors: 0, pageviews: 0, conversions: 0, avg_time_on_page: 0
+    const newVisitors: VisitorData = newVsReturningJson.find((row: VisitorData) => row.is_new_visitor === 1) || {
+      is_new_visitor: 1,
+      visitors: 0, 
+      pageviews: 0, 
+      conversions: 0, 
+      avg_time_on_page: 0
     };
-    const returningVisitors = newVsReturningJson.find((row: any) => row.is_new_visitor === 0) || {
-      visitors: 0, pageviews: 0, conversions: 0, avg_time_on_page: 0
+    const returningVisitors: VisitorData = newVsReturningJson.find((row: VisitorData) => row.is_new_visitor === 0) || {
+      is_new_visitor: 0,
+      visitors: 0, 
+      pageviews: 0, 
+      conversions: 0, 
+      avg_time_on_page: 0
     };
 
     const totalVisitors = newVisitors.visitors + returningVisitors.visitors;
 
-    const newVsReturning = {
+    const newVsReturning: NewVsReturningData = {
       new: {
-        visitors: newVisitors.visitors || 0,
-        pageviews: newVisitors.pageviews || 0,
-        conversions: newVisitors.conversions || 0,
+        visitors: newVisitors.visitors,
+        pageviews: newVisitors.pageviews,
+        conversions: newVisitors.conversions,
         conversionRate: newVisitors.visitors > 0 
           ? ((newVisitors.conversions / newVisitors.visitors) * 100).toFixed(2) 
           : '0.00',
-        avgTimeOnPage: Math.round(newVisitors.avg_time_on_page || 0),
+        avgTimeOnPage: Math.round(newVisitors.avg_time_on_page),
         percentage: totalVisitors > 0 
           ? ((newVisitors.visitors / totalVisitors) * 100).toFixed(1) 
           : '0.0',
       },
       returning: {
-        visitors: returningVisitors.visitors || 0,
-        pageviews: returningVisitors.pageviews || 0,
-        conversions: returningVisitors.conversions || 0,
+        visitors: returningVisitors.visitors,
+        pageviews: returningVisitors.pageviews,
+        conversions: returningVisitors.conversions,
         conversionRate: returningVisitors.visitors > 0 
           ? ((returningVisitors.conversions / returningVisitors.visitors) * 100).toFixed(2) 
           : '0.00',
-        avgTimeOnPage: Math.round(returningVisitors.avg_time_on_page || 0),
+        avgTimeOnPage: Math.round(returningVisitors.avg_time_on_page),
         percentage: totalVisitors > 0 
           ? ((returningVisitors.visitors / totalVisitors) * 100).toFixed(1) 
           : '0.0',
@@ -89,10 +147,10 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const visitFrequencyJson = await visitFrequencyResult.json();
+    const visitFrequencyJson = await visitFrequencyResult.json() as { visit_count: number; users: number }[];
     
     // Group visit counts: 1, 2-5, 6-10, 11-20, 21+
-    const frequencyBuckets = [
+    const frequencyBuckets: FrequencyBucket[] = [
       { label: '1 visit', min: 1, max: 1, users: 0 },
       { label: '2-5 visits', min: 2, max: 5, users: 0 },
       { label: '6-10 visits', min: 6, max: 10, users: 0 },
@@ -100,7 +158,7 @@ export async function GET(request: NextRequest) {
       { label: '21+ visits', min: 21, max: Infinity, users: 0 },
     ];
 
-    visitFrequencyJson.forEach((row: any) => {
+    visitFrequencyJson.forEach((row) => {
       const count = row.visit_count;
       const users = row.users;
       
@@ -132,13 +190,18 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const returnIntervalJson = await returnIntervalResult.json();
+    const returnIntervalJson = await returnIntervalResult.json() as { 
+      user_id: string; 
+      first_visit: string; 
+      last_visit: string; 
+      session_count: number 
+    }[];
     
     // Calculate average return interval
     let totalIntervals = 0;
     let intervalSum = 0;
     
-    const intervalBuckets = [
+    const intervalBuckets: IntervalBucket[] = [
       { label: 'Same day', min: 0, max: 0, users: 0 },
       { label: '1-3 days', min: 1, max: 3, users: 0 },
       { label: '4-7 days', min: 4, max: 7, users: 0 },
@@ -147,7 +210,7 @@ export async function GET(request: NextRequest) {
       { label: '31+ days', min: 31, max: Infinity, users: 0 },
     ];
 
-    returnIntervalJson.forEach((row: any) => {
+    returnIntervalJson.forEach((row) => {
       const firstVisit = new Date(row.first_visit);
       const lastVisit = new Date(row.last_visit);
       const daysDiff = Math.floor((lastVisit.getTime() - firstVisit.getTime()) / (1000 * 60 * 60 * 24));
@@ -186,11 +249,15 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const dailyTrendJson = await dailyTrendResult.json();
-    const dailyTrend = dailyTrendJson.map((row: any) => ({
+    const dailyTrendJson = await dailyTrendResult.json() as { 
+      date: string; 
+      new_visitors: number; 
+      returning_visitors: number 
+    }[];
+    const dailyTrend: DailyTrendData[] = dailyTrendJson.map((row) => ({
       date: row.date,
-      newVisitors: row.new_visitors || 0,
-      returningVisitors: row.returning_visitors || 0,
+      newVisitors: row.new_visitors,
+      returningVisitors: row.returning_visitors,
     }));
 
     return NextResponse.json({

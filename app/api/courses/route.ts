@@ -2,6 +2,43 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
 
+// Type definitions for the courses data
+interface Course {
+  id: number;
+  name: string;
+  code: string;
+  category?: string;
+  duration?: number;
+  price?: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface EnhancedCourse extends Course {
+  active_campaigns: number;
+  total_visits: number;
+}
+
+interface SummaryData {
+  total_courses: number;
+  active_courses: number;
+}
+
+interface CampaignData {
+  course_id: number;
+  active_campaigns: number;
+}
+
+interface VisitData {
+  course_id: number;
+  total_visits: number;
+}
+
+interface TotalVisitsData {
+  total: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -25,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     query += ' ORDER BY name ASC';
 
-    const [courses] = await pool.execute(query, params);
+    const [courses] = await pool.execute(query, params) as [Course[], any];
 
     // Get summary stats
     const summaryQuery = `
@@ -35,8 +72,8 @@ export async function GET(request: NextRequest) {
       FROM courses
     `;
     
-    const [summaryResult] = await pool.execute(summaryQuery);
-    const summary = (summaryResult as any)[0];
+    const [summaryResult] = await pool.execute(summaryQuery) as [SummaryData[], any];
+    const summary = summaryResult[0];
 
     // Get total active campaigns per course from MySQL
     const campaignsQuery = `
@@ -48,14 +85,14 @@ export async function GET(request: NextRequest) {
       GROUP BY course_id
     `;
     
-    const [campaignsResult] = await pool.execute(campaignsQuery);
-    const campaignsMap = new Map();
-    (campaignsResult as any[]).forEach((row: any) => {
+    const [campaignsResult] = await pool.execute(campaignsQuery) as [CampaignData[], any];
+    const campaignsMap = new Map<number, number>();
+    campaignsResult.forEach((row) => {
       campaignsMap.set(row.course_id, row.active_campaigns);
     });
 
     // Get total visits per course from ClickHouse
-    let visitsMap = new Map();
+    let visitsMap = new Map<number, number>();
     try {
       const visitsQuery = `
         SELECT 
@@ -71,8 +108,8 @@ export async function GET(request: NextRequest) {
         format: 'JSONEachRow'
       });
       
-      const visitsData = await visitsResult.json();
-      visitsData.forEach((row: any) => {
+      const visitsData = await visitsResult.json() as VisitData[];
+      visitsData.forEach((row) => {
         visitsMap.set(row.course_id, row.total_visits);
       });
     } catch (chError) {
@@ -92,14 +129,14 @@ export async function GET(request: NextRequest) {
         query: totalVisitsQuery,
         format: 'JSONEachRow'
       });
-      const totalVisitsData = await totalVisitsResult.json();
+      const totalVisitsData = await totalVisitsResult.json() as TotalVisitsData[];
       totalVisits = totalVisitsData[0]?.total || 0;
     } catch (chError) {
       console.warn('⚠️ ClickHouse total visits query failed:', chError);
     }
 
     // Enhance courses with real analytics
-    const enhancedCourses = (courses as any[]).map(course => ({
+    const enhancedCourses: EnhancedCourse[] = courses.map(course => ({
       ...course,
       active_campaigns: campaignsMap.get(course.id) || 0,
       total_visits: visitsMap.get(course.id) || 0
@@ -157,16 +194,16 @@ export async function POST(request: NextRequest) {
       duration || null,
       price || null,
       status || 'active'
-    ]);
+    ]) as [any, any];
 
     const insertId = (result as any).insertId;
 
     // Fetch the created course
-    const [courses] = await pool.execute('SELECT * FROM courses WHERE id = ?', [insertId]);
+    const [courses] = await pool.execute('SELECT * FROM courses WHERE id = ?', [insertId]) as [Course[], any];
 
     return NextResponse.json({
       success: true,
-      course: (courses as any)[0]
+      course: courses[0]
     });
   } catch (error) {
     console.error('Error creating course:', error);

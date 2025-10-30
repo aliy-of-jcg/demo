@@ -1,6 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 
+// Type definitions for the analytics data
+interface TimeAnalysisData {
+  hour?: number;
+  day_of_week?: number;
+  visitors: number;
+  pageviews: number;
+  conversions: number;
+}
+
+interface HourlyData {
+  hour: number;
+  visitors: number;
+  pageviews: number;
+  conversions: number;
+  conversionRate: string;
+}
+
+interface DayOfWeekData {
+  day: string;
+  dayOfWeek: number;
+  visitors: number;
+  pageviews: number;
+  conversions: number;
+  conversionRate: string;
+}
+
+interface DailyTrendData {
+  date: string;
+  visitors: number;
+  pageviews: number;
+  conversions: number;
+  conversionRate: string;
+}
+
+interface PeakHour {
+  hour: number;
+  hourLabel: string;
+  visitors: number;
+}
+
+interface PeakDay {
+  day: string;
+  visitors: number;
+}
+
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -35,17 +82,17 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const hourlyJson = await hourlyResult.json();
+    const hourlyJson = await hourlyResult.json() as TimeAnalysisData[];
     
     // Fill in missing hours with 0
-    const hourlyData = Array.from({ length: 24 }, (_, i) => {
-      const hourData = hourlyJson.find((row: any) => row.hour === i);
+    const hourlyData: HourlyData[] = Array.from({ length: 24 }, (_, i) => {
+      const hourData = hourlyJson.find((row: TimeAnalysisData) => row.hour === i);
       return {
         hour: i,
         visitors: hourData?.visitors || 0,
         pageviews: hourData?.pageviews || 0,
         conversions: hourData?.conversions || 0,
-        conversionRate: hourData?.visitors > 0 
+        conversionRate: hourData && hourData.visitors > 0 
           ? ((hourData.conversions / hourData.visitors) * 100).toFixed(2) 
           : '0.00',
       };
@@ -69,21 +116,21 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const dayOfWeekJson = await dayOfWeekResult.json();
+    const dayOfWeekJson = await dayOfWeekResult.json() as TimeAnalysisData[];
     
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     
     // Fill in missing days with 0
-    const dayOfWeekData = Array.from({ length: 7 }, (_, i) => {
+    const dayOfWeekData: DayOfWeekData[] = Array.from({ length: 7 }, (_, i) => {
       const dayIndex = i + 1; // ClickHouse: 1=Monday, 7=Sunday
-      const dayData = dayOfWeekJson.find((row: any) => row.day_of_week === dayIndex);
+      const dayData = dayOfWeekJson.find((row: TimeAnalysisData) => row.day_of_week === dayIndex);
       return {
         day: dayNames[i],
         dayOfWeek: dayIndex,
         visitors: dayData?.visitors || 0,
         pageviews: dayData?.pageviews || 0,
         conversions: dayData?.conversions || 0,
-        conversionRate: dayData?.visitors > 0 
+        conversionRate: dayData && dayData.visitors > 0 
           ? ((dayData.conversions / dayData.visitors) * 100).toFixed(2) 
           : '0.00',
       };
@@ -107,19 +154,24 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const dailyTrendJson = await dailyTrendResult.json();
-    const dailyTrendData = dailyTrendJson.map((row: any) => ({
+    const dailyTrendJson = await dailyTrendResult.json() as { 
+      date: string; 
+      visitors: number; 
+      pageviews: number; 
+      conversions: number 
+    }[];
+    const dailyTrendData: DailyTrendData[] = dailyTrendJson.map((row) => ({
       date: row.date,
-      visitors: row.visitors || 0,
-      pageviews: row.pageviews || 0,
-      conversions: row.conversions || 0,
+      visitors: row.visitors,
+      pageviews: row.pageviews,
+      conversions: row.conversions,
       conversionRate: row.visitors > 0 
         ? ((row.conversions / row.visitors) * 100).toFixed(2) 
         : '0.00',
     }));
 
     // 4. Peak hours analysis
-    const peakHours = [...hourlyData]
+    const peakHours: PeakHour[] = [...hourlyData]
       .sort((a, b) => b.visitors - a.visitors)
       .slice(0, 3)
       .map(h => ({
@@ -129,7 +181,7 @@ export async function GET(request: NextRequest) {
       }));
 
     // 5. Peak days analysis
-    const peakDays = [...dayOfWeekData]
+    const peakDays: PeakDay[] = [...dayOfWeekData]
       .sort((a, b) => b.visitors - a.visitors)
       .slice(0, 3)
       .map(d => ({
