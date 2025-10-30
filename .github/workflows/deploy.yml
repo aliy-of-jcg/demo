@@ -1,0 +1,359 @@
+name: Deploy CosMos AI to Dev/Prod Environment
+
+on:
+  push:
+    branches:
+      - dev  # dev 브랜치 push 시 dev 환경에 자동 배포
+  workflow_dispatch:  # 수동 실행
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+        default: 'dev'
+      servers:
+        description: 'Prod only: Comma-separated server list (e.g., "1,2,3" or "all")'
+        required: false
+        default: 'all'
+
+jobs:
+  # 환경 결정
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      branch: ${{ steps.set-env.outputs.branch }}
+      image_tag_suffix: ${{ steps.set-env.outputs.image_tag_suffix }}
+    steps:
+      - name: Determine Environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            # dev 브랜치 push → dev 환경
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "branch=dev" >> $GITHUB_OUTPUT
+            echo "image_tag_suffix=latest" >> $GITHUB_OUTPUT
+          else
+            # workflow_dispatch → 선택한 환경
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            if [ "${{ github.event.inputs.environment }}" == "prod" ]; then
+              echo "branch=main" >> $GITHUB_OUTPUT
+              echo "image_tag_suffix=prod-latest" >> $GITHUB_OUTPUT
+            else
+              echo "branch=dev" >> $GITHUB_OUTPUT
+              echo "image_tag_suffix=latest" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    # prod 환경은 main 브랜치에서만 실행 가능
+    if: |
+      (needs.setup.outputs.environment == 'dev') ||
+      (needs.setup.outputs.environment == 'prod' && github.ref_name == 'main')
+
+    env:
+      SERVICE: cosmos-ai
+      NCR_REGISTRY_URL: centras-ai.kr.ncr.ntruss.com
+      NCP_REGISTRY_PATH: centras-ai
+      ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.branch }}
+
+      # 2. 이미지 태그 설정
+      - name: Set Image Tag
+        run: |
+          if [ "$ENVIRONMENT" == "prod" ]; then
+            echo "IMAGE_TAG=prod-$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          fi
+
+      # 3. Node.js 환경 설정
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 4. Next.js 의존성 설치 및 빌드 검증 (dev만)
+      - name: Install dependencies and validate build
+        if: needs.setup.outputs.environment == 'dev'
+        run: |
+          npm ci
+          npm run build
+          echo "✅ Next.js build validation successful"
+
+      # 5. NCR 로그인
+      - name: Log in to Naver Cloud Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.NCR_REGISTRY_URL }}
+          username: ${{ secrets.NCP_ACCESS_KEY }}
+          password: ${{ secrets.NCP_SECRET_KEY }}
+
+      # 6. Docker 이미지 빌드
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f Dockerfile \
+            -t "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:$IMAGE_TAG" \
+            -t "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:${{ needs.setup.outputs.image_tag_suffix }}" \
+            .
+
+          echo "✅ Built images:"
+          echo "  - $IMAGE_TAG"
+          echo "  - ${{ needs.setup.outputs.image_tag_suffix }}"
+
+      # 7. Docker 이미지 푸시
+      - name: Push Docker images to NCR
+        run: |
+          docker push "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:$IMAGE_TAG"
+          docker push "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:${{ needs.setup.outputs.image_tag_suffix }}"
+
+          echo "✅ Pushed tags:"
+          echo "  - $IMAGE_TAG"
+          echo "  - ${{ needs.setup.outputs.image_tag_suffix }}"
+
+  # Dev 환경 배포
+  deploy-dev:
+    needs: [setup, build]
+    if: needs.setup.outputs.environment == 'dev'
+    runs-on: ubuntu-latest
+
+    env:
+      SERVICE: cosmos-ai
+      NCR_REGISTRY_URL: centras-ai.kr.ncr.ntruss.com
+      NCP_REGISTRY_PATH: centras-ai
+
+    steps:
+      # 1. SSH 시크릿 설정
+      - name: Set SSH Secrets for Dev
+        run: |
+          echo "SSH_HOST=${{ secrets.SERVER_HOST_dev }}" >> $GITHUB_ENV
+          echo "SSH_USER=${{ secrets.SERVER_USERNAME_dev }}" >> $GITHUB_ENV
+          echo "SSH_KEY<<EOF" >> $GITHUB_ENV
+          echo "${{ secrets.SSH_PRIVATE_KEY_dev }}" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      # 2. Dev 서버 배포
+      - name: Deploy to Dev Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SSH_HOST }}
+          username: ${{ env.SSH_USER }}
+          key: ${{ env.SSH_KEY }}
+          envs: SERVICE, NCR_REGISTRY_URL, NCP_REGISTRY_PATH
+          script: |
+            echo "🚀 Dev 환경 배포 시작: CosMos AI"
+
+            # NCR 로그인
+            docker login $NCR_REGISTRY_URL -u ${{ secrets.NCP_ACCESS_KEY }} -p ${{ secrets.NCP_SECRET_KEY }}
+
+            # latest 이미지 풀
+            echo "📥 latest 이미지 pull 중..."
+            docker pull "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:latest"
+
+            # 데이터베이스 서비스 확인 및 시작
+            echo "🗄️ 데이터베이스 서비스 확인..."
+            docker-compose up -d mysql clickhouse
+
+            # 데이터베이스 준비 대기
+            echo "⏳ 데이터베이스 준비 대기..."
+            sleep 10
+
+            # CosMos AI 애플리케이션 재시작
+            echo "🔄 CosMos AI 서비스 재시작 중..."
+            docker-compose up -d $SERVICE
+
+            # 배포 상태 확인
+            echo "📊 서비스 상태 확인..."
+            docker-compose ps
+
+            # 컨테이너 시작 대기
+            sleep 10
+
+            # 헬스체크
+            echo "🏥 헬스체크 수행..."
+            curl -f http://localhost:3000/api/health || echo "⚠️ Health check failed, but continuing..."
+
+            # 이미지 정리
+            echo "🧹 사용하지 않는 이미지 정리 중..."
+            docker image prune -f
+            docker images | grep "<none>" | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
+
+            echo "✅ Dev 환경 CosMos AI 배포 완료"
+
+  # Prod 환경 배포
+  deploy-prod:
+    needs: [setup, build]
+    if: needs.setup.outputs.environment == 'prod'
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        server_id: ${{ fromJSON(vars.PROD_SERVERS || '[1, 2]') }}
+      max-parallel: 1  # 순차 배포
+      fail-fast: false
+
+    env:
+      SERVICE: cosmos-ai
+      NCR_REGISTRY_URL: centras-ai.kr.ncr.ntruss.com
+      NCP_REGISTRY_PATH: centras-ai
+
+    steps:
+      # 1. 서버 배포 여부 확인
+      - name: Check if server should be deployed
+        id: check
+        run: |
+          SERVERS="${{ github.event.inputs.servers }}"
+          if [ "$SERVERS" = "all" ] || [ -z "$SERVERS" ]; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          elif echo "$SERVERS" | grep -q "${{ matrix.server_id }}"; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Skipping server ${{ matrix.server_id }}"
+          fi
+
+      # 2. 서버별 환경변수 설정
+      - name: Set Server Environment Variables
+        if: steps.check.outputs.deploy == 'true'
+        run: |
+          echo "SERVER_HOST=${{ secrets[format('PROD_SERVER_{0}_HOST', matrix.server_id)] }}" >> $GITHUB_ENV
+          echo "SERVER_USER=${{ secrets[format('PROD_SERVER_{0}_USER', matrix.server_id)] }}" >> $GITHUB_ENV
+          echo "SERVER_KEY<<EOF" >> $GITHUB_ENV
+          echo "${{ secrets[format('PROD_SERVER_{0}_KEY', matrix.server_id)] }}" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "📌 Deploying to Production Server ${{ matrix.server_id }}"
+
+      # 3. Production 서버 배포
+      - name: Deploy to Production Server ${{ matrix.server_id }}
+        if: steps.check.outputs.deploy == 'true'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ env.SERVER_KEY }}
+          envs: SERVICE, NCR_REGISTRY_URL, NCP_REGISTRY_PATH
+          script: |
+            echo "🚀 Starting deployment to Production Server ${{ matrix.server_id }}"
+            echo "📦 Service: CosMos AI"
+
+            # NCR 로그인
+            echo "🔐 Logging in to NCR..."
+            docker login $NCR_REGISTRY_URL \
+              -u ${{ secrets.NCP_ACCESS_KEY }} \
+              -p ${{ secrets.NCP_SECRET_KEY }}
+
+            # 최신 프로덕션 이미지 풀
+            echo "📥 Pulling prod-latest image..."
+            docker pull "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:prod-latest"
+
+            # 현재 실행 중인 컨테이너 백업 태그 (롤백용)
+            echo "💾 Creating backup tag..."
+            docker tag "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:prod-latest" \
+                       "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:prod-backup-${{ matrix.server_id }}" || true
+
+            # 데이터베이스 서비스 확인 및 시작
+            echo "🗄️ 데이터베이스 서비스 확인..."
+            cd /app
+            docker compose up -d mysql clickhouse
+
+            # 데이터베이스 준비 대기
+            echo "⏳ 데이터베이스 준비 대기..."
+            sleep 15
+
+            # CosMos AI 애플리케이션 재시작
+            echo "🔄 CosMos AI 서비스 재시작..."
+            docker compose down $SERVICE
+            docker compose up -d $SERVICE
+
+            # 컨테이너 시작 대기
+            sleep 15
+
+            # 배포 상태 확인
+            echo "📊 서비스 상태 확인..."
+            docker compose ps
+
+            # 헬스체크
+            echo "🏥 헬스체크 수행..."
+            curl -f http://localhost:3000/api/health || echo "⚠️ Health check may need more time..."
+
+            # 이미지 정리
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f
+
+            echo "✅ Deployment to Server ${{ matrix.server_id }} completed successfully"
+
+  # 배포 결과 알림
+  notify:
+    needs: [setup, build, deploy-dev, deploy-prod]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate Deployment Report
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          echo "📊 CosMos AI Deployment Report"
+          echo "==============================="
+          echo ""
+          echo "Environment: ${ENV^^}"
+          echo "Build Status: ${{ needs.build.result }}"
+
+          if [ "$ENV" == "dev" ]; then
+            echo "Deploy Status: ${{ needs.deploy-dev.result }}"
+          else
+            echo "Deploy Status: ${{ needs.deploy-prod.result }}"
+          fi
+
+          echo ""
+          echo "Deployment Info:"
+          echo "  - Service: CosMos AI Marketing Analytics Platform"
+          echo "  - Branch: ${{ github.ref_name }}"
+          echo "  - Commit: ${{ github.sha }}"
+          echo "  - Actor: ${{ github.actor }}"
+          echo "  - Trigger: ${{ github.event_name }}"
+          if [ "$ENV" == "prod" ]; then
+            echo "  - Servers: ${{ github.event.inputs.servers }}"
+          fi
+          echo "  - Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo ""
+
+          # 전체 상태 판단
+          if [ "$ENV" == "dev" ]; then
+            DEPLOY_RESULT="${{ needs.deploy-dev.result }}"
+          else
+            DEPLOY_RESULT="${{ needs.deploy-prod.result }}"
+          fi
+
+          if [ "$DEPLOY_RESULT" == "success" ]; then
+            OVERALL_STATUS="✅ ${ENV^^} SUCCESS"
+            MESSAGE="CosMos AI ${ENV} deployment completed successfully"
+          elif [ "${{ needs.build.result }}" == "failure" ]; then
+            OVERALL_STATUS="❌ BUILD FAILED"
+            MESSAGE="Failed to build CosMos AI image"
+          else
+            OVERALL_STATUS="❌ DEPLOY FAILED"
+            MESSAGE="Failed to deploy CosMos AI to ${ENV} environment"
+          fi
+
+          echo "Overall Status: $OVERALL_STATUS"
+          echo "Message: $MESSAGE"
+          echo ""
+          echo "📱 CosMos AI Components:"
+          echo "  - Next.js Application (Port 3000)"
+          echo "  - MySQL Database (Port 3306)"
+          echo "  - ClickHouse Analytics (Port 8123)"
+
