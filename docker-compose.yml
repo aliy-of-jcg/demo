@@ -29,7 +29,7 @@ services:
 
   mysql:
     image: mysql:8.0
-    container_name: mysql-app
+    container_name: mysql
     # Development ports - exposed for debugging
     ports:
       - "3306:3306"
@@ -82,95 +82,14 @@ services:
       retries: 3
     networks:
       - app-network
-    profiles: ["dev", "prod"]
+    profiles: ["dev"]
 
-  # Production-only services (no port exposure)
-  clickhouse-prod:
-    image: clickhouse/clickhouse-server:latest
-    container_name: clickhouse-analytics-prod
-    # No port exposure for production security
-    environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-analytics}
-      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-    volumes:
-      - clickhouse-data-prod:/var/lib/clickhouse
-      - clickhouse-logs-prod:/var/log/clickhouse-server
-    restart: "unless-stopped"
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-    healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
-    profiles: ["prod-only"]
-
-  mysql-prod:
-    image: mysql:8.0
-    container_name: mysql-app-prod
-    # No port exposure for production security
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    volumes:
-      - mysql-data-prod:/var/lib/mysql
-    restart: "unless-stopped"
-    command: --default-authentication-plugin=mysql_native_password
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app-network
-    profiles: ["prod-only"]
-
-  app-prod:
-    image: centras-ai.kr.ncr.ntruss.com/centras-ai/cosmos-ai:prod-latest
-    container_name: cosmos-ai-app-prod
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - MYSQL_HOST=mysql-prod
-      - MYSQL_PORT=3306
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - CLICKHOUSE_HOST=clickhouse-prod
-      - CLICKHOUSE_PORT=8123
-      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE}
-      - JWT_SECRET=${JWT_SECRET}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - NEXTAUTH_URL=${NEXTAUTH_URL}
-    depends_on:
-      mysql-prod:
-        condition: service_healthy
-      clickhouse-prod:
-        condition: service_healthy
-    restart: "unless-stopped"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    networks:
-      - app-network
-    profiles: ["prod-only"]
-
+  
 volumes:
   clickhouse-data:
   clickhouse-logs:
   mysql-data:
-  clickhouse-data-prod:
-  clickhouse-logs-prod:
-  mysql-data-prod:
+
 
 networks:
   app-network:

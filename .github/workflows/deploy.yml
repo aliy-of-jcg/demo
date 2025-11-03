@@ -173,7 +173,7 @@ jobs:
 
             # CosMos AI 애플리케이션 재시작
             echo "🔄 CosMos AI 서비스 재시작 중..."
-            docker compose --profile dev up -d app
+            docker compose --profile dev up -d cosmos-ai
 
             # 배포 상태 확인
             echo "📊 서비스 상태 확인..."
@@ -182,14 +182,6 @@ jobs:
             # 컨테이너 시작 대기
             sleep 10
 
-            # 헬스체크
-            echo "🏥 헬스체크 수행..."
-            curl -f http://localhost:3000/api/health || echo "⚠️ Health check failed, but continuing..."
-
-            # 이미지 정리
-            echo "🧹 사용하지 않는 이미지 정리 중..."
-            docker image prune -f
-            docker images | grep "<none>" | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
 
             echo "✅ Dev 환경 CosMos AI 배포 완료"
 
@@ -267,7 +259,7 @@ jobs:
             # 데이터베이스 서비스 확인 및 시작
             echo "🗄️ 데이터베이스 서비스 확인..."
             cd /app
-            docker compose --profile prod-only up -d mysql-prod clickhouse-prod
+            docker compose --profile prod-only up -d mysql clickhouse
 
             # 데이터베이스 준비 대기
             echo "⏳ 데이터베이스 준비 대기..."
@@ -275,8 +267,8 @@ jobs:
 
             # CosMos AI 애플리케이션 재시작
             echo "🔄 CosMos AI 서비스 재시작..."
-            docker compose --profile prod-only down app-prod
-            docker compose --profile prod-only up -d app-prod
+            docker compose --profile prod-only down cosmos-ai
+            docker compose --profile prod-only up -d cosmos-ai
 
             # 컨테이너 시작 대기
             sleep 15
