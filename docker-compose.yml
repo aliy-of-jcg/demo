@@ -51,7 +51,7 @@ services:
       - app-network
     profiles: ["dev", "prod"]
 
-  app:
+  cosmos-ai:
     image: centras-ai.kr.ncr.ntruss.com/centras-ai/cosmos-ai:latest
     container_name: cosmos-ai-app
     ports:
