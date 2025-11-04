@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
           lower(device_type) as device_type,
           user_id,
           event_type
-        FROM visit_logs
+        FROM analytics.visit_logs
         WHERE ${whereClause}
           AND device_type != ''
       )

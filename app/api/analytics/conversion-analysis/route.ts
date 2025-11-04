@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         SUM(conversion_value) as total_value,
         AVG(conversion_value) as avg_value,
         COUNT(DISTINCT user_id) as unique_users
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
         AND conversion_type != ''
       GROUP BY conversion_type
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         conversion_type,
         COUNT(*) as count,
         SUM(conversion_value) as total_value
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
         AND conversion_type != ''
       GROUP BY date, conversion_type
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         conversion_type,
         COUNT(*) as count,
         SUM(conversion_value) as total_value
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
         AND conversion_type != ''
         AND utm_source != ''
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
         countIf(event_type = 'conversion' AND conversion_type = 'purchase') as purchase_conversions,
         countIf(event_type = 'conversion' AND conversion_type = 'trial_start') as trial_conversions,
         SUM(CASE WHEN event_type = 'conversion' THEN conversion_value ELSE 0 END) as total_revenue
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       ${campaignId && campaignId !== 'all' ? `AND campaign_id = ${campaignId}` : ''}
     `;

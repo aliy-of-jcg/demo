@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
             countIf(event_type = 'conversion') as total_conversions,
             avg(time_on_page) as avg_time_on_page,
             countIf(is_new_visitor = 1) as new_visitors
-          FROM visit_logs
+          FROM analytics.visit_logs
           WHERE ${whereConditions}
         `,
         format: 'JSONEachRow'

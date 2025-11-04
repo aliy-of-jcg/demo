@@ -92,6 +92,41 @@ export const initClickHouseSchema = async () => {
     `,
   });
 
+  await clickhouse.command({
+    query: `
+      CREATE TABLE IF NOT EXISTS analytics.visit_logs (
+        timestamp DateTime DEFAULT now(),
+        session_id String,
+        user_id String,
+        page_url String,
+        page_title String,
+        referrer String,
+        utm_source String,
+        utm_medium String,
+        utm_campaign String,
+        utm_term String,
+        utm_content String,
+        campaign_id UInt64 DEFAULT 0,
+        course_id UInt64 DEFAULT 0,
+        user_agent String,
+        device_type String,
+        os String,
+        browser String,
+        screen_resolution String,
+        visit_count UInt32 DEFAULT 1,
+        is_new_visitor UInt8 DEFAULT 0,
+        time_on_page Float64 DEFAULT 0,
+        event_type String DEFAULT 'pageview',
+        conversion_type String DEFAULT '',
+        conversion_value Float64 DEFAULT 0,
+        conversion_metadata String DEFAULT ''
+      ) ENGINE = MergeTree()
+      PARTITION BY toYYYYMM(timestamp)
+      ORDER BY (toDate(timestamp), user_id, campaign_id, event_type)
+      SETTINGS index_granularity = 8192
+    `,
+  });
+
   console.log('ClickHouse schema initialized successfully');
 };
 

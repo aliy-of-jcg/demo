@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions,
         AVG(time_on_page) as avg_time_on_page
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
       GROUP BY is_new_visitor
     `;
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       SELECT 
         visit_count,
         COUNT(DISTINCT user_id) as users
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
       GROUP BY visit_count
       ORDER BY visit_count ASC
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
         MIN(timestamp) as first_visit,
         MAX(timestamp) as last_visit,
         COUNT(DISTINCT session_id) as session_count
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
         AND is_new_visitor = 0
       GROUP BY user_id
@@ -238,7 +238,7 @@ export async function GET(request: NextRequest) {
         toDate(timestamp) as date,
         countDistinctIf(user_id, is_new_visitor = 1) as new_visitors,
         countDistinctIf(user_id, is_new_visitor = 0) as returning_visitors
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
       GROUP BY date
       ORDER BY date ASC

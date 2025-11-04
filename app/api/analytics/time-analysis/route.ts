@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
       GROUP BY hour
       ORDER BY hour ASC
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
       GROUP BY day_of_week
       ORDER BY day_of_week ASC
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
       GROUP BY date
       ORDER BY date ASC

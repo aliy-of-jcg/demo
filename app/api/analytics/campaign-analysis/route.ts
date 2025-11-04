@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       SELECT 
         COUNT(DISTINCT user_id) as unique_visitors,
         countIf(event_type = 'conversion') as conversions
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
     `;
 
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
         toDate(timestamp) as date,
         COUNT(DISTINCT user_id) as visitors,
         countIf(event_type = 'conversion') as conversions
-      FROM visit_logs
+      FROM analytics.visit_logs
       WHERE ${whereClause}
       GROUP BY date
       ORDER BY date ASC

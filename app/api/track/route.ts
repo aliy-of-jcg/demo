@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     // Insert into ClickHouse visit_logs table
     try {
       await clickhouse.insert({
-        table: 'visit_logs',
+        table: 'analytics.visit_logs',
         values: [{
           timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
           session_id: session_id || '',

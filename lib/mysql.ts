@@ -123,10 +123,82 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
+    const createCoursesTable = `
+      CREATE TABLE IF NOT EXISTS courses (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        category VARCHAR(100),
+        duration VARCHAR(50),
+        price DECIMAL(10, 2) DEFAULT 0,
+        status ENUM('active', 'inactive', 'hidden') DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_code (code),
+        INDEX idx_status (status),
+        INDEX idx_name (name)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+
+    const createCampaignsTable = `
+      CREATE TABLE IF NOT EXISTS campaigns (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        course_id INT,
+        source VARCHAR(100) NOT NULL,
+        medium VARCHAR(100) NOT NULL,
+        status ENUM('active', 'paused', 'completed', 'hidden') DEFAULT 'active',
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        budget DECIMAL(10, 2) DEFAULT 0,
+        spent DECIMAL(10, 2) DEFAULT 0,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL,
+        INDEX idx_course_id (course_id),
+        INDEX idx_source (source),
+        INDEX idx_medium (medium),
+        INDEX idx_status (status),
+        INDEX idx_start_date (start_date),
+        INDEX idx_end_date (end_date),
+        INDEX idx_name (name)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+
+    const createUtmCodesTable = `
+      CREATE TABLE IF NOT EXISTS utm_codes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        tracking_code VARCHAR(50) NOT NULL UNIQUE,
+        campaign_id INT NOT NULL,
+        utm_source VARCHAR(100),
+        utm_medium VARCHAR(100),
+        utm_campaign VARCHAR(255) NOT NULL,
+        utm_term VARCHAR(255),
+        utm_content VARCHAR(255),
+        landing_url VARCHAR(500),
+        full_url VARCHAR(1000),
+        clicks INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+        INDEX idx_tracking_code (tracking_code),
+        INDEX idx_campaign_id (campaign_id),
+        INDEX idx_utm_campaign (utm_campaign),
+        INDEX idx_utm_source (utm_source),
+        INDEX idx_utm_medium (utm_medium)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+
     // Execute each statement separately
+    // Order matters: courses must be created before campaigns, campaigns before utm_codes
     await query(createUsersTable);
     await query(createSessionsTable);
     await query(createPasswordResetTable);
+    await query(createCoursesTable);
+    await query(createCampaignsTable);
+    await query(createUtmCodesTable);
     
     console.log('✅ MySQL schema initialized successfully');
   } catch (error) {
