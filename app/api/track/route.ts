@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
       time_on_page,
       conversion_type,
       conversion_value,
-      conversion_metadata
+      conversion_metadata,
+      page_sequence,
+      is_exit_page
     } = data;
 
     // Validate required fields
@@ -70,7 +72,9 @@ export async function POST(request: NextRequest) {
           event_type: event_type || 'pageview',
           conversion_type: conversion_type || '',
           conversion_value: conversion_value || 0,
-          conversion_metadata: conversion_metadata || ''
+          conversion_metadata: conversion_metadata || '',
+          page_sequence: page_sequence || 0,
+          is_exit_page: is_exit_page || 0
         }],
         format: 'JSONEachRow'
       });

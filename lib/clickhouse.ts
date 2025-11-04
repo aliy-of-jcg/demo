@@ -119,7 +119,9 @@ export const initClickHouseSchema = async () => {
         event_type String DEFAULT 'pageview',
         conversion_type String DEFAULT '',
         conversion_value Float64 DEFAULT 0,
-        conversion_metadata String DEFAULT ''
+        conversion_metadata String DEFAULT '',
+        page_sequence UInt32 DEFAULT 0,
+        is_exit_page UInt8 DEFAULT 0
       ) ENGINE = MergeTree()
       PARTITION BY toYYYYMM(timestamp)
       ORDER BY (toDate(timestamp), user_id, campaign_id, event_type)
