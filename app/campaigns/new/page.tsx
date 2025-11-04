@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { PageFooter } from '@/components/page-footer';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface Course {
   id: number;
@@ -270,13 +271,13 @@ export default function NewCampaignPage() {
           const shortUrl = `${baseUrl}/t/${data.trackingLink.trackingCode}`;
           
           // Copy to clipboard
-          try {
-            await navigator.clipboard.writeText(shortUrl);
+          const success = await copyToClipboard(shortUrl);
+          if (success) {
             toast.success(
               `Tracking link copied: ${shortUrl}`,
               { duration: 5000 }
             );
-          } catch (clipboardError) {
+          } else {
             toast.success(
               `Tracking link created: ${shortUrl}`,
               { duration: 5000 }

@@ -7,6 +7,7 @@ import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { useDebounce } from '@/lib/hooks/useDebounce';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface UTMCode {
   id: number;
@@ -104,13 +105,12 @@ export default function UTMListPage() {
   };
 
   const handleCopy = async (text: string, id: number) => {
-    try {
-      await navigator.clipboard.writeText(text);
+    const success = await copyToClipboard(text);
+    if (success) {
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
       toast.success('URL copied to clipboard!');
-    } catch (error) {
-      console.error('Failed to copy:', error);
+    } else {
       toast.error('Failed to copy URL');
     }
   };

@@ -7,6 +7,7 @@ import { ChevronLeft, Edit, Calendar, DollarSign, TrendingUp, Link as LinkIcon, 
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface Campaign {
   id: number;
@@ -137,12 +138,12 @@ export default function CampaignDetailsPage() {
     const baseUrl = window.location.origin;
     const shortUrl = `${baseUrl}/t/${trackingCode}`;
     
-    try {
-      await navigator.clipboard.writeText(shortUrl);
+    const success = await copyToClipboard(shortUrl);
+    if (success) {
       setCopiedCode(trackingCode);
       toast.success('Tracking link copied to clipboard!');
       setTimeout(() => setCopiedCode(null), 2000);
-    } catch (error) {
+    } else {
       toast.error('Failed to copy tracking link');
     }
   };

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
+import { copyToClipboard } from '@/lib/clipboard';
 
 export default function UTMGeneratorPage() {
   const router = useRouter();
@@ -182,12 +183,10 @@ export default function UTMGeneratorPage() {
   const generatedUrl = generateUTMUrl();
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(generatedUrl);
+    const success = await copyToClipboard(generatedUrl);
+    if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy:', error);
     }
   };
 
@@ -474,9 +473,11 @@ export default function UTMGeneratorPage() {
                 <div className="flex items-center gap-2">
                   <code className="text-xs sm:text-sm text-blue-700 font-mono break-all">/t/{trackingCode}</code>
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/t/${trackingCode}`);
-                      toast.success('Tracking link copied!');
+                    onClick={async () => {
+                      const success = await copyToClipboard(`${window.location.origin}/t/${trackingCode}`);
+                      if (success) {
+                        toast.success('Tracking link copied!');
+                      }
                     }}
                     className="text-blue-600 hover:text-blue-800 flex-shrink-0"
                   >

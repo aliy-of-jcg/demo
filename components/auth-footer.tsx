@@ -1,6 +1,7 @@
 "use client";
 
 import { Mail, Phone, Globe, Heart } from "lucide-react";
+import { copyToClipboard } from "@/lib/clipboard";
 
 export function AuthFooter() {
   return (
@@ -26,9 +27,11 @@ export function AuthFooter() {
               <div className="flex items-center justify-center gap-2 text-sm text-gray-200">
                 <Phone className="h-4 w-4" />
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText("01012345678");
-                    alert("Phone number copied to clipboard!");
+                  onClick={async () => {
+                    const success = await copyToClipboard("01012345678");
+                    if (success) {
+                      alert("Phone number copied to clipboard!");
+                    }
                   }}
                   className="transition-colors hover:text-white hover:cursor-pointer"
                 >

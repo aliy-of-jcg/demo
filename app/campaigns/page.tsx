@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface Campaign {
   id: number;
@@ -242,15 +243,16 @@ export default function CampaignsPage() {
     const baseUrl = window.location.origin;
     const shortUrl = `${baseUrl}/t/${trackingCode}`;
     
-    try {
-      await navigator.clipboard.writeText(shortUrl);
+    const success = await copyToClipboard(shortUrl);
+    if (success) {
       setCopiedTrackingCode(trackingCode);
       toast.success('Tracking link copied to clipboard!');
       setTimeout(() => setCopiedTrackingCode(null), 2000);
-    } catch (error) {
+    } else {
       toast.error('Failed to copy tracking link');
     }
   };
+  
 
   const handleOpenTrackingLink = (trackingCode: string) => {
     const baseUrl = window.location.origin;
@@ -562,10 +564,12 @@ export default function CampaignsPage() {
                       {campaign.tracking_codes && campaign.tracking_codes.length > 0 ? (
                         <div className="flex items-center gap-1">
                           <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/t/${campaign.tracking_codes![0]}`);
-                              setCopiedTrackingCode(campaign.tracking_codes![0]);
-                              setTimeout(() => setCopiedTrackingCode(null), 2000);
+                            onClick={async () => {
+                              const success = await copyToClipboard(`${window.location.origin}/t/${campaign.tracking_codes![0]}`);
+                              if (success) {
+                                setCopiedTrackingCode(campaign.tracking_codes![0]);
+                                setTimeout(() => setCopiedTrackingCode(null), 2000);
+                              }
                             }}
                             className="p-1 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
                             title="Copy tracking link"
@@ -602,7 +606,7 @@ export default function CampaignsPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
-                        <div className="relative">
+                        <div className="relative" ref={actionMenuOpen === campaign.id ? menuRef : null}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -619,7 +623,10 @@ export default function CampaignsPage() {
                                 className="fixed inset-0 z-40" 
                                 onClick={() => setActionMenuOpen(null)}
                               />
-                              <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible">
+                              <div 
+                                className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <div className="py-1">
                                   <button
                                     type="button"
