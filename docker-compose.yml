@@ -54,7 +54,7 @@ services:
 
   cosmos-ai:
     image: centras-ai.kr.ncr.ntruss.com/centras-ai/cosmos-ai:latest
-    container_name: cosmos-ai-app
+    container_name: cosmos-ai
     ports:
       - "3000:3000"
     environment:
