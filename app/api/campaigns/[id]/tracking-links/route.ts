@@ -23,11 +23,9 @@ export async function GET(
         utm_codes.utm_content,
         utm_codes.landing_url,
         utm_codes.full_url,
-        utm_codes.budget,
-        utm_codes.spent,
-        utm_codes.auto_pause_on_budget,
-        utm_codes.status,
-        utm_codes.created_at
+        utm_codes.clicks,
+        utm_codes.created_at,
+        utm_codes.updated_at
       FROM utm_codes
       WHERE utm_codes.campaign_id = ?
       ORDER BY utm_codes.created_at DESC`,
@@ -105,9 +103,7 @@ export async function POST(
       utm_term,
       utm_content,
       landing_url,
-      budget,
-      auto_pause_on_budget,
-      auto_update_campaign_budget
+      budget
     } = body;
 
     // Validation
@@ -135,26 +131,11 @@ export async function POST(
 
     const campaign = (campaigns as any)[0];
 
-    // If budget is provided, calculate budget impact
+    // Note: Budget tracking per link is not supported in current schema
+    // Budget is managed at campaign level only
     let budgetWarning = null;
-    let needsBudgetIncrease = false;
-    let suggestedCampaignBudget = campaign.budget;
-
     if (budget && budget > 0) {
-      // Get sum of existing link budgets
-      const [budgetSum] = await pool.execute(
-        `SELECT COALESCE(SUM(budget), 0) as total_allocated FROM utm_codes WHERE campaign_id = ? AND budget IS NOT NULL`,
-        [campaignId]
-      );
-      
-      const currentAllocated = parseFloat((budgetSum as any)[0].total_allocated) || 0;
-      const newTotalAllocated = currentAllocated + parseFloat(budget);
-
-      if (newTotalAllocated > campaign.budget) {
-        needsBudgetIncrease = true;
-        suggestedCampaignBudget = newTotalAllocated;
-        budgetWarning = `Total allocated budget (${newTotalAllocated.toFixed(2)}) exceeds campaign budget (${campaign.budget}). ${auto_update_campaign_budget ? 'Campaign budget will be automatically increased.' : 'Please increase campaign budget or reduce link budget.'}`;
-      }
+      budgetWarning = `Note: Budget tracking per tracking link is not currently supported. Budget is managed at the campaign level.`;
     }
 
     // Check for duplicate tracking link with same parameters
@@ -208,8 +189,8 @@ export async function POST(
     // Store in MySQL utm_codes table
     await pool.execute(
       `INSERT INTO utm_codes 
-       (name, campaign_id, tracking_code, utm_campaign, utm_source, utm_medium, utm_term, utm_content, landing_url, full_url, budget, spent, auto_pause_on_budget, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'active')`,
+       (name, campaign_id, tracking_code, utm_campaign, utm_source, utm_medium, utm_term, utm_content, landing_url, full_url) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         campaignId,
@@ -220,20 +201,9 @@ export async function POST(
         utm_term || '',
         utm_content || '',
         landing_url,
-        fullUrlWithUtm,
-        budget || null,
-        auto_pause_on_budget || false
+        fullUrlWithUtm
       ]
     );
-
-    // Auto-update campaign budget if requested and needed
-    if (auto_update_campaign_budget && needsBudgetIncrease) {
-      await pool.execute(
-        'UPDATE campaigns SET budget = ? WHERE id = ?',
-        [suggestedCampaignBudget, campaignId]
-      );
-      console.log(`✅ Campaign budget auto-updated from ${campaign.budget} to ${suggestedCampaignBudget}`);
-    }
 
     // Fetch the created tracking link
     const [links] = await pool.execute(
@@ -247,9 +217,7 @@ export async function POST(
         ...(links as any)[0],
         shortUrl: trackingUrl
       },
-      budgetWarning,
-      campaignBudgetUpdated: auto_update_campaign_budget && needsBudgetIncrease,
-      newCampaignBudget: auto_update_campaign_budget && needsBudgetIncrease ? suggestedCampaignBudget : null
+      budgetWarning: budgetWarning || undefined
     });
   } catch (error) {
     console.error('Error creating tracking link:', error);

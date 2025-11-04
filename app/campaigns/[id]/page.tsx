@@ -227,7 +227,8 @@ export default function CampaignDetailsPage() {
 
     toast.promise(
       (async () => {
-        const response = await fetch(`/api/tracking/links/${id}`, {
+        // Hard delete - actually remove from database
+        const response = await fetch(`/api/utm-codes/${id}`, {
           method: 'DELETE'
         });
         

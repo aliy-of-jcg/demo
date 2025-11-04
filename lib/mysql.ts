@@ -147,7 +147,7 @@ export async function initMySQLSchema(): Promise<void> {
         course_id INT,
         source VARCHAR(100) NOT NULL,
         medium VARCHAR(100) NOT NULL,
-        status ENUM('active', 'paused', 'completed', 'hidden') DEFAULT 'active',
+        status ENUM('active', 'waiting', 'ended', 'paused') DEFAULT 'active',
         start_date DATE NOT NULL,
         end_date DATE NOT NULL,
         budget DECIMAL(10, 2) DEFAULT 0,
@@ -180,6 +180,7 @@ export async function initMySQLSchema(): Promise<void> {
         landing_url VARCHAR(500),
         full_url VARCHAR(1000),
         clicks INT DEFAULT 0,
+        status ENUM('active', 'inactive') DEFAULT 'active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -187,7 +188,8 @@ export async function initMySQLSchema(): Promise<void> {
         INDEX idx_campaign_id (campaign_id),
         INDEX idx_utm_campaign (utm_campaign),
         INDEX idx_utm_source (utm_source),
-        INDEX idx_utm_medium (utm_medium)
+        INDEX idx_utm_medium (utm_medium),
+        INDEX idx_status (status)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 

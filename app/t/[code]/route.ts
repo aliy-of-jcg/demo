@@ -63,8 +63,8 @@ export async function GET(
       return NextResponse.redirect(expiredUrl.toString(), 302);
     }
 
-    // Check if campaign is inactive/ended/hidden
-    if (campaignStatus === 'hidden' || campaignStatus === 'ended') {
+    // Check if campaign is inactive/ended
+    if (campaignStatus === 'ended') {
       const baseUrl = new URL(request.url).origin;
       const expiredUrl = new URL(`${baseUrl}/link-expired`);
       expiredUrl.searchParams.set('reason', 'campaign_ended');

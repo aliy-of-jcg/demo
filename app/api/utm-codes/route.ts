@@ -174,9 +174,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!campaign_id) {
+    // Validate campaign_id - must be provided and be a valid number
+    if (!campaign_id || campaign_id === '' || campaign_id === '0') {
       return NextResponse.json(
         { success: false, error: 'Campaign selection is required' },
+        { status: 400 }
+      );
+    }
+
+    // Parse campaign_id to integer to ensure it's a valid number
+    const parsedCampaignId = parseInt(campaign_id, 10);
+    if (isNaN(parsedCampaignId) || parsedCampaignId <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid campaign ID' },
         { status: 400 }
       );
     }
@@ -184,7 +194,7 @@ export async function POST(request: NextRequest) {
     // Get campaign name for utm_campaign
     const [campaignRows] = await pool.execute(
       'SELECT name FROM campaigns WHERE id = ?',
-      [campaign_id]
+      [parsedCampaignId]
     );
 
     if (!campaignRows || (campaignRows as any[]).length === 0) {
@@ -218,7 +228,7 @@ export async function POST(request: NextRequest) {
       [
         name,
         tracking_code,
-        campaign_id,
+        parsedCampaignId,  // Use parsed integer
         utm_source || null,
         utm_medium || null,
         utm_campaign,

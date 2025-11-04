@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS utm_codes (
   landing_url VARCHAR(500),
   full_url VARCHAR(1000),
   clicks INT DEFAULT 0,
+  status ENUM('active', 'inactive') DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
@@ -109,5 +110,6 @@ CREATE TABLE IF NOT EXISTS utm_codes (
   INDEX idx_campaign_id (campaign_id),
   INDEX idx_utm_campaign (utm_campaign),
   INDEX idx_utm_source (utm_source),
-  INDEX idx_utm_medium (utm_medium)
+  INDEX idx_utm_medium (utm_medium),
+  INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

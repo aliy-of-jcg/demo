@@ -23,7 +23,7 @@ interface UTMCode {
   full_url: string;
   created_at: string;
   clicks: number;
-  status: 'active' | 'inactive' | 'ended';
+  status: 'active' | 'inactive';
 }
 
 interface Summary {
@@ -100,8 +100,7 @@ export default function UTMListPage() {
 
   const statusColors = {
     active: 'bg-blue-100 text-blue-800',
-    inactive: 'bg-yellow-100 text-yellow-800',
-    ended: 'bg-gray-100 text-gray-800'
+    inactive: 'bg-yellow-100 text-yellow-800'
   };
 
   const handleCopy = async (text: string, id: number) => {
@@ -152,6 +151,7 @@ export default function UTMListPage() {
 
     toast.promise(
       (async () => {
+        // Hard delete - actually remove from database
         const response = await fetch(`/api/utm-codes/${id}`, {
           method: 'DELETE'
         });

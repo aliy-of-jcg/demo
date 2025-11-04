@@ -407,10 +407,11 @@ export default function CampaignsPage() {
       </div>
 
       {/* Campaigns Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {/* Desktop Table - Hidden on mobile */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full table-fixed">
+        <div className="hidden lg:block">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
             <colgroup><col className="w-[18%]" /><col className="w-[12%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[12%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[8%]" /><col className="w-[7%]" /></colgroup>
             <thead className="bg-gray-50">
               <tr>
@@ -618,12 +619,13 @@ export default function CampaignsPage() {
                                 className="fixed inset-0 z-40" 
                                 onClick={() => setActionMenuOpen(null)}
                               />
-                              <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                              <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible">
                                 <div className="py-1">
                                   <button
                                     type="button"
-                                    onMouseDown={(e) => {
+                                    onClick={(e) => {
                                       e.stopPropagation();
+                                      setActionMenuOpen(null);
                                       window.location.href = `/campaigns/${campaign.id}/edit`;
                                     }}
                                     className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
@@ -633,7 +635,7 @@ export default function CampaignsPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    onMouseDown={(e) => {
+                                    onClick={(e) => {
                                       e.stopPropagation();
                                       setActionMenuOpen(null);
                                       handleDuplicate(campaign.id);
@@ -645,7 +647,7 @@ export default function CampaignsPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    onMouseDown={(e) => {
+                                    onClick={(e) => {
                                       e.stopPropagation();
                                       setActionMenuOpen(null);
                                       handleDelete(campaign.id);
@@ -667,6 +669,7 @@ export default function CampaignsPage() {
                 )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Mobile Card View - Visible only on mobile */}
@@ -694,43 +697,52 @@ export default function CampaignsPage() {
                   <div className="relative ml-2" ref={actionMenuOpen === campaign.id ? menuRef : null}>
                         <button
                           onClick={() => setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id)}
-                      className="p-1 text-gray-400 hover:text-gray-600"
+                          className="p-1 text-gray-400 hover:text-gray-600"
                         >
                           <MoreVertical className="w-5 h-5" />
                         </button>
                         {actionMenuOpen === campaign.id && (
-                          <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                            <button
-                              onClick={() => {
-                                window.location.href = `/campaigns/${campaign.id}/edit`;
-                                setActionMenuOpen(null);
-                              }}
-                              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <Edit className="w-4 h-4" />
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                handleDuplicate(campaign.id);
-                                setActionMenuOpen(null);
-                              }}
-                              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                              <Copy className="w-4 h-4" />
-                              Duplicate
-                            </button>
-                            <button
-                              onClick={() => {
-                                handleDelete(campaign.id);
-                                setActionMenuOpen(null);
-                              }}
-                              className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
-                          </div>
+                          <>
+                            <div 
+                              className="fixed inset-0 z-40" 
+                              onClick={() => setActionMenuOpen(null)}
+                            />
+                            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuOpen(null);
+                                  window.location.href = `/campaigns/${campaign.id}/edit`;
+                                }}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuOpen(null);
+                                  handleDuplicate(campaign.id);
+                                }}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                              >
+                                <Copy className="w-4 h-4" />
+                                Duplicate
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuOpen(null);
+                                  handleDelete(campaign.id);
+                                }}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </div>
+                          </>
                         )}
                       </div>
                 </div>

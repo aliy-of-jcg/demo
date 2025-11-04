@@ -30,12 +30,18 @@ export async function POST(
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
+    // Validate and sanitize status value
+    const validStatuses = ['active', 'waiting', 'ended', 'paused'];
+    const originalStatus = original.status && validStatuses.includes(original.status) 
+      ? original.status 
+      : 'active';
+    
     const [result] = await pool.execute(query, [
       `${original.name}_copy`,
       original.course_id,
       original.source,
       original.medium,
-      'waiting', // Reset status to waiting
+      originalStatus, // Use original status (validated)
       original.start_date,
       original.end_date,
       original.budget,

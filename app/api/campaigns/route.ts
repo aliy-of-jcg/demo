@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     try {
       // Build WHERE conditions dynamically
-      let whereConditions = ' AND campaigns.status != \'hidden\''; // Exclude hidden campaigns by default
+      let whereConditions = ' AND campaigns.status != \'hidden\''; // Exclude hidden campaigns (soft deleted)
       const countParams: any[] = [];
       const queryParams: any[] = [];
 
@@ -393,12 +393,16 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validation
-    if (!name || !course_id || !source || !medium || !status || !start_date || !end_date || !budget) {
+    if (!name || !course_id || !source || !medium || !start_date || !end_date || !budget) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    // Validate and sanitize status value
+    const validStatuses = ['active', 'waiting', 'ended', 'paused', 'hidden'];
+    const sanitizedStatus = status && validStatuses.includes(status) ? status : 'active';
 
     const pool = getPool();
     const query = `
@@ -411,7 +415,7 @@ export async function POST(request: NextRequest) {
       course_id,
       source,
       medium,
-      status,
+      sanitizedStatus,
       start_date,
       end_date,
       budget,
@@ -420,36 +424,46 @@ export async function POST(request: NextRequest) {
 
     const insertId = (result as any).insertId;
 
-    // Auto-generate tracking link if landing_url and UTM params are provided
+    // Auto-generate tracking link if landing_url is provided
+    // Use campaign name as utm_campaign if not provided, and use source/medium from form
     let trackingLink = null;
-    if (landing_url && utm_campaign && utm_source && utm_medium) {
+    if (landing_url) {
       try {
-        // Auto-generate UTM name if not provided
-        const finalUtmName = utm_name || `${name}_${utm_source}_${utm_medium}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        // Use campaign name as utm_campaign if not explicitly provided
+        const finalUtmCampaign = utm_campaign || name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        // Use form source/medium if provided and not 'select', otherwise use campaign defaults
+        const finalUtmSource = (utm_source && utm_source !== 'select') ? utm_source : source;
+        const finalUtmMedium = (utm_medium && utm_medium !== 'select') ? utm_medium : medium;
         
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const trackingResponse = await fetch(`${appUrl}/api/tracking/generate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: finalUtmName,  // Pass the UTM name
-            campaignName: name,
-            campaignId: insertId,
-            targetUrl: landing_url,
-            utmSource: utm_source,
-            utmMedium: utm_medium,
-            utmCampaign: utm_campaign,
-            utmContent: utm_content || '',
-            utmTerm: utm_term || ''
-          })
-        });
+        // Only generate if we have valid source and medium
+        if (finalUtmSource && finalUtmSource !== 'select' && finalUtmMedium && finalUtmMedium !== 'select') {
+          // Auto-generate UTM name if not provided
+          const finalUtmName = utm_name || `${name}_${finalUtmSource}_${finalUtmMedium}`.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+          
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const trackingResponse = await fetch(`${appUrl}/api/tracking/generate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: finalUtmName,  // Pass the UTM name
+              campaignName: name,
+              campaignId: insertId,
+              targetUrl: landing_url,
+              utmSource: finalUtmSource,
+              utmMedium: finalUtmMedium,
+              utmCampaign: finalUtmCampaign,
+              utmContent: utm_content || '',
+              utmTerm: utm_term || ''
+            })
+          });
 
-        const trackingData = await trackingResponse.json();
-        if (trackingData.success) {
-          trackingLink = trackingData.trackingLink;
-          console.log('✅ Tracking link generated:', trackingLink.trackingCode);
+          const trackingData = await trackingResponse.json();
+          if (trackingData.success) {
+            trackingLink = trackingData.trackingLink;
+            console.log('✅ Tracking link generated:', trackingLink.trackingCode);
+          }
         }
       } catch (error) {
         console.error('Failed to generate tracking link:', error);

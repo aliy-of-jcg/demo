@@ -130,6 +130,10 @@ export async function PUT(
       );
     }
 
+    // Validate and sanitize status value
+    const validStatuses = ['active', 'waiting', 'ended', 'paused', 'hidden'];
+    const sanitizedStatus = status && validStatuses.includes(status) ? status : 'active';
+
     const pool = getPool();
     const query = `
       UPDATE campaigns 
@@ -143,7 +147,7 @@ export async function PUT(
       course_id || null,
       source || null,
       medium || null,
-      status || 'active',
+      sanitizedStatus,
       start_date || null,
       end_date || null,
       budget || null,
