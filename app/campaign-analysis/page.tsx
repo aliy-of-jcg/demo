@@ -62,6 +62,17 @@ export default function CampaignAnalysisPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Log page info
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[Page Info]', {
+        page: window.location.pathname,
+        url: window.location.href,
+        title: document.title
+      });
+    }
+  }, []);
+
   // Quick date range selection
   const setQuickRange = (days: number) => {
     const end = new Date();

@@ -85,6 +85,17 @@ export default function CampaignDetailsPage() {
     auto_update_campaign_budget: true
   });
 
+  // Log page info
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[Page Info]', {
+        page: window.location.pathname,
+        url: window.location.href,
+        title: document.title
+      });
+    }
+  }, []);
+
   useEffect(() => {
     fetchCampaignDetails();
     fetchTrackingLinks();

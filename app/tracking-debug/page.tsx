@@ -24,6 +24,17 @@ export default function TrackingDebugPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Log page info
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[Page Info]', {
+        page: window.location.pathname,
+        url: window.location.href,
+        title: document.title
+      });
+    }
+  }, []);
+
   const fetchRecentEvents = async () => {
     setLoading(true);
     setError('');

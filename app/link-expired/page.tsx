@@ -11,6 +11,17 @@ export default function LinkExpiredPage() {
   const [campaignName, setCampaignName] = useState<string | null>(null);
   const [reason, setReason] = useState<string>('inactive');
 
+  // Log page info
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[Page Info]', {
+        page: window.location.pathname,
+        url: window.location.href,
+        title: document.title
+      });
+    }
+  }, []);
+
   // Extract params and clean URL
   useEffect(() => {
     const campaign = searchParams.get('campaign');

@@ -10,6 +10,17 @@ export default function AuthPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
 
+  // Log page info
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[Page Info]', {
+        page: window.location.pathname,
+        url: window.location.href,
+        title: document.title
+      });
+    }
+  }, []);
+
   useEffect(() => {
     // Check if user is already authenticated
     const checkAuth = async () => {

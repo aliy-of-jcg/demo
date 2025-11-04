@@ -28,6 +28,17 @@ export default function UTMGeneratorPage() {
     campaign_id: ''
   });
 
+  // Log page info
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[Page Info]', {
+        page: window.location.pathname,
+        url: window.location.href,
+        title: document.title
+      });
+    }
+  }, []);
+
   // Auto-fill only UTM name when campaign is selected (NOT source/medium)
   useEffect(() => {
     if (formData.campaign_id && !isEditMode) {
