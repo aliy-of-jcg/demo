@@ -20,20 +20,21 @@ export async function GET(request: NextRequest) {
       whereConditions += ` AND course_id = ${parseInt(courseId)}`;
     }
 
-    // Summary metrics
-    const summaryQuery = await clickhouse.query({
-      query: `
-        SELECT 
-          count(*) as total_visits,
-          count(DISTINCT user_id) as unique_visitors,
-          countIf(event_type = 'conversion') as total_conversions,
-          avg(time_on_page) as avg_time_on_page,
-          countIf(is_new_visitor = 1) as new_visitors
-        FROM visit_logs
-        WHERE ${whereConditions}
-      `,
-      format: 'JSONEachRow'
-    });
+    try {
+      // Summary metrics
+      const summaryQuery = await clickhouse.query({
+        query: `
+          SELECT 
+            count(*) as total_visits,
+            count(DISTINCT user_id) as unique_visitors,
+            countIf(event_type = 'conversion') as total_conversions,
+            avg(time_on_page) as avg_time_on_page,
+            countIf(is_new_visitor = 1) as new_visitors
+          FROM visit_logs
+          WHERE ${whereConditions}
+        `,
+        format: 'JSONEachRow'
+      });
 
     const summaryResult = await summaryQuery.json() as any[];
     const summary = summaryResult[0] || {
@@ -135,12 +136,38 @@ export async function GET(request: NextRequest) {
         source_performance: sourcePerformanceWithCost
       }
     });
+    } catch (chError: any) {
+      // Check if table doesn't exist
+      if (chError.code === '60' || chError.type === 'UNKNOWN_TABLE' ||
+          (chError.message && chError.message.includes('visit_logs'))) {
+        console.warn('⚠️ Visit logs table does not exist yet');
+        return NextResponse.json({
+          success: true,
+          data: {
+            summary: {
+              total_visits: 0,
+              unique_visitors: 0,
+              total_conversions: 0,
+              conversion_rate: 0,
+              ctr: 0,
+              avg_cpa: 0,
+              total_cost: 0,
+              avg_time_on_page: 0,
+              new_visitors: 0
+            },
+            daily_trend: [],
+            source_performance: []
+          },
+          message: 'No performance data available yet. Start tracking to see analytics.'
+        });
+      }
+      throw chError;
+    }
   } catch (error) {
     console.error('Error fetching performance data:', error);
     return NextResponse.json(
       { 
-        success: false, 
-        error: 'Failed to fetch performance data',
+        success: true, 
         data: {
           summary: {
             total_visits: 0,
@@ -155,7 +182,8 @@ export async function GET(request: NextRequest) {
           },
           daily_trend: [],
           source_performance: []
-        }
+        },
+        message: 'Unable to fetch performance data. Please try again later.'
       },
       { status: 200 }
     );

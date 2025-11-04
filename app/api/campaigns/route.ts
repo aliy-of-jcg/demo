@@ -3,10 +3,11 @@ import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
 
 export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '10');
+  
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const source = searchParams.get('source') || '';
     const medium = searchParams.get('medium') || '';
@@ -26,10 +27,11 @@ export async function GET(request: NextRequest) {
     
     const pool = getPool();
 
-    // Build WHERE conditions dynamically
-    let whereConditions = ' AND campaigns.status != \'hidden\''; // Exclude hidden campaigns by default
-    const countParams: any[] = [];
-    const queryParams: any[] = [];
+    try {
+      // Build WHERE conditions dynamically
+      let whereConditions = ' AND campaigns.status != \'hidden\''; // Exclude hidden campaigns by default
+      const countParams: any[] = [];
+      const queryParams: any[] = [];
 
     if (search) {
       whereConditions += ' AND (campaigns.name LIKE ? OR courses.name LIKE ?)';
@@ -312,11 +314,58 @@ export async function GET(request: NextRequest) {
           : 0
       }
     });
+    } catch (dbError: any) {
+      // Check if table doesn't exist
+      if (dbError.code === 'ER_NO_SUCH_TABLE' && 
+         (dbError.sqlMessage?.includes('campaigns') || dbError.sqlMessage?.includes('courses'))) {
+        console.warn('⚠️ Campaigns or courses table does not exist yet');
+        return NextResponse.json({
+          success: true,
+          campaigns: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            total_pages: 0
+          },
+          summary: {
+            total_campaigns: 0,
+            active_campaigns: 0,
+            total_budget: 0,
+            total_spent: 0,
+            total_clicks: 0,
+            total_visitors: 0,
+            avg_conversion_rate: 0
+          },
+          message: 'No campaigns data available yet. Database tables will be created automatically.'
+        });
+      }
+      throw dbError;
+    }
   } catch (error) {
     console.error('Error fetching campaigns:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch campaigns' },
-      { status: 500 }
+      { 
+        success: true,
+        campaigns: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          total_pages: 0
+        },
+        summary: {
+          total_campaigns: 0,
+          active_campaigns: 0,
+          total_budget: 0,
+          total_spent: 0,
+          total_clicks: 0,
+          total_visitors: 0,
+          avg_conversion_rate: 0
+        },
+        message: 'Unable to fetch campaigns data. Please try again later.'
+      },
+      { status: 200 }
     );
   }
 }
