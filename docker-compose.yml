@@ -64,7 +64,7 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE:-appdb}
       - MYSQL_USER=${MYSQL_USER:-appuser}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD:-apppassword}
-      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_HOST=http://clickhouse:8123
       - CLICKHOUSE_PORT=8123
       - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-analytics}
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}

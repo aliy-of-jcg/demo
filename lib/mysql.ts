@@ -64,12 +64,14 @@ export async function testConnection(): Promise<boolean> {
  * 
  * Note: This uses inline SQL instead of reading from file to work in standalone builds.
  * The Docker init script handles file-based initialization.
+ * Each CREATE TABLE is executed separately to avoid multi-statement issues.
  */
 export async function initMySQLSchema(): Promise<void> {
   try {
-    // Use inline SQL to avoid file system dependency in standalone builds
-    const schema = `
-      -- Simplified users table with UUID and all user types
+    // Execute each CREATE TABLE statement separately
+    // This avoids issues with multi-statement queries
+    
+    const createUsersTable = `
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         uuid VARCHAR(36) NOT NULL UNIQUE,
@@ -88,8 +90,9 @@ export async function initMySQLSchema(): Promise<void> {
         INDEX idx_status (status),
         INDEX idx_company_name (company_name)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
 
-      -- Sessions table for authentication tokens
+    const createSessionsTable = `
       CREATE TABLE IF NOT EXISTS sessions (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -101,8 +104,9 @@ export async function initMySQLSchema(): Promise<void> {
         INDEX idx_token (token),
         INDEX idx_expires_at (expires_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
 
-      -- Password reset tokens table
+    const createPasswordResetTable = `
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -119,8 +123,11 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-    // Execute the schema
-    await query(schema);
+    // Execute each statement separately
+    await query(createUsersTable);
+    await query(createSessionsTable);
+    await query(createPasswordResetTable);
+    
     console.log('✅ MySQL schema initialized successfully');
   } catch (error) {
     // If initialization fails, log but don't fail

@@ -163,6 +163,7 @@ jobs:
             echo "📥 latest 이미지 pull 중..."
             docker pull "$NCR_REGISTRY_URL/$NCP_REGISTRY_PATH/$SERVICE:latest"
 
+            cd /app
             # 데이터베이스 서비스 확인 및 시작
             echo "🗄️ 데이터베이스 서비스 확인..."
             docker compose --profile dev up -d mysql clickhouse
