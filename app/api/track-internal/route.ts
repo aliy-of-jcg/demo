@@ -104,7 +104,14 @@ export async function POST(request: NextRequest) {
           visit_count: visit_count || 1,
           is_new_visitor: is_new_visitor || 0,
           time_on_page: time_on_page || 0,
-          event_type: event_type || 'pageview'
+          event_type: event_type || 'pageview',
+          page_sequence: data.page_sequence || 0,
+          is_landing_page: data.is_landing_page || 0,
+          is_exit_page: data.is_exit_page || 0,
+          previous_page_url: data.previous_page_url || '',
+          conversion_type: data.conversion_type || '',
+          conversion_value: data.conversion_value || 0,
+          conversion_metadata: data.conversion_metadata || '',
         }],
         format: 'JSONEachRow'
       });

@@ -74,7 +74,9 @@ export async function POST(request: NextRequest) {
           conversion_value: conversion_value || 0,
           conversion_metadata: conversion_metadata || '',
           page_sequence: page_sequence || 0,
-          is_exit_page: is_exit_page || 0
+          is_exit_page: is_exit_page || 0,
+          is_landing_page: data.is_landing_page || 0,
+          previous_page_url: data.previous_page_url || '',
         }],
         format: 'JSONEachRow'
       });

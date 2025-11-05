@@ -119,6 +119,7 @@ export async function PUT(
       start_date,
       end_date,
       budget,
+      auto_pause_on_budget,
       description
     } = body;
 
@@ -138,7 +139,7 @@ export async function PUT(
     const query = `
       UPDATE campaigns 
       SET name = ?, course_id = ?, source = ?, medium = ?, status = ?, 
-          start_date = ?, end_date = ?, budget = ?, description = ?
+          start_date = ?, end_date = ?, budget = ?, auto_pause_on_budget = ?, description = ?
       WHERE id = ?
     `;
 
@@ -151,6 +152,7 @@ export async function PUT(
       start_date || null,
       end_date || null,
       budget || null,
+      auto_pause_on_budget ? 1 : 0,
       description || null,
       id
     ]);

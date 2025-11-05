@@ -383,6 +383,7 @@ export async function POST(request: NextRequest) {
       start_date,
       end_date,
       budget,
+      auto_pause_on_budget,
       description,
       landing_url,
       utm_campaign,
@@ -406,8 +407,8 @@ export async function POST(request: NextRequest) {
 
     const pool = getPool();
     const query = `
-      INSERT INTO campaigns (name, course_id, source, medium, status, start_date, end_date, budget, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO campaigns (name, course_id, source, medium, status, start_date, end_date, budget, auto_pause_on_budget, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await pool.execute(query, [
@@ -419,6 +420,7 @@ export async function POST(request: NextRequest) {
       start_date,
       end_date,
       budget,
+      auto_pause_on_budget ? 1 : 0,
       description || null
     ]);
 

@@ -24,6 +24,10 @@ export async function GET(
         utm_codes.landing_url,
         utm_codes.full_url,
         utm_codes.clicks,
+        utm_codes.status,
+        utm_codes.budget,
+        utm_codes.spent,
+        utm_codes.auto_pause_on_budget,
         utm_codes.created_at,
         utm_codes.updated_at
       FROM utm_codes
@@ -71,7 +75,9 @@ export async function GET(
       return {
         ...link,
         clicks: realClicks, // Override with real clicks from ClickHouse
-        spent: calculatedSpent // Override with calculated spent
+        spent: link.budget > 0 ? calculatedSpent : link.spent, // Use calculated spent if budget is set, otherwise use stored value
+        budget: parseFloat(link.budget) || 0,
+        auto_pause_on_budget: Boolean(link.auto_pause_on_budget)
       };
     });
 
@@ -103,7 +109,9 @@ export async function POST(
       utm_term,
       utm_content,
       landing_url,
-      budget
+      budget,
+      auto_pause_on_budget,
+      auto_update_campaign_budget
     } = body;
 
     // Validation
@@ -131,11 +139,40 @@ export async function POST(
 
     const campaign = (campaigns as any)[0];
 
-    // Note: Budget tracking per link is not supported in current schema
-    // Budget is managed at campaign level only
-    let budgetWarning = null;
+    // Budget validation and auto-update logic
+    let campaignBudgetUpdated = false;
+    let newCampaignBudget = campaign.budget;
+
     if (budget && budget > 0) {
-      budgetWarning = `Note: Budget tracking per tracking link is not currently supported. Budget is managed at the campaign level.`;
+      // Get total allocated budget from existing links
+      const [budgetResult] = await pool.execute(
+        'SELECT COALESCE(SUM(budget), 0) as total_allocated FROM utm_codes WHERE campaign_id = ? AND budget > 0',
+        [campaignId]
+      );
+      
+      const totalAllocated = parseFloat((budgetResult as any[])[0]?.total_allocated || 0);
+      const newTotal = totalAllocated + parseFloat(budget);
+
+      // Check if new total exceeds campaign budget
+      if (newTotal > campaign.budget) {
+        if (auto_update_campaign_budget) {
+          // Auto-update campaign budget
+          newCampaignBudget = newTotal;
+          await pool.execute(
+            'UPDATE campaigns SET budget = ? WHERE id = ?',
+            [newCampaignBudget, campaignId]
+          );
+          campaignBudgetUpdated = true;
+        } else {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `Budget allocation ($${newTotal.toFixed(2)}) would exceed campaign budget ($${campaign.budget.toFixed(2)}). Enable "Auto-update campaign budget" to proceed.`
+            },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     // Check for duplicate tracking link with same parameters
@@ -189,8 +226,8 @@ export async function POST(
     // Store in MySQL utm_codes table
     await pool.execute(
       `INSERT INTO utm_codes 
-       (name, campaign_id, tracking_code, utm_campaign, utm_source, utm_medium, utm_term, utm_content, landing_url, full_url) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (name, campaign_id, tracking_code, utm_campaign, utm_source, utm_medium, utm_term, utm_content, landing_url, full_url, budget, spent, auto_pause_on_budget) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         campaignId,
@@ -201,7 +238,10 @@ export async function POST(
         utm_term || '',
         utm_content || '',
         landing_url,
-        fullUrlWithUtm
+        fullUrlWithUtm,
+        budget || 0,
+        0, // Initial spent is 0
+        auto_pause_on_budget ? 1 : 0
       ]
     );
 
@@ -217,7 +257,8 @@ export async function POST(
         ...(links as any)[0],
         shortUrl: trackingUrl
       },
-      budgetWarning: budgetWarning || undefined
+      campaignBudgetUpdated,
+      newCampaignBudget: campaignBudgetUpdated ? newCampaignBudget : undefined
     });
   } catch (error) {
     console.error('Error creating tracking link:', error);

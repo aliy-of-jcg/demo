@@ -17,115 +17,80 @@ export const initClickHouseSchema = async () => {
   await clickhouse.command({
     query: `
       CREATE TABLE IF NOT EXISTS analytics.tracking_events (
-        id String,
-        tracking_code String,
-        campaign_name String,
-        
-        -- UTM Parameters
-        utm_source String,
-        utm_medium String,
-        utm_campaign String,
-        utm_content String,
-        utm_term String,
-        
-        -- Referrer Data
-        referrer String,
-        referrer_domain String,
-        referrer_source String,
-        referrer_is_known UInt8,
-        
-        -- User Data
-        ip_address String,
-        user_agent String,
-        
-        -- Device Info (Enhanced)
-        device_type String,
-        device_vendor String,
-        device_model String,
-        
-        -- Browser Info (Enhanced)
-        browser String,
-        browser_version String,
-        
-        -- OS Info (Enhanced)
-        os String,
-        os_version String,
-        
-        -- Engine
-        engine String,
-        
-        -- App Detection
-        is_mobile_app UInt8,
-        app_name String,
-        is_bot UInt8,
-        
-        -- Location
-        country String,
-        city String,
-        region String,
-        timezone String,
-        
-        -- Timestamps
-        timestamp DateTime DEFAULT now(),
-        created_date Date DEFAULT toDate(timestamp)
-      ) ENGINE = MergeTree()
-      PARTITION BY toYYYYMM(created_date)
-      ORDER BY (created_date, tracking_code, timestamp)
-      SETTINGS index_granularity = 8192
+      id String,
+      tracking_code String,
+      campaign_name String,
+      utm_source String,
+      utm_medium String,
+      utm_campaign String,
+      utm_content String,
+      utm_term String,
+      referrer String,
+      referrer_domain String,
+      referrer_source String,
+      referrer_is_known UInt8,
+      ip_address String,
+      user_agent String,
+      device_type String,
+      device_vendor String,
+      device_model String,
+      browser String,
+      browser_version String,
+      os String,
+      os_version String,
+      engine String,
+      is_mobile_app UInt8,
+      app_name String,
+      is_bot UInt8,
+      country String,
+      city String,
+      region String,
+      timezone String,
+      timestamp DateTime DEFAULT now(),
+      created_date Date DEFAULT toDate(timestamp)
+    ) ENGINE = MergeTree()
+    PARTITION BY toYYYYMM(created_date)
+    ORDER BY (created_date, tracking_code, timestamp)
+    SETTINGS index_granularity = 8192
     `,
   });
 
-  await clickhouse.command({
-    query: `
-      CREATE TABLE IF NOT EXISTS analytics.tracking_codes (
-        id String,
-        tracking_code String,
-        campaign_name String,
-        target_url String,
-        description String,
-        created_by String,
-        created_at DateTime DEFAULT now(),
-        is_active UInt8 DEFAULT 1
-      ) ENGINE = ReplacingMergeTree(created_at)
-      ORDER BY (id)
-      SETTINGS index_granularity = 8192
-    `,
-  });
 
   await clickhouse.command({
     query: `
-      CREATE TABLE IF NOT EXISTS analytics.visit_logs (
-        timestamp DateTime DEFAULT now(),
-        session_id String,
-        user_id String,
-        page_url String,
-        page_title String,
-        referrer String,
-        utm_source String,
-        utm_medium String,
-        utm_campaign String,
-        utm_term String,
-        utm_content String,
-        campaign_id UInt64 DEFAULT 0,
-        course_id UInt64 DEFAULT 0,
-        user_agent String,
-        device_type String,
-        os String,
-        browser String,
-        screen_resolution String,
-        visit_count UInt32 DEFAULT 1,
-        is_new_visitor UInt8 DEFAULT 0,
-        time_on_page Float64 DEFAULT 0,
-        event_type String DEFAULT 'pageview',
-        conversion_type String DEFAULT '',
-        conversion_value Float64 DEFAULT 0,
-        conversion_metadata String DEFAULT '',
-        page_sequence UInt32 DEFAULT 0,
-        is_exit_page UInt8 DEFAULT 0
-      ) ENGINE = MergeTree()
-      PARTITION BY toYYYYMM(timestamp)
-      ORDER BY (toDate(timestamp), user_id, campaign_id, event_type)
-      SETTINGS index_granularity = 8192
+     CREATE TABLE IF NOT EXISTS analytics.visit_logs (
+      timestamp DateTime,
+      session_id String,
+      user_id String,
+      page_url String,
+      page_title String,
+      referrer String,
+      utm_source String,
+      utm_medium String,
+      utm_campaign String,
+      utm_term String,
+      utm_content String,
+      campaign_id Int32,
+      course_id Int32,
+      user_agent String,
+      device_type String,
+      os String,
+      browser String,
+      screen_resolution String,
+      visit_count Int32,
+      is_new_visitor UInt8,
+      time_on_page Int32,
+      event_type String,
+      page_sequence Int32 DEFAULT 0,
+      is_landing_page UInt8 DEFAULT 0,
+      is_exit_page UInt8 DEFAULT 0,
+      previous_page_url String DEFAULT '',
+      conversion_type String DEFAULT '',
+      conversion_value Float64 DEFAULT 0,
+      conversion_metadata String DEFAULT ''
+    ) ENGINE = MergeTree()
+    ORDER BY (timestamp, session_id, user_id)
+    SETTINGS index_granularity = 8192
     `,
   });
 
