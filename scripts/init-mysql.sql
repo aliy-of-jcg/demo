@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   INDEX idx_used (used)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Courses table
+-- Courses tableSE
 CREATE TABLE IF NOT EXISTS courses (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
