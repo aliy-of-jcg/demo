@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '10');
   
+  console.log(`📋 Campaigns API - Page: ${page}, Limit: ${limit}, Search: ${searchParams.get('search') || 'none'}`);
+  
   try {
     const search = searchParams.get('search') || '';
     const source = searchParams.get('source') || '';

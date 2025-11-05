@@ -63,17 +63,6 @@ export default function EditCampaignPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [campaignPeriod, setCampaignPeriod] = useState(0);
 
-  // Log page info
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      console.log('[Page Info]', {
-        page: window.location.pathname,
-        url: window.location.href,
-        title: document.title
-      });
-    }
-  }, []);
-
   useEffect(() => {
     fetchCourses();
     fetchCampaign();

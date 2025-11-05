@@ -52,17 +52,6 @@ export default function UTMListPage() {
   });
   const [utmCodes, setUtmCodes] = useState<UTMCode[]>([]);
 
-  // Log page info
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      console.log('[Page Info]', {
-        page: window.location.pathname,
-        url: window.location.href,
-        title: document.title
-      });
-    }
-  }, []);
-
   useEffect(() => {
     fetchUTMCodes();
   }, [debouncedSearch, page, limit]); // Use debounced value instead of raw input

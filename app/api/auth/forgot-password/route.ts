@@ -7,6 +7,8 @@ import crypto from 'crypto';
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
+    
+    console.log(`🔑 Forgot Password API - Email: ${email}`);
 
     // Validation
     if (!email) {

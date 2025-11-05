@@ -8,6 +8,8 @@ export async function POST(req: NextRequest) {
   try {
     const body: LoginRequest = await req.json();
     const { email, password } = body;
+    
+    console.log(`🔐 Login API - Email: ${email}`);
 
     // Validation
     if (!email || !password) {

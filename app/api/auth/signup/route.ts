@@ -9,6 +9,8 @@ export async function POST(req: NextRequest) {
   try {
     const body: SignupRequest = await req.json();
     const { company_name, email, password, contact_number, user_type } = body;
+    
+    console.log(`📝 Signup API - Email: ${email}, Company: ${company_name}`);
 
     // Validation
     if (!company_name || !email || !password || !contact_number || !user_type) {

@@ -58,6 +58,8 @@ export async function GET(
     const params = await context.params;
     const trackingCode = params.code;
     
+    console.log(`🔗 Tracking Redirect API - Code: ${trackingCode}`);
+    
     if (!trackingCode) {
       return NextResponse.json({ error: "Missing tracking code" }, { status: 400 });
     }

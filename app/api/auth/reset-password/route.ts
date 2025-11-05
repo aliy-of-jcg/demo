@@ -7,6 +7,8 @@ import bcrypt from 'bcryptjs';
 export async function POST(req: NextRequest) {
   try {
     const { token, password, confirmPassword } = await req.json();
+    
+    console.log(`🔐 Reset Password API - Token: ${token ? token.substring(0, 10) + '...' : 'missing'}`);
 
     // Validation
     if (!token || !password || !confirmPassword) {

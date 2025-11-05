@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
+    
+    console.log(`🏷️ UTM Codes API - Page: ${page}, Limit: ${limit}, Search: ${search || 'none'}`);
 
     const offset = (page - 1) * limit;
     const pool = getPool();

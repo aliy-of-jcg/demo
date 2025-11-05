@@ -82,17 +82,6 @@ export default function CampaignsPage() {
   const [courses, setCourses] = useState<{ id: number; name: string }[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Log page info
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      console.log('[Page Info]', {
-        page: window.location.pathname,
-        url: window.location.href,
-        title: document.title
-      });
-    }
-  }, []);
-
   // Close action menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

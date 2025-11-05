@@ -11,17 +11,6 @@ const SwaggerUI = dynamic(() => import('swagger-ui-react'), { ssr: false });
 export default function ApiDocsPage() {
   const [mounted, setMounted] = useState(false);
 
-  // Log page info
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      console.log('[Page Info]', {
-        page: window.location.pathname,
-        url: window.location.href,
-        title: document.title
-      });
-    }
-  }, []);
-
   useEffect(() => {
     setMounted(true);
   }, []);

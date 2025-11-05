@@ -41,17 +41,6 @@ export default function LandingPage() {
   const [recentCampaigns, setRecentCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Log page info
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      console.log('[Page Info]', {
-        page: window.location.pathname,
-        url: window.location.href,
-        title: document.title
-      });
-    }
-  }, []);
-
   useEffect(() => {
     const fetchData = async () => {
       try {

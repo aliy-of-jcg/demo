@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
     const platform = searchParams.get('platform'); // Filter by utm_medium
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
+    
+    console.log(`📊 Campaign Analysis API - Campaign ID: ${campaignId}, Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
 
     if (!campaignId) {
       return NextResponse.json(

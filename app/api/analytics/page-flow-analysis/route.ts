@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
+    
+    console.log(`🔗 Page Flow Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
 
     // Build WHERE clause for date filtering
     let whereClause = '1=1';

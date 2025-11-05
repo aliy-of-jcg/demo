@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
       utmContent,
       utmTerm,
     } = body;
+    
+    console.log(`🔗 Tracking Generate API - Campaign: ${campaignName}, Source: ${utmSource}, Medium: ${utmMedium}`);
 
     if (!campaignName || !targetUrl || !utmSource || !utmMedium || !utmCampaign) {
       return NextResponse.json(

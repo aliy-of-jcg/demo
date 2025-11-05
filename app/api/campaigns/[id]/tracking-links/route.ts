@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const campaignId = params.id;
+    console.log(`🔗 Campaign Tracking Links API - Campaign ID: ${campaignId}`);
     const pool = getPool();
     
     const [links] = await pool.execute(
