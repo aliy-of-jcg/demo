@@ -34,10 +34,10 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-appdb}
       MYSQL_USER: ${MYSQL_USER:-appuser}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-apppassword}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql-data:/var/lib/mysql
       - ./scripts/init-mysql.sql:/docker-entrypoint-initdb.d/01-init-schema.sql:ro
@@ -63,12 +63,12 @@ services:
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=${MYSQL_DATABASE:-appdb}
       - MYSQL_USER=${MYSQL_USER:-appuser}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-apppassword}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - CLICKHOUSE_HOST=http://clickhouse:8123
       - CLICKHOUSE_PORT=8123
       - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-analytics}
-      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-nextauth-secret}
+      - JWT_SECRET=${JWT_SECRET}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
     depends_on:
       mysql:

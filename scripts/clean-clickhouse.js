@@ -1,6 +1,6 @@
 const { createClient } = require('@clickhouse/client');
 const readline = require('readline');
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '.env' });
 
 const clickhouse = createClient({
   url: process.env.CLICKHOUSE_HOST || 'http://localhost:8123',

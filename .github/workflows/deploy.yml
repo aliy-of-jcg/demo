@@ -88,6 +88,15 @@ jobs:
       # 4. Next.js 의존성 설치 및 빌드 검증 (dev만)
       - name: Install dependencies and validate build
         if: needs.setup.outputs.environment == 'dev'
+        env:
+          JWT_SECRET: build-time-placeholder
+          NEXTAUTH_SECRET: build-time-placeholder
+          MYSQL_HOST: localhost
+          MYSQL_USER: build-user
+          MYSQL_PASSWORD: build-password
+          MYSQL_DATABASE: build-db
+          CLICKHOUSE_HOST: http://localhost:8123
+          CLICKHOUSE_DATABASE: analytics
         run: |
           npm ci
           npm run build

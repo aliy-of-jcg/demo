@@ -4,9 +4,9 @@ import mysql from 'mysql2/promise';
 const config = {
   host: process.env.MYSQL_HOST || 'localhost',
   port: parseInt(process.env.MYSQL_PORT || '3306'),
-  user: process.env.MYSQL_USER || 'appuser',
-  password: process.env.MYSQL_PASSWORD || 'apppassword',
-  database: process.env.MYSQL_DATABASE || 'appdb',
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
   waitForConnections: true,
   connectionLimit: 50, // Increased from 10 to 50
   maxIdle: 10, // Maximum idle connections
