@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
@@ -61,6 +62,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function CampaignsPage() {
+  const router = useRouter();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -225,7 +227,7 @@ export default function CampaignsPage() {
 
   const handleDuplicate = async (id: number) => {
     // Redirect to new campaign page with duplicate data
-    window.location.href = `/campaigns/new?duplicate=${id}`;
+    router.push(`/campaigns/new?duplicate=${id}`);
   };
 
   const handleCopyTrackingLink = async (trackingCode: string) => {
@@ -612,17 +614,14 @@ export default function CampaignsPage() {
                                 className="fixed inset-0 z-40" 
                                 onClick={() => setActionMenuOpen(null)}
                               />
-                              <div 
-                                className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible"
-                                onClick={(e) => e.stopPropagation()}
-                              >
+                              <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
                                 <div className="py-1">
                                   <button
                                     type="button"
-                                    onClick={(e) => {
+                                    onMouseDown={(e) => {
                                       e.stopPropagation();
                                       setActionMenuOpen(null);
-                                      window.location.href = `/campaigns/${campaign.id}/edit`;
+                                      router.push(`/campaigns/${campaign.id}/edit`);
                                     }}
                                     className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
                                   >
@@ -631,7 +630,7 @@ export default function CampaignsPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={(e) => {
+                                    onMouseDown={(e) => {
                                       e.stopPropagation();
                                       setActionMenuOpen(null);
                                       handleDuplicate(campaign.id);
@@ -643,7 +642,7 @@ export default function CampaignsPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={(e) => {
+                                    onMouseDown={(e) => {
                                       e.stopPropagation();
                                       setActionMenuOpen(null);
                                       handleDelete(campaign.id);
@@ -708,7 +707,7 @@ export default function CampaignsPage() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActionMenuOpen(null);
-                                  window.location.href = `/campaigns/${campaign.id}/edit`;
+                                  router.push(`/campaigns/${campaign.id}/edit`);
                                 }}
                                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
                               >
