@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
@@ -63,11 +63,22 @@ const statusLabels: Record<string, string> = {
 
 export default function CampaignsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  
+  // Initialize from URL params (only on first render)
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [page, setPage] = useState(() => {
+    const urlPage = searchParams.get('page');
+    return urlPage ? parseInt(urlPage) : 1;
+  });
+  const [limit, setLimit] = useState(() => {
+    const urlLimit = searchParams.get('limit');
+    return urlLimit && [10, 20, 50].includes(parseInt(urlLimit)) ? parseInt(urlLimit) : 10;
+  });
+  
   const [total, setTotal] = useState(0);
   const [searchInput, setSearchInput] = useState(''); // Immediate input value
   const debouncedSearch = useDebounce(searchInput, 500); // Debounced search value
@@ -82,6 +93,7 @@ export default function CampaignsPage() {
   const [actionMenuOpen, setActionMenuOpen] = useState<number | null>(null);
   const [copiedTrackingCode, setCopiedTrackingCode] = useState<string | null>(null);
   const [courses, setCourses] = useState<{ id: number; name: string }[]>([]);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close action menu when clicking outside
@@ -108,6 +120,22 @@ export default function CampaignsPage() {
       document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [actionMenuOpen]);
+
+  // Mark as initialized after first render
+  useEffect(() => {
+    setIsInitialized(true);
+  }, []);
+
+  // Update URL when page or limit changes (but not on initial render)
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
+    
+    router.replace(`/campaigns?${params.toString()}`, { scroll: false });
+  }, [page, limit, isInitialized, router]);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -400,7 +428,7 @@ export default function CampaignsPage() {
       </div>
 
       {/* Campaigns Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {/* Desktop Table - Hidden on mobile */}
         <div className="hidden lg:block">
           <div className="overflow-x-auto">
@@ -601,6 +629,12 @@ export default function CampaignsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              const button = e.currentTarget as HTMLElement;
+                              const rect = button.getBoundingClientRect();
+                              setMenuPosition({
+                                top: rect.bottom + 4,
+                                right: window.innerWidth - rect.right
+                              });
                               setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id);
                             }}
                             className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded hover:bg-gray-100"
@@ -608,13 +642,19 @@ export default function CampaignsPage() {
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
-                          {actionMenuOpen === campaign.id && (
+                          {actionMenuOpen === campaign.id && menuPosition && (
                             <>
                               <div 
                                 className="fixed inset-0 z-40" 
                                 onClick={() => setActionMenuOpen(null)}
                               />
-                              <div className="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                              <div 
+                                className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60]"
+                                style={{
+                                  top: `${menuPosition.top}px`,
+                                  right: `${menuPosition.right}px`
+                                }}
+                              >
                                 <div className="py-1">
                                   <button
                                     type="button"
@@ -849,8 +889,8 @@ export default function CampaignsPage() {
           )}
         </div>
 
-        {/* Pagination */}
-        <div className="px-4 sm:px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+              {/* Pagination */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 sm:px-6 py-4 mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <span className="text-gray-700">Total {total} campaigns</span>
             <select
@@ -882,6 +922,9 @@ export default function CampaignsPage() {
           </div>
         </div>
       </div>
+
+    
+
 
       {/* Footer with extra spacing */}
       <div className="mt-6 sm:mt-8">
