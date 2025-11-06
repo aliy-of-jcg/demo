@@ -2,8 +2,8 @@ export const apiSpec = {
   openapi: "3.0.0",
   info: {
     title: "CosMos AI Analytics & Tracking API",
-    version: "1.0.0",
-    description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, and campaign management capabilities.",
+    version: "2.0.0",
+    description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, and campaign management capabilities. Updated with 30 active endpoints.",
     contact: {
       name: "CosMos AI Support",
       email: "support@cosmosai.com",
@@ -12,7 +12,7 @@ export const apiSpec = {
   servers: [
     {
       url: "http://localhost:3000",
-      description: "Development server",
+      description: "Development server (Docker/Local)",
     },
     {
       url: "http://aptdecor.uz",
@@ -22,27 +22,31 @@ export const apiSpec = {
   tags: [
     {
       name: "Authentication",
-      description: "User authentication and session management",
+      description: "User authentication and session management (7 endpoints)",
     },
     {
       name: "Campaigns",
-      description: "Campaign management and performance tracking",
+      description: "Campaign management and performance tracking (4 endpoints)",
     },
     {
       name: "Courses",
-      description: "Course management and analytics",
+      description: "Course management and analytics (2 endpoints)",
     },
     {
       name: "UTM Tools",
-      description: "UTM code management and generation",
+      description: "UTM code management and generation (5 endpoints)",
     },
     {
       name: "Analytics",
-      description: "Advanced analytics and metrics endpoints",
+      description: "Advanced analytics and metrics endpoints (7 endpoints)",
     },
     {
       name: "Tracking",
-      description: "Event tracking and data collection",
+      description: "Event tracking and data collection (4 endpoints)",
+    },
+    {
+      name: "System",
+      description: "Health checks and system monitoring (1 endpoint)",
     },
   ],
   paths: {
@@ -89,6 +93,160 @@ export const apiSpec = {
                 },
               },
             },
+          },
+        },
+      },
+    },
+
+    "/api/auth/signup": {
+      post: {
+        tags: ["Authentication"],
+        summary: "User registration",
+        description: "Create a new user account",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["company_name", "email", "password", "contact_number", "user_type"],
+                properties: {
+                  company_name: { type: "string", example: "CosMos Inc" },
+                  email: { type: "string", format: "email", example: "user@example.com" },
+                  password: { type: "string", format: "password", example: "password123" },
+                  contact_number: { type: "string", example: "+821012345678" },
+                  user_type: { type: "string", enum: ["admin", "observer", "regular"], example: "regular" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: "Account created successfully",
+          },
+        },
+      },
+    },
+
+    "/api/auth/logout": {
+      post: {
+        tags: ["Authentication"],
+        summary: "User logout",
+        description: "Logout user and invalidate session",
+        responses: {
+          200: {
+            description: "Logged out successfully",
+          },
+        },
+      },
+    },
+
+    "/api/auth/validate": {
+      post: {
+        tags: ["Authentication"],
+        summary: "Validate JWT token",
+        description: "Validate a JWT token and return user information",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token"],
+                properties: {
+                  token: { type: "string", example: "eyJhbGc..." },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Token is valid",
+          },
+        },
+      },
+    },
+
+    "/api/auth/forgot-password": {
+      post: {
+        tags: ["Authentication"],
+        summary: "Request password reset",
+        description: "Send password reset email to user",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: {
+                  email: { type: "string", format: "email", example: "user@example.com" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Password reset email sent",
+          },
+        },
+      },
+    },
+
+    "/api/auth/reset-password": {
+      post: {
+        tags: ["Authentication"],
+        summary: "Reset password",
+        description: "Reset user password with token from email",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token", "password", "confirmPassword"],
+                properties: {
+                  token: { type: "string", example: "reset-token-123" },
+                  password: { type: "string", format: "password" },
+                  confirmPassword: { type: "string", format: "password" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Password reset successful",
+          },
+        },
+      },
+    },
+
+    "/api/auth/reset-password/validate": {
+      post: {
+        tags: ["Authentication"],
+        summary: "Validate password reset token",
+        description: "Check if password reset token is valid",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["token"],
+                properties: {
+                  token: { type: "string", example: "reset-token-123" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Token is valid",
           },
         },
       },
@@ -150,6 +308,38 @@ export const apiSpec = {
           },
         },
       },
+      post: {
+        tags: ["Campaigns"],
+        summary: "Create new campaign",
+        description: "Create a new marketing campaign",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "course_id", "source", "medium", "start_date", "end_date", "budget"],
+                properties: {
+                  name: { type: "string", example: "Spring 2025 Campaign" },
+                  course_id: { type: "number", example: 1 },
+                  source: { type: "string", example: "naver" },
+                  medium: { type: "string", example: "cpc" },
+                  status: { type: "string", example: "active" },
+                  start_date: { type: "string", format: "date" },
+                  end_date: { type: "string", format: "date" },
+                  budget: { type: "number", example: 5000000 },
+                  description: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Campaign created successfully",
+          },
+        },
+      },
     },
 
     "/api/campaigns/{id}": {
@@ -188,6 +378,135 @@ export const apiSpec = {
                 },
               },
             },
+          },
+        },
+      },
+      put: {
+        tags: ["Campaigns"],
+        summary: "Update campaign",
+        description: "Update an existing campaign",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  status: { type: "string" },
+                  budget: { type: "number" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Campaign updated successfully",
+          },
+        },
+      },
+      delete: {
+        tags: ["Campaigns"],
+        summary: "Delete campaign",
+        description: "Soft delete a campaign (set status to hidden)",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Campaign deleted successfully",
+          },
+        },
+      },
+    },
+
+    "/api/campaigns/{id}/duplicate": {
+      post: {
+        tags: ["Campaigns"],
+        summary: "Duplicate campaign",
+        description: "Create a copy of an existing campaign",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Campaign duplicated successfully",
+          },
+        },
+      },
+    },
+
+    "/api/campaigns/{id}/tracking-links": {
+      get: {
+        tags: ["Campaigns"],
+        summary: "Get campaign tracking links",
+        description: "Retrieve all tracking links for a specific campaign",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Tracking links retrieved successfully",
+          },
+        },
+      },
+      post: {
+        tags: ["Campaigns"],
+        summary: "Create tracking link for campaign",
+        description: "Create a new tracking link for a specific campaign",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "utm_source", "utm_medium", "utm_campaign", "landing_url"],
+                properties: {
+                  name: { type: "string" },
+                  utm_source: { type: "string" },
+                  utm_medium: { type: "string" },
+                  utm_campaign: { type: "string" },
+                  landing_url: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Tracking link created successfully",
           },
         },
       },
@@ -233,6 +552,107 @@ export const apiSpec = {
                 },
               },
             },
+          },
+        },
+      },
+      post: {
+        tags: ["Courses"],
+        summary: "Create new course",
+        description: "Create a new course",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "code"],
+                properties: {
+                  name: { type: "string", example: "Python Programming" },
+                  code: { type: "string", example: "PY101" },
+                  category: { type: "string" },
+                  duration: { type: "number" },
+                  price: { type: "number" },
+                  status: { type: "string", example: "active" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Course created successfully",
+          },
+        },
+      },
+    },
+
+    "/api/courses/{id}": {
+      get: {
+        tags: ["Courses"],
+        summary: "Get course details",
+        description: "Retrieve detailed information about a specific course",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Course details",
+          },
+        },
+      },
+      put: {
+        tags: ["Courses"],
+        summary: "Update course",
+        description: "Update an existing course",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  code: { type: "string" },
+                  status: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Course updated successfully",
+          },
+        },
+      },
+      delete: {
+        tags: ["Courses"],
+        summary: "Delete course",
+        description: "Soft delete a course (set status to hidden)",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Course deleted successfully",
           },
         },
       },
@@ -300,6 +720,107 @@ export const apiSpec = {
           },
         },
       },
+      post: {
+        tags: ["UTM Tools"],
+        summary: "Create new UTM code",
+        description: "Create a new UTM tracking code",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["name", "landing_url", "campaign_id"],
+                properties: {
+                  name: { type: "string", example: "Naver CPC Link" },
+                  landing_url: { type: "string", example: "https://example.com" },
+                  campaign_id: { type: "number", example: 1 },
+                  utm_source: { type: "string" },
+                  utm_medium: { type: "string" },
+                  utm_term: { type: "string" },
+                  utm_content: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: "UTM code created successfully",
+          },
+        },
+      },
+    },
+
+    "/api/utm-codes/{id}": {
+      get: {
+        tags: ["UTM Tools"],
+        summary: "Get UTM code details",
+        description: "Retrieve detailed information about a specific UTM code",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "UTM code details",
+          },
+        },
+      },
+      put: {
+        tags: ["UTM Tools"],
+        summary: "Update UTM code",
+        description: "Update an existing UTM code",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  status: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "UTM code updated successfully",
+          },
+        },
+      },
+      delete: {
+        tags: ["UTM Tools"],
+        summary: "Delete UTM code",
+        description: "Delete a UTM tracking code",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "UTM code deleted successfully",
+          },
+        },
+      },
     },
 
     // ==================== ANALYTICS ====================
@@ -347,26 +868,56 @@ export const apiSpec = {
       },
     },
 
-    "/api/analytics/source-analysis": {
+    "/api/analytics/channel-performance": {
       get: {
         tags: ["Analytics"],
-        summary: "Source & Media Analysis",
-        description: "Analyze traffic sources and media platforms with conversion metrics",
+        summary: "Channel Performance Analysis",
+        description: "Analyze performance by marketing channel with campaign breakdown",
         parameters: [
           {
-            name: "start_date",
+            name: "start",
             in: "query",
             schema: { type: "string", format: "date" },
           },
           {
-            name: "end_date",
+            name: "end",
             in: "query",
             schema: { type: "string", format: "date" },
           },
         ],
         responses: {
           200: {
-            description: "Source analysis data",
+            description: "Channel performance data with campaigns",
+          },
+        },
+      },
+    },
+
+    "/api/analytics/conversion-analysis": {
+      get: {
+        tags: ["Analytics"],
+        summary: "Conversion Analysis",
+        description: "Analyze conversions by type, source, and time",
+        parameters: [
+          {
+            name: "startDate",
+            in: "query",
+            schema: { type: "string", format: "date" },
+          },
+          {
+            name: "endDate",
+            in: "query",
+            schema: { type: "string", format: "date" },
+          },
+          {
+            name: "campaignId",
+            in: "query",
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          200: {
+            description: "Conversion analysis data",
           },
         },
       },
@@ -509,6 +1060,70 @@ export const apiSpec = {
     },
 
     // ==================== TRACKING ====================
+    "/api/track": {
+      post: {
+        tags: ["Tracking"],
+        summary: "Track external pageview (Production)",
+        description: "Receives pageview events from external landing pages with UTM campaign linking to MySQL",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["user_id", "session_id", "page_url"],
+                properties: {
+                  user_id: { type: "string", example: "uuid-visitor-123" },
+                  session_id: { type: "string", example: "uuid-session-456" },
+                  page_url: { type: "string", example: "https://example.com/page" },
+                  referrer: { type: "string" },
+                  utm_source: { type: "string" },
+                  utm_medium: { type: "string" },
+                  utm_campaign: { type: "string" },
+                  event_type: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Event logged successfully",
+          },
+        },
+      },
+    },
+
+    "/api/track-internal": {
+      post: {
+        tags: ["Tracking"],
+        summary: "Track internal test events (Localhost only)",
+        description: "Internal tracking endpoint for testing on localhost/CosMos dashboard only",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["user_id", "session_id", "page_url"],
+                properties: {
+                  user_id: { type: "string" },
+                  session_id: { type: "string" },
+                  page_url: { type: "string" },
+                  event_type: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Internal test tracking recorded",
+          },
+        },
+      },
+    },
+
     "/api/log": {
       post: {
         tags: ["Tracking"],
@@ -561,26 +1176,36 @@ export const apiSpec = {
       },
     },
 
-    "/t/{code}": {
-      get: {
+    "/api/tracking/generate": {
+      post: {
         tags: ["Tracking"],
-        summary: "Track click and redirect (Production)",
-        description: "Records click event with server-side visit logging and redirects to target URL. Uses path parameter for tracking code.",
-        parameters: [
-          {
-            name: "code",
-            in: "path",
-            required: true,
-            description: "Tracking code (e.g., NAV001)",
-            schema: { type: "string", example: "NAV001" },
+        summary: "Generate tracking link",
+        description: "Generate a new tracking link with UTM parameters for a campaign",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["campaignName", "targetUrl", "utmSource", "utmMedium", "utmCampaign"],
+                properties: {
+                  name: { type: "string", example: "Naver CPC Link" },
+                  campaignName: { type: "string", example: "Spring 2025" },
+                  campaignId: { type: "number", example: 1 },
+                  targetUrl: { type: "string", example: "https://example.com" },
+                  utmSource: { type: "string", example: "naver" },
+                  utmMedium: { type: "string", example: "cpc" },
+                  utmCampaign: { type: "string", example: "spring_2025" },
+                  utmContent: { type: "string" },
+                  utmTerm: { type: "string" },
+                },
+              },
+            },
           },
-        ],
+        },
         responses: {
-          302: {
-            description: "Redirect to target URL",
-          },
-          404: {
-            description: "Invalid or expired tracking code",
+          200: {
+            description: "Tracking link generated successfully",
           },
         },
       },
@@ -616,6 +1241,71 @@ export const apiSpec = {
                 },
               },
             },
+          },
+        },
+      },
+    },
+
+    "/t/{code}": {
+      get: {
+        tags: ["Tracking"],
+        summary: "Track click and redirect (Production)",
+        description: "Records click event with server-side visit logging and redirects to target URL. Uses path parameter for tracking code.",
+        parameters: [
+          {
+            name: "code",
+            in: "path",
+            required: true,
+            description: "Tracking code (e.g., NAV001)",
+            schema: { type: "string", example: "NAV001" },
+          },
+        ],
+        responses: {
+          302: {
+            description: "Redirect to target URL",
+          },
+          404: {
+            description: "Invalid or expired tracking code",
+          },
+        },
+      },
+    },
+
+
+    // ==================== SYSTEM ====================
+    "/api/health": {
+      get: {
+        tags: ["System"],
+        summary: "Health check",
+        description: "Check API health status and uptime",
+        responses: {
+          200: {
+            description: "System is healthy",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    status: { type: "string", example: "healthy" },
+                    timestamp: { type: "string", format: "date-time" },
+                    uptime: { type: "number", example: 3600 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    "/api/performance": {
+      get: {
+        tags: ["System"],
+        summary: "System performance metrics",
+        description: "Get system performance and resource utilization metrics",
+        responses: {
+          200: {
+            description: "Performance metrics retrieved",
           },
         },
       },

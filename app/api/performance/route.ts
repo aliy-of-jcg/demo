@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
     const campaignId = searchParams.get('campaign_id');
     const courseId = searchParams.get('course_id');
 
+    console.log(`📊 [Docker/Local] Performance API - Date Range: ${startDate} to ${endDate}, Campaign: ${campaignId || 'all'}, Course: ${courseId || 'all'}`);
+
     // Build where conditions
     let whereConditions = `timestamp >= '${startDate} 00:00:00' AND timestamp <= '${endDate} 23:59:59'`;
     if (campaignId) {
