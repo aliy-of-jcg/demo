@@ -4,125 +4,332 @@ A comprehensive marketing analytics and campaign management platform built with 
 
 ## ✨ Features
 
+### Core Features
 - 📊 **Real-time Dashboard** with live campaign metrics and performance insights
-- 🎯 **Campaign Management** - Create, edit, and track marketing campaigns
-- 📈 **Advanced Analytics** - Multiple analysis modules for deep insights
-- 🔗 **UTM Tools** - Link generator and tracking utilities
-- 📱 **Device & Environment Analysis** - Comprehensive user device detection
-- 🌍 **Multi-Platform Support** - Track across Telegram, Kakao, Naver, Google, etc.
+- 🎯 **Campaign Management** - Create, edit, and track marketing campaigns across multiple channels
+- 📈 **Advanced Analytics** - Multiple analysis modules for deep insights:
+  - Campaign Performance Analysis
+  - Channel Performance Tracking
+  - Page Flow Analysis
+  - Environment Analysis (devices, browsers, OS)
+  - Time-based Visitor Patterns (KST timezone support)
+  - Returning User Analysis
+  - Conversion Tracking & Analysis
+- 🔗 **UTM Tools** - Link generator and tracking utilities with custom tracking codes
+- 📱 **Device & Environment Analysis** - Comprehensive user device, browser, and OS detection
+- 🌍 **Multi-Platform Support** - Track across Telegram, Kakao, Naver, Google, and more
+
+### Technical Features
 - ⚡ **Dual Database Architecture** - ClickHouse for analytics + MySQL for app data
-- 🔐 **Authentication System** - Secure user management with JWT
-- 📧 **Email Integration** - Automated notifications and password reset
-- 🎨 **Modern UI** - Beautiful interface with shadcn/ui components
+- 🔐 **Authentication System** - Secure JWT-based authentication with role-based access control
+- 👥 **User Management** - Support for Owner, Admin, Observer, and Regular user types
+- 📧 **Email Integration** - Automated notifications and password reset with Nodemailer
+- 🔄 **Session Management** - Visitor tracking with cookie-based sessions
+- 📍 **IP Geolocation** - Automatic country/city detection
+- 🎨 **Modern UI** - Beautiful, responsive interface with shadcn/ui and Tailwind CSS
+- 🐳 **Docker Support** - Containerized database setup for easy deployment
+- 🎯 **Client-Side Tracking Script** - External landing page integration with `cosmos-track.js`
 
 ## 🚀 Quick Start
 
-### Without Docker (Demo Mode)
+### Prerequisites
+- Node.js 18+ and npm
+- Docker and Docker Compose (for full setup)
+- Gmail account with app password (for email features, optional)
+
+### Installation Steps
+
+#### 1. Without Docker (Demo Mode)
 ```bash
+# Install dependencies
 npm install
+
+# Start development server
 npm run dev
 ```
 Open http://localhost:3000
 
-### With Full Database Setup (Recommended)
+**Note:** Without Docker, the app will run but database features will be limited.
+
+#### 2. With Full Database Setup (Recommended)
+
 ```bash
-# 1. Start both ClickHouse and MySQL
+# 1. Clone and navigate to project
+cd demo
+
+# 2. Create environment file
+cp .env.example .env.local
+# Edit .env.local with your configuration
+
+# 3. Start both ClickHouse and MySQL
 docker-compose up -d
 
-# 2. Install dependencies
+# 4. Wait for databases to be ready (about 15 seconds)
+
+# 5. Install dependencies
 npm install
 
-# 3. Initialize ClickHouse database
+# 6. Initialize ClickHouse database
 npm run clickhouse:init
 
-# 4. Initialize MySQL database
+# 7. Initialize MySQL database
 npm run mysql:init
 
-# 5. Add seed data (optional)
+# 8. Add seed data (optional but recommended for testing)
 npm run clickhouse:seed
 npm run db:seed
 
-# 6. Start the app
+# 9. Start the development server
 npm run dev
 ```
 
-### Database Management Commands
+#### 3. Access the Application
+```
+Application: http://localhost:3000
+Authentication: http://localhost:3000/auth
+API Documentation: http://localhost:3000/api-docs
+```
+
+### First-Time Setup
+
+1. **Create your first user:**
+   - Navigate to http://localhost:3000
+   - You'll be redirected to the authentication page
+   - Click "Sign up" and create your account
+   
+2. **Upgrade to Owner (optional):**
+   ```bash
+   # Connect to MySQL
+   docker exec -it mysql mysql -u appuser -papppassword -D appdb
+   
+   # Upgrade first user to owner
+   UPDATE users SET user_type = 'owner' WHERE id = 1;
+   SELECT id, email, company_name, user_type FROM users;
+   exit;
+   ```
+
+### Available Scripts
+
 ```bash
-# Reset all databases
-npm run db:reset
+# Development
+npm run dev              # Start development server
+npm run build            # Build for production
+npm run start            # Start production server
+npm run lint             # Run ESLint
 
-# Clean ClickHouse data
-npm run clickhouse:clean
+# Database Management
+npm run db:reset         # Reset all databases (drop, init, seed)
+npm run db:init          # Initialize all database schemas
+npm run db:seed          # Seed sample data
+npm run db:drop          # Drop all tables (⚠️ destructive)
 
-# Drop all tables
-npm run db:drop
+# ClickHouse Commands
+npm run clickhouse:init     # Initialize ClickHouse schema
+npm run clickhouse:clean    # Clean ClickHouse data
+npm run clickhouse:seed     # Add sample tracking events
+npm run clickhouse:migrate  # Run ClickHouse migrations
 
-# Generate JWT secret
-npm run generate:secret
+# MySQL Commands
+npm run mysql:init       # Initialize MySQL schema
+
+# Utilities
+npm run generate:secret  # Generate new JWT secret
 ```
 
 ## 📁 Project Structure
 
 ```
 demo/
-├── app/                    # Next.js app directory
+├── app/                    # Next.js app directory (App Router)
 │   ├── api/               # API routes
 │   │   ├── analytics/     # Analytics endpoints
+│   │   │   ├── campaign-analysis/    # Campaign performance metrics
+│   │   │   ├── channel-performance/  # Channel/source analysis
+│   │   │   ├── conversion-analysis/  # Conversion tracking analytics
+│   │   │   ├── environment-analysis/ # Device/browser/OS stats
+│   │   │   ├── page-flow-analysis/   # User navigation flow
+│   │   │   ├── performance/          # Dashboard metrics
+│   │   │   ├── returning-analysis/   # New vs returning visitors
+│   │   │   └── time-analysis/        # Time-based patterns (KST)
 │   │   ├── auth/          # Authentication
-│   │   ├── campaigns/     # Campaign management
-│   │   ├── courses/       # Course management
+│   │   │   ├── signup/               # User registration
+│   │   │   ├── login/                # User login
+│   │   │   ├── logout/               # Session termination
+│   │   │   ├── validate/             # Token validation
+│   │   │   ├── forgot-password/      # Password reset request
+│   │   │   └── reset-password/       # Password reset execution
+│   │   ├── campaigns/     # Campaign management CRUD
+│   │   ├── courses/       # Course management CRUD
 │   │   ├── performance/   # Performance metrics
-│   │   ├── tracking/      # Link tracking
-│   │   └── utm-codes/     # UTM utilities
-│   ├── auth/              # Authentication pages
-│   ├── campaigns/         # Campaign management pages
-│   ├── campaign-analysis/ # Campaign analytics
-│   ├── channel-performance/ # Channel analysis
-│   ├── courses/           # Course management
+│   │   ├── tracking/      # Link tracking generation
+│   │   ├── track/         # External tracking endpoint
+│   │   ├── track-internal/# Internal testing endpoint
+│   │   └── utm-codes/     # UTM code utilities
+│   ├── auth/              # Authentication pages (login/signup)
+│   ├── campaigns/         # Campaign management interface
+│   ├── campaign-analysis/ # Campaign analytics dashboard
+│   ├── channel-performance/ # Channel analysis page
+│   ├── courses/           # Course management pages
 │   ├── environment-analysis/ # Device/browser analysis
-│   ├── page-flow-analysis/ # User flow analysis
-│   ├── performance/       # Performance dashboard
+│   ├── page-flow-analysis/ # User flow visualization
+│   ├── performance/       # Main performance dashboard
 │   ├── returning-analysis/ # Returning user analysis
-│   ├── time-analysis/     # Time-based analytics
-│   ├── tracking-debug/    # Debug tools
-│   └── utm-tools/         # UTM utilities
+│   ├── time-analysis/     # Time-based analytics (KST)
+│   ├── tracking-debug/    # Debug tools for tracking
+│   ├── utm-tools/         # UTM link generator
+│   ├── reset-password/    # Password reset page
+│   ├── link-expired/      # Expired link handler
+│   └── api-docs/          # Swagger API documentation
 ├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   └── *.tsx             # Custom components
+│   ├── ui/               # shadcn/ui base components
+│   │   └── *.tsx         # Button, Input, Card, Dialog, etc.
+│   ├── auth-form.tsx     # Login/signup form
+│   ├── forgot-password-form.tsx # Password reset request form
+│   ├── layout-wrapper.tsx # Main layout with sidebar
+│   ├── sidebar.tsx       # Navigation sidebar
+│   ├── user-menu.tsx     # User dropdown menu
+│   └── page-footer.tsx   # Page footer component
 ├── lib/                  # Utilities and database clients
-│   ├── clickhouse.ts     # ClickHouse client
-│   ├── mysql.ts          # MySQL client
-│   ├── jwt.ts            # JWT utilities
-│   ├── email.ts          # Email service
+│   ├── clickhouse.ts     # ClickHouse client & schema
+│   ├── mysql.ts          # MySQL client & connection pool
+│   ├── jwt.ts            # JWT token utilities
+│   ├── email.ts          # Email service (Nodemailer)
+│   ├── email-templates.ts # HTML email templates
+│   ├── encryption.ts     # Data encryption utilities
+│   ├── rate-limit.ts     # Rate limiting for API endpoints
+│   ├── user-agent.ts     # User agent parsing
+│   ├── url-parser.ts     # URL parameter parsing
+│   ├── clipboard.ts      # Clipboard utilities
+│   ├── types.ts          # TypeScript type definitions
+│   ├── utils.ts          # General utilities
+│   ├── db-init.ts        # Database initialization
+│   ├── api-spec.ts       # Swagger API specification
 │   └── hooks/            # Custom React hooks
 ├── scripts/              # Database management scripts
-└── docker-compose.yml    # ClickHouse + MySQL setup
+│   ├── init-clickhouse.js # Initialize ClickHouse schema
+│   ├── init-mysql.js     # Initialize MySQL schema
+│   ├── init-mysql.sql    # MySQL schema definition
+│   ├── seed-data.js      # Seed ClickHouse with sample data
+│   ├── seed-campaigns-courses.js # Seed MySQL with campaigns
+│   ├── clean-clickhouse.js # Clean ClickHouse data
+│   ├── drop-all-tables.js # Drop all tables
+│   └── generate-secret.js # Generate JWT secret
+├── public/               # Static files
+│   ├── cosmos-track.js   # Client-side tracking script
+│   └── grid.svg          # Grid background pattern
+├── z_documentation/      # Project documentation
+│   ├── architecture/     # System architecture docs
+│   ├── features/         # Feature documentation
+│   └── setup/            # Setup guides
+├── docker-compose.yml    # ClickHouse + MySQL setup
+├── Dockerfile            # Container build configuration
+├── instrumentation.ts    # Next.js startup hook
+├── next.config.mjs       # Next.js configuration
+├── tailwind.config.ts    # Tailwind CSS configuration
+└── tsconfig.json         # TypeScript configuration
 ```
 
 ## 🏗️ Architecture
 
-**Frontend (Next.js 14 App Router)**
-- Dashboard with real-time metrics
-- Campaign management interface
-- Advanced analytics modules
-- UTM tools and link generator
-- Authentication system
+### System Overview
 
-**Backend (API Routes)**
-- `/api/analytics/*` - Analytics data endpoints
+CosMos AI uses a dual-database architecture optimized for both real-time analytics and reliable application data management:
+
+**Frontend Layer (Next.js 14 App Router)**
+- Server-side rendered pages with React 18
+- Real-time dashboard with live metrics
+- Campaign and course management interfaces
+- Advanced analytics visualization modules
+- UTM tools and link generator
+- JWT-based authentication with role-based access
+
+**Backend Layer (Next.js API Routes)**
+- RESTful API endpoints
+- `/api/auth/*` - User authentication & management
+  - Signup/login with JWT tokens
+  - Password reset with email verification
+  - Token validation and session management
+  - Rate limiting for security
 - `/api/campaigns/*` - Campaign CRUD operations
-- `/api/auth/*` - Authentication & user management
-- `/api/tracking/*` - Link tracking and generation
-- `/api/performance/*` - Performance metrics
+- `/api/courses/*` - Course management
+- `/api/analytics/*` - Analytics data aggregation
+  - Campaign performance metrics
+  - Channel and source analysis
+  - Conversion tracking
+  - Environment analysis (device/browser/OS)
+  - Page flow visualization
+  - Time-based patterns (KST timezone)
+  - Returning visitor analysis
+- `/api/tracking/*` - Tracking link generation
+- `/api/track/*` - External tracking endpoint for landing pages
+- `/api/performance/*` - Dashboard performance metrics
+- `/api/utm-codes/*` - UTM code utilities
 
 **Database Layer**
-- **ClickHouse** - High-performance analytics data
-- **MySQL** - Application data (users, campaigns, courses)
+
+1. **ClickHouse (Analytics Database)**
+   - High-performance columnar database
+   - Optimized for OLAP queries
+   - Stores tracking events and visit logs
+   - Partitioned by month for efficient querying
+   - Tables:
+     - `tracking_events` - Click tracking and UTM data
+     - `visit_logs` - Detailed pageview and session data
+
+2. **MySQL 8.0 (Application Database)**
+   - ACID-compliant relational database
+   - Stores structured application data
+   - Connection pooling for performance
+   - Tables:
+     - `users` - User accounts with role-based access
+     - `sessions` - Active user sessions
+     - `password_reset_tokens` - Password reset tokens
+     - `courses` - Course catalog
+     - `campaigns` - Marketing campaigns
+     - `utm_codes` - Tracking links with UTM parameters
+
+**External Integration**
+- Client-side tracking script (`cosmos-track.js`)
+- Integrates with external landing pages
+- Automatic session and visitor tracking
+- UTM parameter preservation
+- Device and browser detection
+- Conversion event tracking
+
+### Data Flow
+
+1. **User Creates Campaign** → Stored in MySQL
+2. **Generate Tracking Link** → Creates UTM code in MySQL
+3. **User Clicks Link** → `cosmos-track.js` sends data to `/api/track`
+4. **Tracking Data Saved** → ClickHouse stores event
+5. **Dashboard Queries** → Aggregates data from ClickHouse
+6. **Real-time Display** → Shows metrics to user
+
+### Key Features by Layer
+
+**Authentication & Security**
+- JWT-based authentication with 7-day expiry
+- bcrypt password hashing
+- Rate limiting on sensitive endpoints
+- Role-based access control (Owner, Admin, Observer, Regular)
+- Session management with automatic cleanup
+- Password reset with email verification
+
+**Analytics Engine**
+- Real-time event tracking
+- Session-based visitor identification
+- Device and environment detection
+- Geographic IP location tracking
+- Referrer source analysis
+- Conversion tracking and attribution
 
 
 ## 🔧 Configuration
 
-Create `.env.local`:
+### Environment Variables
+
+Create `.env.local` in the project root:
+
 ```env
 # ClickHouse Configuration
 CLICKHOUSE_HOST=http://localhost:8123
@@ -136,68 +343,503 @@ MYSQL_PORT=3306
 MYSQL_DATABASE=appdb
 MYSQL_USER=appuser
 MYSQL_PASSWORD=apppassword
+MYSQL_ROOT_PASSWORD=rootpassword
 
 # Application Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NODE_ENV=development
+
+# JWT Configuration (Security)
 JWT_SECRET=your-jwt-secret-here
 JWT_EXPIRES_IN=7d
 
-# Email Configuration (Optional)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
+# Email Configuration (for password reset - optional)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-gmail-app-password
+EMAIL_FROM="CosMos AI <noreply@cosmos-ai.com>"
+
+# Optional: NextAuth Configuration (if using NextAuth)
+NEXTAUTH_SECRET=your-nextauth-secret
+NEXTAUTH_URL=http://localhost:3000
 ```
 
-## 📝 Usage
+### Email Setup (Optional)
+
+For password reset functionality, configure email settings:
+
+**Using Gmail:**
+1. Enable 2-Factor Authentication on your Gmail account
+2. Generate App Password: https://myaccount.google.com/apppasswords
+3. Copy the 16-character password to `EMAIL_PASSWORD`
+
+**Using Other Providers:**
+- SendGrid: Use API key as password
+- AWS SES: Configure with SMTP credentials
+- Custom SMTP: Use your server credentials
+
+### Docker Configuration
+
+The `docker-compose.yml` configures two services:
+
+1. **ClickHouse** (Port 8123, 9000)
+   - Analytics database
+   - HTTP interface on 8123
+   - Native interface on 9000
+   
+2. **MySQL** (Port 3306)
+   - Application database
+   - Default user: appuser
+   - Default database: appdb
+
+### Database Schemas
+
+**ClickHouse Tables:**
+- `analytics.tracking_events` - Raw tracking data
+- `analytics.visit_logs` - Processed visitor logs
+
+**MySQL Tables:**
+- `users` - User accounts
+- `sessions` - Active sessions
+- `password_reset_tokens` - Reset tokens
+- `courses` - Course catalog
+- `campaigns` - Marketing campaigns
+- `utm_codes` - Tracking links
+
+## 📝 Usage Guide
 
 ### Getting Started
-1. **Authentication** - Sign up or log in to access the platform
-2. **Create Campaign** - Set up your first marketing campaign
-3. **Generate Tracking Links** - Use UTM tools to create trackable links
-4. **Monitor Performance** - View real-time analytics on the dashboard
+
+#### 1. Authentication
+- Navigate to http://localhost:3000
+- You'll be automatically redirected to the authentication page
+- Create an account or log in with existing credentials
+
+#### 2. User Roles & Permissions
+- **Owner** - Full system access (manually assigned via database)
+- **Admin** - Manage campaigns, view analytics, export data
+- **Observer** - View-only access to analytics and dashboards
+- **Regular** - Basic view access
+
+#### 3. Create Your First Campaign
+1. Navigate to **Campaigns** from the sidebar
+2. Click **"Create Campaign"**
+3. Fill in campaign details:
+   - Campaign name
+   - Associated course
+   - Source (e.g., "google", "facebook", "telegram")
+   - Medium (e.g., "cpc", "social", "email")
+   - Budget and dates
+   - Status (active/waiting/paused)
+4. Save the campaign
+
+#### 4. Generate Tracking Links
+1. Go to **UTM Tools** from the sidebar
+2. Select a campaign
+3. Configure UTM parameters:
+   - Source (auto-filled from campaign)
+   - Medium (auto-filled from campaign)
+   - Campaign name
+   - Content (optional)
+   - Term (optional)
+4. Enter your landing page URL
+5. Click **"Generate Link"**
+6. Copy the tracking link and use it in your marketing materials
+
+#### 5. Integrate Tracking Script
+Add to your external landing pages:
+```html
+<!-- Add before closing </body> tag -->
+<script src="https://your-cosmos-ai-domain.com/cosmos-track.js"></script>
+```
+
+Configure allowed domains in `public/cosmos-track.js`:
+```javascript
+allowedDomains: [
+  'your-landing-page.com',
+  'www.your-landing-page.com',
+]
+```
+
+#### 6. Track Conversions (Optional)
+Add conversion tracking to your landing page:
+```javascript
+// When user completes a signup
+window.CosmosTracker.trackConversion({
+  type: 'signup',
+  value: 0
+});
+
+// When user makes a purchase
+window.CosmosTracker.trackConversion({
+  type: 'purchase',
+  value: 99.99,
+  metadata: { product: 'premium-plan' }
+});
+```
+
+#### 7. View Analytics
+Access various analytics modules:
+
+**Dashboard (Performance)**
+- Overview of all campaigns
+- Total clicks, visitors, conversions
+- Budget tracking
+- Recent activity
+
+**Campaign Analysis**
+- Individual campaign performance
+- Click-through rates
+- Conversion rates by campaign
+
+**Channel Performance**
+- Traffic by source (Google, Facebook, etc.)
+- Traffic by medium (CPC, Social, Email)
+- ROI by channel
+
+**Environment Analysis**
+- Device breakdown (Desktop, Mobile, Tablet)
+- Browser statistics (Chrome, Safari, Firefox, etc.)
+- Operating system distribution
+- Screen resolutions
+
+**Time Analysis (KST)**
+- Visitor patterns by hour of day
+- Day of week analysis
+- Peak traffic times
+- Timezone-aware analytics
+
+**Page Flow Analysis**
+- Landing page performance
+- Navigation paths
+- Exit pages
+- Bounce rates
+
+**Returning Analysis**
+- New vs returning visitors
+- Visit frequency
+- User retention metrics
+
+**Conversion Analysis**
+- Conversion rates by campaign
+- Conversion value tracking
+- Attribution analysis
 
 ### Key Features
-- **Campaign Management** - Create, edit, and manage marketing campaigns
-- **Analytics Dashboard** - View comprehensive performance metrics
-- **Advanced Analysis** - Deep dive into:
-  - Channel performance analysis
-  - Environment analysis (devices, browsers)
-  - Time-based visitor patterns
-  - Page flow analysis
-  - Returning user analysis
-- **UTM Tools** - Generate and manage UTM parameters
-- **Debug Tools** - Track and debug link performance
+
+#### Campaign Management
+- Create and manage multiple campaigns
+- Track budget and spending
+- Auto-pause campaigns when budget is reached
+- Campaign status management (active/paused/ended)
+- Link campaigns to courses
+
+#### UTM Link Generation
+- Automatic UTM parameter generation
+- Unique tracking codes
+- Link click tracking
+- Budget allocation per link
+- Link status management
+
+#### Advanced Analytics
+- Real-time data updates
+- Customizable date ranges
+- Export capabilities (coming soon)
+- Multi-dimensional analysis
+- Visual charts and graphs
+
+#### Debugging Tools
+- Tracking Debug page for testing links
+- Real-time event monitoring
+- Session and visitor ID tracking
+- UTM parameter validation
 
 ## 🛠 Tech Stack
 
 ### Frontend
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first CSS framework
-- **shadcn/ui** - Modern UI component library
-- **Recharts** - Data visualization
-- **Lucide React** - Icon library
+- **Next.js 14** - React framework with App Router and Server Components
+- **React 18** - UI library with latest features
+- **TypeScript 5** - Type-safe development
+- **Tailwind CSS 3.4** - Utility-first CSS framework
+- **shadcn/ui** - Modern, accessible UI component library
+- **Recharts 2.12** - Composable charting library for data visualization
+- **Lucide React** - Beautiful, consistent icon library
+- **Sonner** - Toast notifications
 
 ### Backend
 - **Next.js API Routes** - Serverless API endpoints
-- **JWT** - Authentication and authorization
-- **bcryptjs** - Password hashing
-- **Nodemailer** - Email service integration
+- **Node.js 18+** - JavaScript runtime
+- **JWT (jsonwebtoken 9.0)** - Secure token-based authentication
+- **bcryptjs 3.0** - Password hashing and verification
+- **Nodemailer 7.0** - Email service integration (SMTP)
 
 ### Databases
-- **ClickHouse** - High-performance analytics database
-- **MySQL 8.0** - Relational database for app data
+- **ClickHouse** - High-performance columnar analytics database
+  - Optimized for OLAP queries
+  - Petabyte-scale data processing
+  - Real-time data ingestion
+- **MySQL 8.0** - Reliable relational database for application data
+  - ACID compliance
+  - Connection pooling
+  - Foreign key constraints
 
-### Additional Tools
-- **Docker** - Containerized database setup
-- **GeoIP Lite** - IP geolocation
-- **UA Parser JS** - User agent parsing
-- **Query String** - URL parameter parsing
-- **SweetAlert2** - Enhanced alerts
-- **Swagger UI** - API documentation
+### Data & Analytics
+- **@clickhouse/client 1.5** - Official ClickHouse client for Node.js
+- **mysql2 3.15** - Fast MySQL client with Promise support
+- **GeoIP Lite 1.4** - IP-based geolocation (country/city detection)
+- **UA Parser JS 2.0** - User agent parsing (device/browser/OS detection)
+- **Query String 9.3** - URL parameter parsing and manipulation
+
+### Developer Tools
+- **Docker & Docker Compose** - Containerized development environment
+- **ESLint** - Code linting and formatting
+- **Autoprefixer** - CSS vendor prefixing
+- **PostCSS** - CSS transformation
+
+### Additional Libraries
+- **nanoid 5.0** - Unique ID generation for tracking codes
+- **uuid 13.0** - UUID generation for sessions and users
+- **next-swagger-doc 0.4** - API documentation with Swagger UI
+- **swagger-ui-react 5.29** - Interactive API documentation interface
+- **SweetAlert2 11.26** - Beautiful, responsive alerts and modals
+- **class-variance-authority 0.7** - CVA for component variants
+- **clsx 2.1** - Conditional className utility
+- **tailwind-merge 2.4** - Merge Tailwind classes without conflicts
+- **dotenv 16.4** - Environment variable management
+
+### Performance Optimizations
+- Server-side rendering (SSR) with Next.js
+- Static generation for public pages
+- API route caching
+- Database connection pooling
+- ClickHouse partitioning by month
+- Indexed database queries
+- Image optimization with Next.js Image
+- Code splitting and lazy loading
 
 ## 📚 Documentation
 
-See the full documentation for more details on setup and usage.
+Additional documentation is available in the `z_documentation/` directory:
 
+### Architecture Documentation
+- **`architecture/SYSTEM_ARCHITECTURE.md`** - Complete system architecture overview
+- **`architecture/API_ENDPOINTS.md`** - Detailed API endpoint documentation
+
+### Feature Documentation
+- **`AUTHENTICATION_COMPLETE.md`** - Authentication system implementation guide
+- **`PASSWORD_RESET.md`** - Password reset flow and email configuration
+- **`JWT_IMPLEMENTATION.md`** - JWT token implementation details
+- **`GMAIL_SETUP.md`** - Gmail SMTP configuration guide
+- **`CLIPBOARD_FALLBACK_IMPLEMENTATION.md`** - Clipboard functionality
+
+### Implementation Guides
+- **`zz_temp-md-files/CONVERSION_TRACKING_GUIDE.md`** - Conversion tracking setup
+- **`zz_temp-md-files/EXTERNAL_TRACKING_INSTALLATION.md`** - External script integration
+- **`zz_temp-md-files/TRACKING_VALIDATION_GUIDE.md`** - Testing and validation
+
+### API Documentation
+Access interactive API documentation at: **http://localhost:3000/api-docs**
+
+## 🚢 Deployment
+
+### Production Deployment
+
+#### Using Docker
+
+1. **Build the production image:**
+```bash
+docker build -t cosmos-ai:latest .
+```
+
+2. **Run with docker-compose:**
+```bash
+# Use production profile
+docker-compose --profile prod up -d
+```
+
+3. **Environment variables:**
+Create `.env.production` with production values:
+```env
+NODE_ENV=production
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+JWT_SECRET=your-production-jwt-secret
+# ... other production values
+```
+
+#### Using Vercel/Netlify
+
+1. Connect your repository
+2. Set environment variables in the dashboard
+3. Configure build settings:
+   - Build command: `npm run build`
+   - Output directory: `.next`
+4. Deploy
+
+**Note:** You'll need to host ClickHouse and MySQL separately (e.g., cloud providers)
+
+### Database Hosting Options
+
+**ClickHouse:**
+- ClickHouse Cloud (recommended)
+- AWS (self-hosted on EC2)
+- DigitalOcean Droplets
+- Google Cloud Platform
+
+**MySQL:**
+- Amazon RDS
+- Google Cloud SQL
+- Azure Database for MySQL
+- PlanetScale
+- DigitalOcean Managed Databases
+
+## 🔒 Security Considerations
+
+### Authentication & Authorization
+- ✅ JWT tokens with expiration (7 days)
+- ✅ bcrypt password hashing (10 rounds)
+- ✅ Role-based access control (Owner/Admin/Observer/Regular)
+- ✅ Session management with automatic cleanup
+- ✅ Password reset with secure tokens (10-hour expiry)
+- ✅ Rate limiting on sensitive endpoints
+
+### API Security
+- ✅ CORS configuration
+- ✅ Input validation and sanitization
+- ✅ SQL injection prevention (parameterized queries)
+- ✅ XSS protection
+- ⚠️ **Recommended:** Add HTTPS in production
+- ⚠️ **Recommended:** Implement CSRF tokens
+- ⚠️ **Recommended:** Add API rate limiting globally
+
+### Database Security
+- ✅ Separate databases for analytics and app data
+- ✅ Connection pooling with limits
+- ✅ Prepared statements for all queries
+- ⚠️ **Recommended:** Use read-only database users where possible
+- ⚠️ **Recommended:** Enable database encryption at rest
+
+### Privacy & GDPR
+- ✅ IP address collection (can be anonymized)
+- ✅ Cookie-based tracking (inform users)
+- ⚠️ **Recommended:** Add cookie consent banner
+- ⚠️ **Recommended:** Implement data retention policies
+- ⚠️ **Recommended:** Add data export/deletion functionality
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**1. Database Connection Failed**
+```bash
+# Check if containers are running
+docker ps
+
+# Restart containers
+docker-compose restart
+
+# Check logs
+docker-compose logs clickhouse
+docker-compose logs mysql
+```
+
+**2. Tables Not Found**
+```bash
+# Re-initialize databases
+npm run db:drop
+npm run clickhouse:init
+npm run mysql:init
+```
+
+**3. Authentication Errors**
+```bash
+# Generate new JWT secret
+npm run generate:secret
+
+# Update .env.local with the new secret
+# Restart the development server
+```
+
+**4. Email Not Sending**
+- Verify Gmail app password is correct (16 characters)
+- Check 2FA is enabled on Gmail account
+- Verify EMAIL_* environment variables are set
+- Check spam folder for test emails
+
+**5. Tracking Script Not Working**
+- Verify domain is in `allowedDomains` array
+- Check browser console for errors
+- Verify API endpoint is accessible
+- Check UTM parameters are present in URL
+
+**6. Port Already in Use**
+```bash
+# Change ports in docker-compose.yml
+# Or kill processes using the ports:
+# Windows:
+netstat -ano | findstr :3306
+taskkill /PID <PID> /F
+
+# Linux/Mac:
+lsof -ti:3306 | xargs kill -9
+```
+
+### Getting Help
+
+- Check documentation in `z_documentation/`
+- Review API docs at `/api-docs`
+- Check Docker logs: `docker-compose logs`
+- Verify environment variables are set correctly
+
+## 📊 Performance Tips
+
+### Optimizing ClickHouse Queries
+- Use date range filters
+- Partition by month for better query performance
+- Use materialized views for frequently accessed aggregations
+- Limit result sets with `LIMIT` clause
+
+### Optimizing MySQL
+- Add indexes on frequently queried columns
+- Use connection pooling (already configured)
+- Clean up old sessions regularly
+- Monitor slow query log
+
+### Frontend Performance
+- Enable Next.js image optimization
+- Use server components where possible
+- Implement pagination for large datasets
+- Add loading states for better UX
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Guidelines
+- Follow TypeScript best practices
+- Write meaningful commit messages
+- Add comments for complex logic
+- Test thoroughly before submitting
+- Update documentation as needed
+
+## 📄 License
+
+This project is proprietary software. All rights reserved.
+
+## 📞 Support
+
+For support and questions:
+- Documentation: `z_documentation/` folder
+- API Docs: http://localhost:3000/api-docs
+- Issues: Create an issue in the repository
+
+---
+
+**Built with ❤️ using Next.js, ClickHouse, and MySQL**

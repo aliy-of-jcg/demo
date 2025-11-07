@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { getPool } from "@/lib/mysql";
-import { encrypt } from "@/lib/encryption";
+
 
 export async function POST(request: NextRequest) {
   try {

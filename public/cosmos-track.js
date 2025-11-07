@@ -22,8 +22,8 @@
     ],
     
     // API endpoints
-    apiEndpoint: '/api/track', // Production endpoint
-    apiEndpointInternal: '/api/track-internal', // For local testing on CosMos AI itself
+    apiEndpoint: 'https://dev.cosmosai.co.kr/api/track', // Production endpoint
+    apiEndpointInternal: 'https://dev.cosmosai.co.kr/api/track-internal', // For local testing on CosMos AI itself
     
     // Domain and UTM validation
     requireUTMParams: true, // Only track visitors who came via UTM links
