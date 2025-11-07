@@ -13,6 +13,12 @@ import { nanoid } from 'nanoid';
 
 export const dynamic = 'force-dynamic';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
@@ -43,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (!session_id || !user_id) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -65,7 +71,7 @@ export async function POST(request: NextRequest) {
       console.warn('[CosMos Internal] Blocked tracking from unauthorized origin:', origin || referer);
       return NextResponse.json(
         { success: false, error: 'This endpoint is for internal testing only' },
-        { status: 403 }
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -119,20 +125,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         success: true,
         message: 'Internal test tracking recorded'
-      });
+      }, { headers: corsHeaders });
     } catch (error) {
       console.error('Failed to insert internal tracking data:', error);
       // Still return success to avoid blocking the user
       return NextResponse.json({ 
         success: true,
         warning: 'Data may not have been recorded'
-      });
+      }, { headers: corsHeaders });
     }
   } catch (error) {
     console.error('Internal tracking endpoint error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -141,11 +147,7 @@ export async function POST(request: NextRequest) {
 export async function OPTIONS(request: NextRequest) {
   return NextResponse.json({}, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
+    headers: corsHeaders,
   });
 }
 

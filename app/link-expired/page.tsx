@@ -1,26 +1,46 @@
 "use client";
 
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { AlertCircle, Home, ArrowLeft } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 export default function LinkExpiredPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+          <div className="max-w-md w-full">
+            <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+              <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-6">
+                <AlertCircle className="w-8 h-8 text-orange-600 animate-pulse" />
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900 mb-2">Checking Link Status…</h1>
+              <p className="text-gray-500 text-sm">
+                Please hold on while we confirm the status of this link.
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <LinkExpiredContent />
+    </Suspense>
+  );
+}
+
+function LinkExpiredContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [campaignName, setCampaignName] = useState<string | null>(null);
   const [reason, setReason] = useState<string>('inactive');
 
-  // Extract params and clean URL
   useEffect(() => {
     const campaign = searchParams.get('campaign');
     const reasonParam = searchParams.get('reason') || 'inactive';
-    
-    // Store the params in state
+
     setCampaignName(campaign);
     setReason(reasonParam);
-    
-    // Clean the URL by replacing it without the query params
+
     router.replace('/link-expired', { scroll: false });
   }, [searchParams, router]);
 
@@ -79,28 +99,9 @@ export default function LinkExpiredPage() {
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-3">
-            <Link
-              href="/utm-tools"
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              View UTM Tools
-            </Link>
-
-            <Link
-              href="/"
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <Home className="w-4 h-4" />
-              Go to Dashboard
-            </Link>
-          </div>
-
           {/* Additional Info */}
-          <p className="text-xs text-gray-400 mt-6">
-            If you believe this is an error, please contact support.
+          <p className="text-sm text-gray-500 mt-6">
+            This link is no longer active. Please contact the sender for a new link or visit their website directly.
           </p>
         </div>
       </div>

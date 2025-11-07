@@ -4,6 +4,12 @@ import { nanoid } from 'nanoid';
 
 export const dynamic = 'force-dynamic';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
@@ -81,17 +87,17 @@ export async function POST(request: NextRequest) {
         format: 'JSONEachRow'
       });
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true }, { headers: corsHeaders });
     } catch (error) {
       console.error('Failed to insert tracking data:', error);
-      // Still return success to avoid blocking the user
-      return NextResponse.json({ success: true });
+      // Still return success (with CORS headers) to avoid blocking the user
+      return NextResponse.json({ success: true }, { headers: corsHeaders });
     }
   } catch (error) {
     console.error('Tracking endpoint error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -100,11 +106,7 @@ export async function POST(request: NextRequest) {
 export async function OPTIONS(request: NextRequest) {
   return NextResponse.json({}, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
+    headers: corsHeaders,
   });
 }
 
