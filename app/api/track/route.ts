@@ -5,9 +5,10 @@ import { nanoid } from 'nanoid';
 export const dynamic = 'force-dynamic';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://aptdecor.uz',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Credentials': 'true',
 };
 
 export async function POST(request: NextRequest) {
