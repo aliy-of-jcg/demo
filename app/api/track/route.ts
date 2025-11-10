@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
       conversion_value,
       conversion_metadata,
       page_sequence,
-      is_exit_page
+      is_exit_page,
+      session_page_count
     } = data;
 
     // Validate required fields
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
           is_exit_page: is_exit_page || 0,
           is_landing_page: data.is_landing_page || 0,
           previous_page_url: data.previous_page_url || '',
+          session_page_count: session_page_count || 0,
         }],
         format: 'JSONEachRow'
       });

@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
           is_landing_page: data.is_landing_page || 0,
           is_exit_page: data.is_exit_page || 0,
           previous_page_url: data.previous_page_url || '',
+          session_page_count: data.session_page_count || 0,
           conversion_type: data.conversion_type || '',
           conversion_value: data.conversion_value || 0,
           conversion_metadata: data.conversion_metadata || '',

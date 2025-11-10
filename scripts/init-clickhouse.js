@@ -96,6 +96,7 @@ async function initSchema() {
       is_landing_page UInt8 DEFAULT 0,
       is_exit_page UInt8 DEFAULT 0,
       previous_page_url String DEFAULT '',
+      session_page_count Int32 DEFAULT 0,
       conversion_type String DEFAULT '',
       conversion_value Float64 DEFAULT 0,
       conversion_metadata String DEFAULT ''

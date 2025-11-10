@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Copy, ExternalLink, Edit, Trash2, Plus, TrendingUp, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { PageFooter } from '@/components/page-footer';
@@ -52,11 +52,7 @@ export default function UTMListPage() {
   });
   const [utmCodes, setUtmCodes] = useState<UTMCode[]>([]);
 
-  useEffect(() => {
-    fetchUTMCodes();
-  }, [debouncedSearch, page, limit]); // Use debounced value instead of raw input
-
-  const fetchUTMCodes = async () => {
+  const fetchUTMCodes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -68,7 +64,9 @@ export default function UTMListPage() {
       params.set('page', page.toString());
       params.set('limit', limit.toString());
 
-      const response = await fetch(`/api/utm-codes?${params.toString()}`);
+      const response = await fetch(`/api/utm-codes?${params.toString()}`, {
+        cache: 'no-store'
+      });
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -86,7 +84,31 @@ export default function UTMListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, page, limit]);
+
+  useEffect(() => {
+    fetchUTMCodes();
+  }, [fetchUTMCodes]); // Use debounced value instead of raw input
+
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchUTMCodes();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchUTMCodes();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchUTMCodes]);
 
   const statusColors = {
     active: 'bg-blue-100 text-blue-800',
