@@ -55,7 +55,9 @@ export async function GET(request: NextRequest) {
         start_date,
         end_date
       FROM campaigns
-      WHERE start_date <= ? AND end_date >= ?
+      WHERE start_date <= ? 
+        AND end_date >= ?
+        AND status != 'hidden'
       ORDER BY source, name
     `, [endDate, startDate]);
 
@@ -72,6 +74,15 @@ export async function GET(request: NextRequest) {
 
     // Step 2: Get visit and conversion data from ClickHouse for each campaign
     const campaignIds = campaignList.map(c => c.id);
+    
+    if (campaignIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        dateRange: { start: startDate, end: endDate },
+        channels: [],
+        chartData: []
+      });
+    }
     
     const clickhouseQuery = `
       SELECT 

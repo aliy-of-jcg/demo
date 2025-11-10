@@ -236,7 +236,8 @@ export default function ChannelPerformancePage() {
           {/* Channel Sections - Detailed Tables */}
           {data.channels.length > 0 && data.channels.map((channelData, idx) => {
               const colors = getChannelColor(channelData.channel);
-              
+              const visibleCampaigns = channelData.campaigns.filter((campaign) => campaign.status !== "hidden");
+
               return (
                 <div key={idx} className={`bg-white rounded-lg shadow-sm border ${colors.border} mb-4 sm:mb-6`}>
                   {/* Channel Header */}
@@ -247,7 +248,7 @@ export default function ChannelPerformancePage() {
                           {channelData.channel}
                         </h2>
                         <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                          {channelData.campaigns.length} campaign{channelData.campaigns.length !== 1 ? 's' : ''}
+                          {visibleCampaigns.length} campaign{visibleCampaigns.length !== 1 ? 's' : ''}
                         </p>
                       </div>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 text-left lg:text-right">
@@ -304,7 +305,7 @@ export default function ChannelPerformancePage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {channelData.campaigns.map((campaign, campaignIdx) => {
+                        {visibleCampaigns.map((campaign, campaignIdx) => {
                           const statusStyle = getStatusBadge(campaign.status);
                           const costPerConversion = campaign.conversions > 0 ? campaign.ad_cost / campaign.conversions : 0;
                           
@@ -374,7 +375,7 @@ export default function ChannelPerformancePage() {
                   
                   {/* Mobile/Tablet Card View */}
                   <div className="lg:hidden divide-y divide-gray-200">
-                    {channelData.campaigns.map((campaign, campaignIdx) => {
+                    {visibleCampaigns.map((campaign, campaignIdx) => {
                       const statusStyle = getStatusBadge(campaign.status);
                       
                       return (
