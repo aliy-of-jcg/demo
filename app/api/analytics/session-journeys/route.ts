@@ -79,8 +79,8 @@ export async function GET(request: NextRequest) {
     
     // Process the results to format the page journey
     const sessions = data.map((session: any) => {
-      // Parse the pages array (comes as tuples from ClickHouse)
-      const pages = session.pages.map((page: any) => ({
+      // Parse and merge pageview/exit events for each session
+      const parsedPages = (session.pages || []).map((page: any) => ({
         page_url: page[0],
         page_title: page[1],
         page_sequence: page[2],
@@ -89,7 +89,31 @@ export async function GET(request: NextRequest) {
         event_type: page[5],
         is_landing_page: page[6],
         is_exit_page: page[7],
-      })).filter((p: any) => p.event_type === 'pageview'); // Only show pageviews, not exit events
+      }));
+
+      const pages = parsedPages.reduce((acc: any[], page: any) => {
+        if (page.event_type === 'page_exit') {
+          if (acc.length > 0) {
+            const last = acc[acc.length - 1];
+            acc[acc.length - 1] = {
+              ...last,
+              is_exit_page: 1,
+              time_on_page: page.time_on_page || last.time_on_page,
+              exit_timestamp: page.timestamp,
+            };
+          }
+          return acc;
+        }
+
+        if (page.event_type === 'pageview') {
+          acc.push({
+            ...page,
+            exit_timestamp: null,
+          });
+        }
+
+        return acc;
+      }, []);
 
       return {
         session_id: session.session_id,

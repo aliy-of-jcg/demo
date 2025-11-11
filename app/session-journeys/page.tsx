@@ -10,7 +10,9 @@ import {
   RefreshCw,
   Calendar,
   Users,
-  Route
+  Route,
+  LogIn,
+  LogOut
 } from "lucide-react";
 
 interface Page {
@@ -22,6 +24,7 @@ interface Page {
   event_type: string;
   is_landing_page: number;
   is_exit_page: number;
+  exit_timestamp: string | null;
 }
 
 interface Session {
@@ -250,16 +253,30 @@ export default function SessionJourneysPage() {
                     {session.pages.map((page, index) => (
                       <div key={index} className="relative">
                         {/* Page Block */}
-                        <div className={`flex items-start gap-4 pb-6 ${index !== session.pages.length - 1 ? 'border-l-2 border-gray-200 ml-3' : ''}`}>
-                          {/* Sequence Number */}
-                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${
-                            page.is_landing_page === 1
-                              ? 'bg-green-500 text-white'
-                              : page.is_exit_page === 1
-                              ? 'bg-red-500 text-white'
-                              : 'bg-blue-500 text-white'
-                          }`}>
-                            {page.page_sequence}
+                        <div className={`flex items-start gap-4 ${index !== session.pages.length - 1 ? 'pb-8' : ''} ${index !== session.pages.length - 1 ? 'border-l-2 border-gray-200 ml-3' : ''}`}>
+                          {/* Sequence Number with Icon Overlay */}
+                          <div className="relative flex-shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${
+                              page.is_landing_page === 1
+                                ? 'bg-green-500 text-white'
+                                : page.is_exit_page === 1
+                                ? 'bg-red-500 text-white'
+                                : 'bg-blue-500 text-white'
+                            }`}>
+                              {page.page_sequence}
+                            </div>
+                            {/* Landing Icon */}
+                            {page.is_landing_page === 1 && (
+                              <div className="absolute -top-1 -right-1 bg-green-600 rounded-full p-0.5">
+                                <LogIn className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                            {/* Exit Icon */}
+                            {page.is_exit_page === 1 && (
+                              <div className="absolute -top-1 -right-1 bg-red-600 rounded-full p-0.5">
+                                <LogOut className="w-3 h-3 text-white" />
+                              </div>
+                            )}
                           </div>
 
                           {/* Page Details */}
@@ -271,13 +288,15 @@ export default function SessionJourneysPage() {
                                     {getPageName(page.page_url)}
                                   </h4>
                                   {page.is_landing_page === 1 && (
-                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full flex items-center gap-1">
+                                      <LogIn className="w-3 h-3" />
                                       Landing
                                     </span>
                                   )}
                                   {page.is_exit_page === 1 && (
-                                    <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
-                                      Exit
+                                    <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full flex items-center gap-1">
+                                      <LogOut className="w-3 h-3" />
+                                      Exiting
                                     </span>
                                   )}
                                 </div>
@@ -297,8 +316,8 @@ export default function SessionJourneysPage() {
 
                         {/* Arrow between pages */}
                         {index < session.pages.length - 1 && (
-                          <div className="absolute left-[18px] -bottom-2 z-10">
-                            <ArrowRight className="w-4 h-4 text-gray-400 transform rotate-90" />
+                          <div className="absolute left-3 bottom-0 z-10 bg-white rounded-full p-0.5">
+                            <ArrowRight className="w-3.5 h-3.5 text-gray-400 transform rotate-90" />
                           </div>
                         )}
                       </div>
