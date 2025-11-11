@@ -74,15 +74,24 @@ export async function GET(request: NextRequest) {
 
     // 3. Landing Pages with bounce rate and avg pageviews
     const landingPagesQuery = `
-      WITH session_stats AS (
+      WITH landing_page_data AS (
         SELECT 
           session_id,
-          MIN(page_url) as landing_page,
-          COUNT(*) as pages_in_session,
-          SUM(time_on_page) as total_time
+          page_url as landing_page
         FROM analytics.visit_logs
         WHERE ${whereClause}
-        GROUP BY session_id
+          AND is_landing_page = 1
+      ),
+      session_stats AS (
+        SELECT 
+          l.session_id,
+          l.landing_page,
+          COUNT(*) as pages_in_session,
+          SUM(v.time_on_page) as total_time
+        FROM landing_page_data l
+        LEFT JOIN analytics.visit_logs v ON l.session_id = v.session_id
+        WHERE v.timestamp >= (SELECT MIN(timestamp) FROM analytics.visit_logs WHERE ${whereClause})
+        GROUP BY l.session_id, l.landing_page
       )
       SELECT 
         landing_page as page_url,
