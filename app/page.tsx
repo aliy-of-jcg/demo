@@ -111,6 +111,14 @@ export default function LandingPage() {
       iconColor: "text-green-600"
     },
     {
+      title: "Session Journeys",
+      description: "View complete page-by-page user journeys and navigation flows",
+      icon: PieChart,
+      href: "/session-journeys",
+      color: "bg-cyan-50 border-cyan-200 hover:border-cyan-400",
+      iconColor: "text-cyan-600"
+    },
+    {
       title: "Source & Media Analysis",
       description: "Analyze traffic sources and media platform effectiveness",
       icon: Globe,

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Route } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import Link from 'next/link';
 
 interface PageData {
   page: string;
@@ -112,8 +113,18 @@ export default function PageFlowAnalysisPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">UTM Performance Analysis</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">Detailed analysis of landing pages, exit pages, and UTM performance</p>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">UTM Performance Analysis</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Detailed analysis of landing pages, exit pages, and UTM performance</p>
+          </div>
+          <Link href="/session-journeys">
+            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm">
+              <Route className="w-4 h-4" />
+              View Session Journeys
+            </button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
