@@ -4,13 +4,6 @@ import { nanoid } from 'nanoid';
 
 export const dynamic = 'force-dynamic';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://aptdecor.uz',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Credentials': 'true',
-};
-
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
@@ -90,26 +83,23 @@ export async function POST(request: NextRequest) {
         format: 'JSONEachRow'
       });
 
-      return NextResponse.json({ success: true }, { headers: corsHeaders });
+      return NextResponse.json({ success: true });
     } catch (error) {
       console.error('Failed to insert tracking data:', error);
-      // Still return success (with CORS headers) to avoid blocking the user
-      return NextResponse.json({ success: true }, { headers: corsHeaders });
+      // Still return success to avoid blocking the user
+      return NextResponse.json({ success: true });
     }
   } catch (error) {
     console.error('Tracking endpoint error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     );
   }
 }
 
-// Handle OPTIONS for CORS
+// Handle OPTIONS for CORS preflight
 export async function OPTIONS(request: NextRequest) {
-  return NextResponse.json({}, {
-    status: 200,
-    headers: corsHeaders,
-  });
+  return new NextResponse(null, { status: 200 });
 }
 

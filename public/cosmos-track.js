@@ -1,6 +1,6 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.3.0
+ * Version: 4.4.0
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
@@ -10,8 +10,15 @@
  * - Exit page tracking ONLY on tab/browser close (not on navigation)
  * - Page refreshes count as pageviews
  * - Proper landing page tracking across multiple sessions
+ * - Client-side navigation tracking (SPA/Next.js router support)
  *
- * Bug Fixes (v4.3.0):
+ * New in v4.4.0:
+ * - Auto-detects client-side route changes (Next.js, SPA frameworks)
+ * - Tracks pageviews on internal navigation without page reload
+ * - Monitors pushState, replaceState, and popstate events
+ * - Compatible with both traditional multi-page and SPA architectures
+ *
+ * Previous Fixes (v4.3.0):
  * - Fixed page_sequence resetting to 1 on navigation (now increments properly)
  * - Enhanced internal navigation detection with sessionStorage flags
  * - Fixed exit events firing on internal navigation
@@ -201,10 +208,13 @@
       this.hasInitialized = true;
       this.pageLoadTime = Date.now();
       
-      console.log('[CosMos] Initializing tracker v4.3.0...');
+      console.log('[CosMos] Initializing tracker v4.4.0...');
       
       // Track initial pageview immediately (including refreshes)
       this.trackPageview();
+      
+      // Setup client-side navigation tracking (for SPA/Next.js)
+      this.setupClientSideNavigation();
       
       // AFTER pageview is tracked, clear navigation flags
       setTimeout(function() {
@@ -212,6 +222,51 @@
         sessionStorage.removeItem('cosmos_navigation_time');
         console.log('[CosMos] 🧹 Navigation flags cleared');
       }, 100);
+    },
+    
+    // Setup client-side navigation tracking for SPA frameworks
+    setupClientSideNavigation: function() {
+      const self = this;
+      let lastUrl = window.location.href;
+      
+      // Function to handle URL changes
+      const handleUrlChange = function() {
+        const currentUrl = window.location.href;
+        const currentPath = window.location.pathname;
+        
+        // Only track if URL actually changed and it's a different path (not just hash)
+        if (currentUrl !== lastUrl && currentPath !== new URL(lastUrl).pathname) {
+          lastUrl = currentUrl;
+          console.log('[CosMos] 🧭 Route change detected:', currentPath);
+          
+          // Reset page load time for new route
+          self.pageLoadTime = Date.now();
+          
+          // Track the new pageview
+          setTimeout(function() {
+            self.trackPageview();
+          }, 100); // Small delay to let DOM update
+        }
+      };
+      
+      // Listen to popstate (browser back/forward)
+      window.addEventListener('popstate', handleUrlChange);
+      
+      // Intercept pushState and replaceState (Next.js router.push, router.replace)
+      const originalPushState = history.pushState;
+      const originalReplaceState = history.replaceState;
+      
+      history.pushState = function() {
+        originalPushState.apply(this, arguments);
+        handleUrlChange();
+      };
+      
+      history.replaceState = function() {
+        originalReplaceState.apply(this, arguments);
+        handleUrlChange();
+      };
+      
+      console.log('[CosMos] 🔄 Client-side navigation tracking enabled');
     },
 
     // Setup visitor tracking (persistent UUID) - ONLY called after UTM validation
