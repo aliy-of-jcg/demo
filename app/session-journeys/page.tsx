@@ -268,7 +268,7 @@ export default function SessionJourneysPage() {
                     {session.pages.map((page, index) => (
                       <div key={index} className="relative">
                         {/* Page Block */}
-                        <div className={`flex items-start gap-4 pb-8 ${index !== session.pages.length - 1 ? 'border-l-2 border-gray-200 ml-3' : ''}`}>
+                        <div className={`flex items-start gap-4 ${session.has_exit_event ? 'pb-8' : ''} ${(index !== session.pages.length - 1 || session.has_exit_event) ? 'border-l-2 border-gray-200 ml-3' : ''}`}>
                           {/* Sequence Number with Icon Overlay */}
                           <div className="relative flex-shrink-0">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${
@@ -324,7 +324,7 @@ export default function SessionJourneysPage() {
                       </div>
                     ))}
 
-                    {/* Session End Marker - Only show if session has actually ended (page_exit event exists) */}
+                    {/* Session End Marker - Show if session has ended, even for single-page sessions */}
                     {session.has_exit_event && (
                       <div className="flex items-start gap-4 border-l-2 border-gray-200 ml-3 pb-4">
                         <div className="relative flex-shrink-0">
@@ -343,7 +343,11 @@ export default function SessionJourneysPage() {
                                 </span>
                               </div>
                               <p className="text-xs text-red-700">
-                                Last page viewed: {getPageName(session.exit_page_url || session.pages[session.pages.length - 1].page_url)}
+                                {session.pages.length === 1 ? (
+                                  <>User left after viewing: {getPageName(session.exit_page_url || session.pages[0].page_url)}</>
+                                ) : (
+                                  <>Last page viewed: {getPageName(session.exit_page_url || session.pages[session.pages.length - 1].page_url)}</>
+                                )}
                               </p>
                             </div>
                             <div className="text-right flex-shrink-0">
