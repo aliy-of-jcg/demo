@@ -1,6 +1,6 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.4.0
+ * Version: 4.5.0
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
@@ -12,18 +12,17 @@
  * - Proper landing page tracking across multiple sessions
  * - Client-side navigation tracking (SPA/Next.js router support)
  *
- * New in v4.4.0:
+ * New in v4.5.0:
+ * - Page sequence persists across tab closes using localStorage
+ * - Session state persists within 30-minute session timeout window
+ * - Automatic session expiration after 30 minutes of inactivity
+ * - Page sequence continues correctly when reopening within active session
+ *
+ * Previous Updates (v4.4.0):
  * - Auto-detects client-side route changes (Next.js, SPA frameworks)
  * - Tracks pageviews on internal navigation without page reload
  * - Monitors pushState, replaceState, and popstate events
  * - Compatible with both traditional multi-page and SPA architectures
- *
- * Previous Fixes (v4.3.0):
- * - Fixed page_sequence resetting to 1 on navigation (now increments properly)
- * - Enhanced internal navigation detection with sessionStorage flags
- * - Fixed exit events firing on internal navigation
- * - Added session ID tracking for better page sequence management
- * - Landing page flag now correctly set only for first page (page_sequence=1)
  */
 
 (function() {
@@ -208,7 +207,7 @@
       this.hasInitialized = true;
       this.pageLoadTime = Date.now();
       
-      console.log('[CosMos] Initializing tracker v4.4.0...');
+      console.log('[CosMos] Initializing tracker v4.5.0...');
       
       // Track initial pageview immediately (including refreshes)
       this.trackPageview();
@@ -317,15 +316,49 @@
 
     // Setup session tracking - ONLY called after UTM validation
     setupSessionTracking: function() {
-      this.sessionId = utils.getCookie(CONFIG.sessionCookieName);
+      const now = utils.getTimestamp();
+      const sessionTimeoutSeconds = CONFIG.sessionTimeoutMinutes * 60;
       
-      if (!this.sessionId) {
-        // Create new session
-        this.sessionId = utils.generateUUID();
-        utils.setCookie(CONFIG.sessionCookieName, this.sessionId, CONFIG.sessionTimeoutMinutes / (24 * 60));
-        // Reset session page count
-        sessionStorage.setItem('cosmos_session_page_count', '0');
+      // Get session state from localStorage
+      const storedSessionData = localStorage.getItem('cosmos_session_data');
+      let sessionData = null;
+      
+      if (storedSessionData) {
+        try {
+          sessionData = JSON.parse(storedSessionData);
+        } catch (e) {
+          console.log('[CosMos] Failed to parse session data, creating new session');
+        }
       }
+      
+      // Check if stored session is still valid
+      const isStoredSessionValid = sessionData && 
+                                   sessionData.session_id && 
+                                   sessionData.last_activity &&
+                                   (now - sessionData.last_activity) < sessionTimeoutSeconds;
+      
+      if (isStoredSessionValid) {
+        // Continue existing session
+        this.sessionId = sessionData.session_id;
+        console.log('[CosMos] 🔄 Continuing existing session:', this.sessionId.substring(0, 8) + '...');
+      } else {
+        // Create new session (either no session or expired)
+        this.sessionId = utils.generateUUID();
+        console.log('[CosMos] 🆕 Creating new session:', this.sessionId.substring(0, 8) + '...');
+        
+        // Clear old session data from localStorage
+        localStorage.removeItem('cosmos_page_sequence_data');
+      }
+      
+      // Update session cookie
+      utils.setCookie(CONFIG.sessionCookieName, this.sessionId, CONFIG.sessionTimeoutMinutes / (24 * 60));
+      
+      // Update session data in localStorage
+      localStorage.setItem('cosmos_session_data', JSON.stringify({
+        session_id: this.sessionId,
+        last_activity: now,
+        created_at: isStoredSessionValid ? sessionData.created_at : now
+      }));
       
       // Get session page count
       this.sessionPageCount = parseInt(sessionStorage.getItem('cosmos_session_page_count') || '0');
@@ -333,25 +366,44 @@
     
     // Setup page sequence tracking (for page flow analysis)
     setupPageSequenceTracking: function() {
-      // Get current page sequence from sessionStorage
-      const storedSequence = sessionStorage.getItem('cosmos_page_seq');
-      const storedSessionId = sessionStorage.getItem('cosmos_session_tracker_id');
+      const now = utils.getTimestamp();
       
-      // Check if this is the same session
-      if (storedSessionId === this.sessionId && storedSequence) {
-        // Same session - increment sequence
-        this.pageSequence = parseInt(storedSequence) + 1;
-        console.log('[CosMos] 📈 Incrementing page sequence:', this.pageSequence);
-      } else {
-        // New session or missing data - start at 1
-        this.pageSequence = 1;
-        console.log('[CosMos] 🆕 Starting new page sequence:', this.pageSequence);
-        // Store session ID for tracking
-        sessionStorage.setItem('cosmos_session_tracker_id', this.sessionId);
+      // Get page sequence data from localStorage (persists across tab closes)
+      const storedSequenceData = localStorage.getItem('cosmos_page_sequence_data');
+      let sequenceData = null;
+      
+      if (storedSequenceData) {
+        try {
+          sequenceData = JSON.parse(storedSequenceData);
+        } catch (e) {
+          console.log('[CosMos] Failed to parse sequence data');
+        }
       }
       
-      // Store updated sequence
+      // Check if stored sequence belongs to current session
+      const isSequenceValid = sequenceData && 
+                             sequenceData.session_id === this.sessionId;
+      
+      if (isSequenceValid) {
+        // Continue sequence from where we left off
+        this.pageSequence = sequenceData.page_sequence + 1;
+        console.log('[CosMos] 📈 Continuing page sequence:', this.pageSequence, '(from localStorage)');
+      } else {
+        // Start new sequence
+        this.pageSequence = 1;
+        console.log('[CosMos] 🆕 Starting new page sequence:', this.pageSequence);
+      }
+      
+      // Store updated sequence in localStorage
+      localStorage.setItem('cosmos_page_sequence_data', JSON.stringify({
+        session_id: this.sessionId,
+        page_sequence: this.pageSequence,
+        last_update: now
+      }));
+      
+      // Also keep in sessionStorage for backward compatibility
       sessionStorage.setItem('cosmos_page_seq', this.pageSequence.toString());
+      sessionStorage.setItem('cosmos_session_tracker_id', this.sessionId);
     },
 
     // Track pageview
@@ -488,6 +540,13 @@
       this.sendEvent(eventData);
       this.lastTrackedPath = cleanPagePath;
       this.lastTrackedTimestamp = now;
+      
+      // Update session activity timestamp in localStorage to keep session alive
+      const sessionData = JSON.parse(localStorage.getItem('cosmos_session_data') || '{}');
+      if (sessionData.session_id === this.sessionId) {
+        sessionData.last_activity = utils.getTimestamp();
+        localStorage.setItem('cosmos_session_data', JSON.stringify(sessionData));
+      }
       
       // Store current page data for exit tracking
       // This is CRITICAL - we store NOW so beforeunload uses the RIGHT page
