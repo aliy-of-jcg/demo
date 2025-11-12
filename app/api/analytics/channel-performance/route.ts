@@ -112,6 +112,26 @@ export async function GET(request: NextRequest) {
         conversions: parseInt(item.conversions) || 0
       });
     });
+    
+    // Step 2.5: Get direct traffic data (utm_source = '(direct)')
+    const directTrafficQuery = `
+      SELECT 
+        COUNT(DISTINCT session_id) as visits,
+        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
+      FROM analytics.visit_logs
+      WHERE 
+        utm_source = '(direct)'
+        AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+    `;
+    
+    const directTrafficResult = await clickhouse.query({
+      query: directTrafficQuery,
+      format: 'JSONEachRow'
+    });
+    
+    const directTrafficData = await directTrafficResult.json() as any[];
+    const directVisits = parseInt(directTrafficData[0]?.visits) || 0;
+    const directConversions = parseInt(directTrafficData[0]?.conversions) || 0;
 
     // Step 3: Get click data from utm_codes (tracking links)
     const [utmCodes] = await pool.execute(`
@@ -165,6 +185,27 @@ export async function GET(request: NextRequest) {
       }
       channelMap.get(channel)!.push(campaign);
     });
+    
+    // Step 5.5: Add Direct channel if there's direct traffic
+    if (directVisits > 0) {
+      const directConversionRate = directVisits > 0 ? (directConversions / directVisits) * 100 : 0;
+      
+      const directChannel: CampaignData = {
+        campaign_id: 0, // Special ID for direct traffic
+        campaign_name: 'Direct Traffic',
+        source: 'direct',
+        medium: '(none)',
+        status: 'active',
+        visits: directVisits,
+        conversions: directConversions,
+        conversion_rate: parseFloat(directConversionRate.toFixed(2)),
+        ad_cost: 0, // Direct traffic has no ad cost
+        clicks: directVisits, // For direct, visits = clicks (no tracking link)
+        ctr: 100 // 100% CTR for direct (they typed URL or bookmark)
+      };
+      
+      channelMap.set('direct', [directChannel]);
+    }
 
     // Step 6: Calculate channel summaries
     const channels: ChannelSummary[] = Array.from(channelMap.entries()).map(([channel, campaigns]) => {

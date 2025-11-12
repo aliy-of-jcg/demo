@@ -97,6 +97,7 @@ export default function ChannelPerformancePage() {
   // Color mapping for different channels
   const getChannelColor = (channel: string) => {
     const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+      'direct': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' },
       'naver': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
       'kakao': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
       'google': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
