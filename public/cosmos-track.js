@@ -58,7 +58,7 @@
     lastVisitCookieName: 'cosmos_last_visit',
     lastActivityCookieName: 'cosmos_last_activity',
     cookieExpireDays: 730,
-    sessionTimeoutMinutes: 30,
+    sessionTimeoutMinutes: 2,
     visitTimeoutMinutes: 0.5,
     pageViewDebounceMs: 500,
   };

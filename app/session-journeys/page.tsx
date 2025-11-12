@@ -91,9 +91,11 @@ export default function SessionJourneysPage() {
   };
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', { 
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
-      minute: '2-digit' 
+      minute: '2-digit',
+      hour12: false 
     });
   };
 
