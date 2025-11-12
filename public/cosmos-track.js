@@ -1,6 +1,6 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.6.0
+ * Version: 4.7.0
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
@@ -12,17 +12,18 @@
  * - Proper landing page tracking across multiple sessions
  * - Client-side navigation tracking (SPA/Next.js router support)
  *
- * New in v4.6.0:
+ * New in v4.7.0:
+ * - Google Analytics-style UTM persistence: UTMs locked at session start
+ * - UTM parameters stored in localStorage and NEVER change during session
+ * - New UTM parameters mid-session are ignored (GA behavior)
+ * - Ensures consistent attribution across entire session
+ *
+ * Previous Updates (v4.6.0):
  * - Google Analytics approach: Exit events only sent when session expires
  * - Tab closes during active session do NOT trigger exit events
  * - One session = one landing page + one exit page
  * - Delayed exit event sent retrospectively when session timeout detected
  * - Exit candidate stored in localStorage for accurate exit tracking
- *
- * Previous Updates (v4.5.1):
- * - previous_page_url now persists across tab closes in localStorage
- * - session_page_count now persists across tab closes in localStorage
- * - Page flow data (last page, session page count) stored with session_id
  */
 
 (function() {
@@ -207,7 +208,7 @@
       this.hasInitialized = true;
       this.pageLoadTime = Date.now();
       
-      console.log('[CosMos] Initializing tracker v4.6.0...');
+      console.log('[CosMos] Initializing tracker v4.7.0...');
       
       // Check for expired session and send delayed exit event if needed
       this.checkAndSendDelayedExitEvent();
@@ -398,7 +399,7 @@
     },
 
     // Setup session tracking - ONLY called after UTM validation
-    setupSessionTracking: function() {
+    setupSessionTracking: function(urlParams) {
       const now = utils.getTimestamp();
       const sessionTimeoutSeconds = CONFIG.sessionTimeoutMinutes * 60;
       
@@ -420,6 +421,8 @@
                                    sessionData.last_activity &&
                                    (now - sessionData.last_activity) < sessionTimeoutSeconds;
       
+      const isNewSession = !isStoredSessionValid;
+      
       if (isStoredSessionValid) {
         // Continue existing session
         this.sessionId = sessionData.session_id;
@@ -432,6 +435,37 @@
         // Clear old session data from localStorage
         localStorage.removeItem('cosmos_page_sequence_data');
         localStorage.removeItem('cosmos_page_flow_data');
+        localStorage.removeItem('cosmos_session_utm_data'); // Clear old UTM data
+      }
+      
+      // ============================================================
+      // GOOGLE ANALYTICS-STYLE UTM PERSISTENCE
+      // ============================================================
+      // UTMs are LOCKED at session start and NEVER change during the session
+      // This ensures consistent attribution even if user arrives via UTM link mid-session
+      
+      if (isNewSession) {
+        // NEW SESSION: Set UTM parameters from current URL or mark as direct
+        const hasUTMParams = urlParams.utm_campaign || urlParams.utm_source || urlParams.utm_medium;
+        
+        const sessionUTMData = {
+          utm_source: hasUTMParams ? (urlParams.utm_source || '') : '(direct)',
+          utm_medium: hasUTMParams ? (urlParams.utm_medium || '') : '(none)',
+          utm_campaign: urlParams.utm_campaign || '',
+          utm_term: urlParams.utm_term || '',
+          utm_content: urlParams.utm_content || '',
+          is_direct: hasUTMParams ? 0 : 1
+        };
+        
+        // Store UTM data in localStorage for this session
+        localStorage.setItem('cosmos_session_utm_data', JSON.stringify(sessionUTMData));
+        console.log('[CosMos] 🎯 Session UTMs locked:', hasUTMParams ? urlParams.utm_source : '(direct)');
+      } else {
+        // EXISTING SESSION: UTMs already locked, ignore any new UTM parameters
+        const storedUTMData = localStorage.getItem('cosmos_session_utm_data');
+        if (storedUTMData) {
+          console.log('[CosMos] 🔒 Using locked session UTMs (new UTMs ignored)');
+        }
       }
       
       // Update session cookie
@@ -530,41 +564,25 @@
       }
       
       // ============================================================
-      // UTM PARAMETER HANDLING
+      // UTM PARAMETER HANDLING - GOOGLE ANALYTICS STYLE
       // ============================================================
-      // Check if user has UTM parameters in URL
-      const hasUTMParams = urlParams.utm_campaign || urlParams.utm_source || urlParams.utm_medium;
-      
-      // Check if UTM parameters were stored from previous page in this session
-      const storedUTMSource = sessionStorage.getItem('cosmos_utm_source') || '';
-      const storedUTMCampaign = sessionStorage.getItem('cosmos_utm_campaign') || '';
-      const hasStoredUTM = storedUTMSource || storedUTMCampaign;
-      
-      // Check page sequence temporarily to determine if this is landing page
-      const tempPageSeq = parseInt(sessionStorage.getItem('cosmos_page_seq') || '0') + 1;
-      
-      // NEW: Track everyone, but handle direct vs UTM differently
-      let isDirectTraffic = false;
-      
-      // If it's the first page and no UTM params, mark as direct traffic
-      if (tempPageSeq === 1 && !hasUTMParams && !hasStoredUTM) {
-        isDirectTraffic = true;
-        // Set direct traffic markers in sessionStorage
-        sessionStorage.setItem('cosmos_utm_source', '(direct)');
-        sessionStorage.setItem('cosmos_utm_medium', '(none)');
-        sessionStorage.setItem('cosmos_utm_campaign', '');
-        sessionStorage.setItem('cosmos_utm_term', '');
-        sessionStorage.setItem('cosmos_utm_content', '');
-        sessionStorage.setItem('cosmos_is_direct', '1');
-      }
-      
-      // Setup tracking infrastructure on first accepted visit
+      // IMPORTANT: UTMs are LOCKED at session start and retrieved from localStorage
+      // Any new UTM parameters in the URL mid-session are completely ignored
+      // This ensures consistent attribution throughout the entire session
+      //
+      // Example Flow:
+      // 1. User visits aptdecor.uz directly → UTMs: (direct)/(none) [LOCKED]
+      // 2. User clicks link with ?utm_source=facebook → UTMs: (direct)/(none) [IGNORED]
+      // 3. Session expires (2 min)
+      // 4. User clicks ?utm_source=facebook → NEW SESSION with UTMs: facebook/... [LOCKED]
+      //
+      // Setup tracking infrastructure on first visit
       if (!this.isTrackingEnabled) {
         this.setupVisitorTracking();
-        this.setupSessionTracking();
+        this.setupSessionTracking(urlParams); // Pass urlParams to lock UTMs at session start
         this.setupBeforeUnload(); // Setup exit tracking
         this.isTrackingEnabled = true;
-        console.log('[CosMos] ✅ Tracking enabled. Source:', isDirectTraffic ? 'Direct' : 'UTM');
+        console.log('[CosMos] ✅ Tracking enabled');
       }
       
       // Setup page sequence tracking
@@ -576,22 +594,32 @@
       // Store in both sessionStorage (for backward compatibility) and localStorage (for persistence)
       sessionStorage.setItem('cosmos_session_page_count', this.sessionPageCount.toString());
       
-      // Store UTM params in session storage for subsequent pages (if they exist)
-      if (hasUTMParams) {
-        sessionStorage.setItem('cosmos_utm_source', urlParams.utm_source || '');
-        sessionStorage.setItem('cosmos_utm_medium', urlParams.utm_medium || '');
-        sessionStorage.setItem('cosmos_utm_campaign', urlParams.utm_campaign || '');
-        sessionStorage.setItem('cosmos_utm_term', urlParams.utm_term || '');
-        sessionStorage.setItem('cosmos_utm_content', urlParams.utm_content || '');
-        sessionStorage.removeItem('cosmos_is_direct'); // Remove direct flag if UTM params appear
+      // Get locked UTM parameters from localStorage (set at session start)
+      const storedUTMData = localStorage.getItem('cosmos_session_utm_data');
+      let sessionUTMs = {
+        utm_source: '',
+        utm_medium: '',
+        utm_campaign: '',
+        utm_term: '',
+        utm_content: '',
+        is_direct: 0
+      };
+      
+      if (storedUTMData) {
+        try {
+          sessionUTMs = JSON.parse(storedUTMData);
+        } catch (e) {
+          console.log('[CosMos] Failed to parse session UTM data');
+        }
       }
       
-      // Use stored UTM params (or direct markers)
-      const finalUTMSource = urlParams.utm_source || sessionStorage.getItem('cosmos_utm_source') || '';
-      const finalUTMMedium = urlParams.utm_medium || sessionStorage.getItem('cosmos_utm_medium') || '';
-      const finalUTMCampaign = urlParams.utm_campaign || sessionStorage.getItem('cosmos_utm_campaign') || '';
-      const finalUTMTerm = urlParams.utm_term || sessionStorage.getItem('cosmos_utm_term') || '';
-      const finalUTMContent = urlParams.utm_content || sessionStorage.getItem('cosmos_utm_content') || '';
+      // Use locked session UTMs (ignore any new UTM parameters in URL)
+      const finalUTMSource = sessionUTMs.utm_source;
+      const finalUTMMedium = sessionUTMs.utm_medium;
+      const finalUTMCampaign = sessionUTMs.utm_campaign;
+      const finalUTMTerm = sessionUTMs.utm_term;
+      const finalUTMContent = sessionUTMs.utm_content;
+      const isDirectTraffic = sessionUTMs.is_direct === 1;
       
       // Get previous page URL from localStorage (persists across tab closes)
       const storedFlowData = localStorage.getItem('cosmos_page_flow_data');
