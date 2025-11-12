@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       SELECT COUNT(*) as total_pageviews
       FROM analytics.visit_logs
       WHERE ${whereClause}
+        AND event_type = 'pageview'
     `;
 
     const totalPageviewsResult = await clickhouse.query({
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
         ROUND(COUNT(*) / COUNT(DISTINCT session_id), 2) as avg_pageviews_per_session
       FROM analytics.visit_logs
       WHERE ${whereClause}
+        AND event_type = 'pageview'
       GROUP BY utm_source
       HAVING total_sessions > 0
       ORDER BY total_sessions DESC
@@ -81,6 +83,7 @@ export async function GET(request: NextRequest) {
         FROM analytics.visit_logs
         WHERE ${whereClause}
           AND is_landing_page = 1
+          AND event_type = 'pageview'
       ),
       session_stats AS (
         SELECT 
@@ -91,6 +94,7 @@ export async function GET(request: NextRequest) {
         FROM landing_page_data l
         LEFT JOIN analytics.visit_logs v ON l.session_id = v.session_id
         WHERE v.timestamp >= (SELECT MIN(timestamp) FROM analytics.visit_logs WHERE ${whereClause})
+          AND v.event_type = 'pageview'
         GROUP BY l.session_id, l.landing_page
       )
       SELECT 
