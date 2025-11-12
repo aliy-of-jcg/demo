@@ -1,28 +1,28 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.5.0
+ * Version: 4.6.0
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
  * - Direct visits marked as utm_source: '(direct)', utm_medium: '(none)'
  * - 30-minute visit window (refreshes within window don't increment visit_count)
  * - Page count per session
- * - Exit page tracking ONLY on tab/browser close (not on navigation)
+ * - Google Analytics-style exit tracking (one exit per session)
  * - Page refreshes count as pageviews
  * - Proper landing page tracking across multiple sessions
  * - Client-side navigation tracking (SPA/Next.js router support)
  *
- * New in v4.5.0:
- * - Page sequence persists across tab closes using localStorage
- * - Session state persists within 30-minute session timeout window
- * - Automatic session expiration after 30 minutes of inactivity
- * - Page sequence continues correctly when reopening within active session
+ * New in v4.6.0:
+ * - Google Analytics approach: Exit events only sent when session expires
+ * - Tab closes during active session do NOT trigger exit events
+ * - One session = one landing page + one exit page
+ * - Delayed exit event sent retrospectively when session timeout detected
+ * - Exit candidate stored in localStorage for accurate exit tracking
  *
- * Previous Updates (v4.4.0):
- * - Auto-detects client-side route changes (Next.js, SPA frameworks)
- * - Tracks pageviews on internal navigation without page reload
- * - Monitors pushState, replaceState, and popstate events
- * - Compatible with both traditional multi-page and SPA architectures
+ * Previous Updates (v4.5.1):
+ * - previous_page_url now persists across tab closes in localStorage
+ * - session_page_count now persists across tab closes in localStorage
+ * - Page flow data (last page, session page count) stored with session_id
  */
 
 (function() {
@@ -207,7 +207,10 @@
       this.hasInitialized = true;
       this.pageLoadTime = Date.now();
       
-      console.log('[CosMos] Initializing tracker v4.5.0...');
+      console.log('[CosMos] Initializing tracker v4.6.0...');
+      
+      // Check for expired session and send delayed exit event if needed
+      this.checkAndSendDelayedExitEvent();
       
       // Track initial pageview immediately (including refreshes)
       this.trackPageview();
@@ -215,12 +218,92 @@
       // Setup client-side navigation tracking (for SPA/Next.js)
       this.setupClientSideNavigation();
       
+      // Setup beforeunload to update exit candidate (NOT send exit event)
+      this.setupBeforeUnload();
+      
       // AFTER pageview is tracked, clear navigation flags
       setTimeout(function() {
         sessionStorage.removeItem('cosmos_is_navigating');
         sessionStorage.removeItem('cosmos_navigation_time');
         console.log('[CosMos] 🧹 Navigation flags cleared');
       }, 100);
+    },
+    
+    // Check for expired previous session and send delayed exit event
+    checkAndSendDelayedExitEvent: function() {
+      const now = utils.getTimestamp();
+      const sessionTimeoutSeconds = CONFIG.sessionTimeoutMinutes * 60;
+      
+      // Get exit candidate from localStorage
+      const storedExitCandidate = localStorage.getItem('cosmos_exit_candidate');
+      if (!storedExitCandidate) {
+        console.log('[CosMos] No exit candidate found');
+        return;
+      }
+      
+      let exitCandidate = null;
+      try {
+        exitCandidate = JSON.parse(storedExitCandidate);
+      } catch (e) {
+        console.log('[CosMos] Failed to parse exit candidate');
+        localStorage.removeItem('cosmos_exit_candidate');
+        return;
+      }
+      
+      // Check if the session has expired
+      const timeSinceLastActivity = now - (exitCandidate.last_activity || 0);
+      
+      if (timeSinceLastActivity >= sessionTimeoutSeconds) {
+        // Session expired - send delayed exit event
+        console.log('[CosMos] 📤 Sending delayed exit event for expired session:', exitCandidate.session_id.substring(0, 8) + '...');
+        
+        const eventData = {
+          timestamp: exitCandidate.last_activity + 1, // 1 second after last activity
+          session_id: exitCandidate.session_id,
+          user_id: exitCandidate.user_id,
+          visit_count: exitCandidate.visit_count,
+          is_new_visitor: exitCandidate.is_new_visitor,
+          
+          page_url: exitCandidate.page_url,
+          page_title: exitCandidate.page_title,
+          page_path: exitCandidate.page_path,
+          
+          page_sequence: exitCandidate.page_sequence,
+          is_landing_page: exitCandidate.is_landing_page,
+          previous_page_url: exitCandidate.previous_page_url,
+          session_page_count: exitCandidate.session_page_count,
+          is_exit_page: 1,
+          
+          referrer: exitCandidate.referrer,
+          referrer_domain: exitCandidate.referrer_domain,
+          
+          utm_source: exitCandidate.utm_source,
+          utm_medium: exitCandidate.utm_medium,
+          utm_campaign: exitCandidate.utm_campaign,
+          utm_term: exitCandidate.utm_term,
+          utm_content: exitCandidate.utm_content,
+          
+          user_agent: exitCandidate.user_agent,
+          device_type: exitCandidate.device_type,
+          screen_resolution: exitCandidate.screen_resolution,
+          browser: exitCandidate.browser,
+          os: exitCandidate.os,
+          language: exitCandidate.language,
+          
+          event_type: 'page_exit',
+          time_on_page: exitCandidate.time_on_page || 0
+        };
+        
+        // Send the delayed exit event
+        this.sendEvent(eventData);
+        
+        console.log('[CosMos] ✅ Delayed exit event sent for:', exitCandidate.page_path);
+      } else {
+        console.log('[CosMos] ⏳ Session still active, no exit event needed');
+      }
+      
+      // Always clear the exit candidate after checking
+      localStorage.removeItem('cosmos_exit_candidate');
     },
     
     // Setup client-side navigation tracking for SPA frameworks
@@ -348,6 +431,7 @@
         
         // Clear old session data from localStorage
         localStorage.removeItem('cosmos_page_sequence_data');
+        localStorage.removeItem('cosmos_page_flow_data');
       }
       
       // Update session cookie
@@ -360,8 +444,28 @@
         created_at: isStoredSessionValid ? sessionData.created_at : now
       }));
       
-      // Get session page count
-      this.sessionPageCount = parseInt(sessionStorage.getItem('cosmos_session_page_count') || '0');
+      // Get session page count from localStorage (persists across tab closes)
+      const storedFlowData = localStorage.getItem('cosmos_page_flow_data');
+      let flowData = null;
+      
+      if (storedFlowData) {
+        try {
+          flowData = JSON.parse(storedFlowData);
+        } catch (e) {
+          console.log('[CosMos] Failed to parse flow data');
+        }
+      }
+      
+      // Check if flow data belongs to current session
+      if (flowData && flowData.session_id === this.sessionId) {
+        this.sessionPageCount = flowData.session_page_count || 0;
+        console.log('[CosMos] 📊 Restored session page count:', this.sessionPageCount);
+      } else {
+        this.sessionPageCount = 0;
+      }
+      
+      // Also sync to sessionStorage for backward compatibility
+      sessionStorage.setItem('cosmos_session_page_count', this.sessionPageCount.toString());
     },
     
     // Setup page sequence tracking (for page flow analysis)
@@ -468,6 +572,8 @@
       
       // Increment session page count
       this.sessionPageCount++;
+      
+      // Store in both sessionStorage (for backward compatibility) and localStorage (for persistence)
       sessionStorage.setItem('cosmos_session_page_count', this.sessionPageCount.toString());
       
       // Store UTM params in session storage for subsequent pages (if they exist)
@@ -487,8 +593,21 @@
       const finalUTMTerm = urlParams.utm_term || sessionStorage.getItem('cosmos_utm_term') || '';
       const finalUTMContent = urlParams.utm_content || sessionStorage.getItem('cosmos_utm_content') || '';
       
-      // Get previous page URL from sessionStorage (for page flow tracking)
-      const previousPageUrl = sessionStorage.getItem('cosmos_last_page_clean') || '';
+      // Get previous page URL from localStorage (persists across tab closes)
+      const storedFlowData = localStorage.getItem('cosmos_page_flow_data');
+      let previousPageUrl = '';
+      
+      if (storedFlowData) {
+        try {
+          const flowData = JSON.parse(storedFlowData);
+          if (flowData.session_id === this.sessionId) {
+            previousPageUrl = flowData.last_page_url || '';
+          }
+        } catch (e) {
+          // Fallback to sessionStorage if localStorage fails
+          previousPageUrl = sessionStorage.getItem('cosmos_last_page_clean') || '';
+        }
+      }
       
       // CRITICAL: Landing page is ONLY the first page in a NEW SESSION
       // If page_sequence === 1, it's definitely a landing page
@@ -548,6 +667,46 @@
         localStorage.setItem('cosmos_session_data', JSON.stringify(sessionData));
       }
       
+      // Store exit candidate in localStorage (Google Analytics approach)
+      // This will be used to send a delayed exit event if the session expires
+      const exitCandidate = {
+        session_id: this.sessionId,
+        user_id: this.visitorId,
+        visit_count: this.visitCount,
+        is_new_visitor: this.isNewVisitor ? 1 : 0,
+        
+        page_url: cleanPageUrl,
+        page_title: document.title,
+        page_path: cleanPagePath,
+        
+        page_sequence: this.pageSequence,
+        is_landing_page: isLandingPage,
+        previous_page_url: previousPageUrl,
+        session_page_count: this.sessionPageCount,
+        
+        referrer: document.referrer || '',
+        referrer_domain: referrerDomain,
+        
+        utm_source: finalUTMSource,
+        utm_medium: finalUTMMedium,
+        utm_campaign: finalUTMCampaign,
+        utm_term: finalUTMTerm,
+        utm_content: finalUTMContent,
+        
+        user_agent: navigator.userAgent,
+        device_type: utils.getDeviceType(),
+        screen_resolution: utils.getScreenResolution(),
+        browser: utils.getBrowser(),
+        os: utils.getOS(),
+        language: navigator.language || '',
+        
+        last_activity: utils.getTimestamp(),
+        time_on_page: 0
+      };
+      
+      localStorage.setItem('cosmos_exit_candidate', JSON.stringify(exitCandidate));
+      console.log('[CosMos] 💾 Exit candidate stored');
+      
       // Store current page data for exit tracking
       // This is CRITICAL - we store NOW so beforeunload uses the RIGHT page
       this.currentPageData = {
@@ -561,7 +720,15 @@
         previousPageUrl: previousPageUrl
       };
       
-      // Store current page as last page for next pageview
+      // Store current page as last page for next pageview in localStorage (persists across tab closes)
+      localStorage.setItem('cosmos_page_flow_data', JSON.stringify({
+        session_id: this.sessionId,
+        last_page_url: cleanPageUrl,
+        session_page_count: this.sessionPageCount,
+        last_update: utils.getTimestamp()
+      }));
+      
+      // Also store in sessionStorage for backward compatibility
       sessionStorage.setItem('cosmos_last_page_clean', cleanPageUrl);
       sessionStorage.setItem('cosmos_last_page_full', fullPageUrl);
     },
@@ -580,145 +747,36 @@
       }
     },
 
-     // Track time on page before unload
+     // Update exit candidate on beforeunload (Google Analytics approach)
+    // NO longer sends exit event immediately - only updates time_on_page
     setupBeforeUnload: function() {
       const self = this;
       
-      // Flag to detect if we're navigating to another page on same site
-      let isNavigatingAway = false;
-      let navigationTimeout = null;
-      
-      // Listen for clicks on links (internal navigation)
-      document.addEventListener('click', function(e) {
-        const target = e.target.closest('a');
-        if (target && target.href) {
-          try {
-            const targetUrl = new URL(target.href, window.location.origin);
-            const isSameOrigin = targetUrl.origin === window.location.origin;
-            
-            if (isSameOrigin) {
-              isNavigatingAway = true;
-              console.log('[CosMos] 🔗 Internal link clicked:', targetUrl.pathname);
-              
-              // Set flag in sessionStorage for cross-page communication
-              sessionStorage.setItem('cosmos_is_navigating', '1');
-              sessionStorage.setItem('cosmos_navigation_time', Date.now().toString());
-              
-              // Clear flag after 3 seconds (in case navigation fails)
-              clearTimeout(navigationTimeout);
-              navigationTimeout = setTimeout(function() {
-                isNavigatingAway = false;
-                sessionStorage.removeItem('cosmos_is_navigating');
-                console.log('[CosMos] ⏰ Navigation timeout - clearing flags');
-              }, 3000);
-            }
-          } catch (err) {
-            console.log('[CosMos] Error parsing URL:', err);
-          }
-        }
-      }, true);
-      
       window.addEventListener('beforeunload', function(e) {
-        // Only send exit event if tracking is enabled
-        if (!self.isTrackingEnabled) {
+        // Only update exit candidate if tracking is enabled
+        if (!self.isTrackingEnabled || !self.currentPageData || !self.currentPageData.url) {
           return;
         }
         
-        // CRITICAL: If navigating to another page on same site, DON'T send exit event
-        if (isNavigatingAway) {
-          console.log('[CosMos] ⏭️ Skipping exit event - internal navigation');
-          return;
-        }
-        
-        // Check sessionStorage flag one more time
-        if (sessionStorage.getItem('cosmos_is_navigating') === '1') {
-          console.log('[CosMos] ⏭️ Skipping exit event - navigation flag set');
-          return;
-        }
-        
-        // If we reach here, it's a real exit (tab close, browser close, or external navigation)
-        console.log('[CosMos] 🚪 Real exit detected (tab close or external link)');
-        
-        // Use stored page data
-        if (!self.currentPageData || !self.currentPageData.url) {
-          console.log('[CosMos] ⚠️ No current page data stored, skipping exit event');
-          return;
-        }
-        
+        // Calculate time on page
         const timeOnPage = Math.floor((Date.now() - self.currentPageData.loadTime) / 1000);
         
-        // Use stored UTM params or direct markers (ALWAYS preserve them)
-        const finalUTMSource = sessionStorage.getItem('cosmos_utm_source') || '';
-        const finalUTMMedium = sessionStorage.getItem('cosmos_utm_medium') || '';
-        const finalUTMCampaign = sessionStorage.getItem('cosmos_utm_campaign') || '';
-        const finalUTMTerm = sessionStorage.getItem('cosmos_utm_term') || '';
-        const finalUTMContent = sessionStorage.getItem('cosmos_utm_content') || '';
-        
-        // Determine referrer domain
-        let referrerDomain = utils.getReferrerDomain();
-        if (sessionStorage.getItem('cosmos_is_direct') === '1' && !document.referrer) {
-          referrerDomain = '(direct)';
+        // Update the exit candidate with accurate time_on_page
+        const storedExitCandidate = localStorage.getItem('cosmos_exit_candidate');
+        if (storedExitCandidate) {
+          try {
+            const exitCandidate = JSON.parse(storedExitCandidate);
+            exitCandidate.time_on_page = timeOnPage;
+            exitCandidate.last_activity = utils.getTimestamp();
+            localStorage.setItem('cosmos_exit_candidate', JSON.stringify(exitCandidate));
+            console.log('[CosMos] 💾 Exit candidate updated with time_on_page:', timeOnPage + 's');
+          } catch (err) {
+            console.log('[CosMos] Failed to update exit candidate:', err);
+          }
         }
         
-        // Use STORED page data (from when pageview was tracked)
-        const exitPageUrl = self.currentPageData.url;
-        const exitPagePath = self.currentPageData.path;
-        const exitPageTitle = self.currentPageData.title;
-        const exitPageSequence = self.currentPageData.sequence;
-        const exitSessionPageCount = self.currentPageData.sessionPageCount;
-        const exitIsLandingPage = self.currentPageData.isLanding || 0;
-        const exitPreviousPageUrl = self.currentPageData.previousPageUrl || '';
-        
-        const eventData = {
-          timestamp: utils.getTimestamp(),
-          session_id: self.sessionId,
-          user_id: self.visitorId,
-          visit_count: self.visitCount,
-          is_new_visitor: self.isNewVisitor ? 1 : 0,
-          
-          // Use stored page data
-          page_url: exitPageUrl,
-          page_title: exitPageTitle,
-          page_path: exitPagePath,
-          
-          // Page Flow Tracking - preserve original page's metadata
-          page_sequence: exitPageSequence,
-          is_landing_page: exitIsLandingPage,
-          previous_page_url: exitPreviousPageUrl,
-          session_page_count: exitSessionPageCount,
-          is_exit_page: 1, // Mark this as exit page
-          
-          referrer: document.referrer || '',
-          referrer_domain: referrerDomain,
-          
-          // Always include UTM parameters
-          utm_source: finalUTMSource,
-          utm_medium: finalUTMMedium,
-          utm_campaign: finalUTMCampaign,
-          utm_term: finalUTMTerm,
-          utm_content: finalUTMContent,
-          
-          user_agent: navigator.userAgent,
-          device_type: utils.getDeviceType(),
-          screen_resolution: utils.getScreenResolution(),
-          browser: utils.getBrowser(),
-          os: utils.getOS(),
-          language: navigator.language || '',
-          event_type: 'page_exit',
-          time_on_page: timeOnPage
-        };
-        
-        console.log('[CosMos] 🚪 Exit event (tab close):', {
-          exitFrom: exitPagePath,
-          sequence: exitPageSequence,
-          timeOnPage: timeOnPage
-        });
-        
-        // Use sendBeacon for reliability
-        if (navigator.sendBeacon) {
-          const blob = new Blob([JSON.stringify(eventData)], { type: 'application/json' });
-          navigator.sendBeacon(CONFIG.apiEndpoint, blob);
-        }
+        // NOTE: We do NOT send exit event here anymore (Google Analytics approach)
+        // Exit event will be sent retrospectively when session expires on next visit
       });
     }
   };
