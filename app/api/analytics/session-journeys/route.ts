@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     
     // Process the results to format the page journey
     const sessions = data.map((session: any) => {
-      // Parse and merge pageview/exit events for each session
+      // Parse all events (pageviews and page_exit events)
       const parsedPages = (session.pages || []).map((page: any) => ({
         page_url: page[0],
         page_title: page[1],
@@ -91,29 +91,25 @@ export async function GET(request: NextRequest) {
         is_exit_page: page[7],
       }));
 
-      const pages = parsedPages.reduce((acc: any[], page: any) => {
-        if (page.event_type === 'page_exit') {
-          if (acc.length > 0) {
-            const last = acc[acc.length - 1];
-            acc[acc.length - 1] = {
-              ...last,
-              is_exit_page: 1,
-              time_on_page: page.time_on_page || last.time_on_page,
-              exit_timestamp: page.timestamp,
-            };
-          }
-          return acc;
-        }
+      // Check if session has ended (has a page_exit event with is_exit_page = 1)
+      const exitEvent = parsedPages.find((page: any) => 
+        page.event_type === 'page_exit' && page.is_exit_page === 1
+      );
 
-        if (page.event_type === 'pageview') {
-          acc.push({
-            ...page,
-            exit_timestamp: null,
-          });
-        }
-
-        return acc;
-      }, []);
+      // Filter to only pageview events for display
+      const pages = parsedPages
+        .filter((page: any) => page.event_type === 'pageview')
+        .map((page: any) => ({
+          page_url: page.page_url,
+          page_title: page.page_title,
+          page_sequence: page.page_sequence,
+          timestamp: page.timestamp,
+          time_on_page: page.time_on_page,
+          event_type: page.event_type,
+          is_landing_page: page.is_landing_page,
+          is_exit_page: page.is_exit_page,
+          exit_timestamp: null,
+        }));
 
       return {
         session_id: session.session_id,
@@ -131,6 +127,8 @@ export async function GET(request: NextRequest) {
         os: session.os,
         duration: Math.round((new Date(session.session_end).getTime() - new Date(session.session_start).getTime()) / 1000),
         pages: pages,
+        has_exit_event: !!exitEvent, // Add flag to indicate if session has ended
+        exit_page_url: exitEvent ? exitEvent.page_url : null, // Store exit page URL
       };
     });
 
