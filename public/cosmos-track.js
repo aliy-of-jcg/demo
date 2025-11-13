@@ -39,10 +39,12 @@
   const CONFIG = {
     allowedDomains: [
       'aptdecor.uz',
+      'adservice.centras.ai',
       'www.aptdecor.uz',
       'jcg.asia',
       'www.jcg.asia',
       'localhost:3001',
+      'centra.ai',
     ],
 
     apiEndpoint: 'https://dev.cosmosai.co.kr/api/track',
@@ -489,7 +491,7 @@
       }
       
       // Update session cookie
-      utils.setCookie(CONFIG.sessionCookieName, this.sessionId, CONFIG.sessionTimeoutMinutes / (24 * 60));
+        utils.setCookie(CONFIG.sessionCookieName, this.sessionId, CONFIG.sessionTimeoutMinutes / (24 * 60));
       
       // Update session data in localStorage
       localStorage.setItem('cosmos_session_data', JSON.stringify({

@@ -14,7 +14,9 @@ import {
   BarChart,
   Clock,
   PieChart,
-  Activity
+  Activity,
+  UserCheck,
+  Tag
 } from "lucide-react";
 import { PageFooter } from "@/components/page-footer";
 
@@ -119,15 +121,15 @@ export default function LandingPage() {
       iconColor: "text-cyan-600"
     },
     {
-      title: "Source & Media Analysis",
+      title: "Channel Performance",
       description: "Analyze traffic sources and media platform effectiveness",
       icon: Globe,
-      href: "/source-analysis",
+      href: "/channel-performance",
       color: "bg-purple-50 border-purple-200 hover:border-purple-400",
       iconColor: "text-purple-600"
     },
     {
-      title: "Campaign Analytics",
+      title: "Campaign Analysis",
       description: "Deep dive into individual campaign metrics and performance",
       icon: BarChart3,
       href: "/campaign-analysis",
@@ -149,6 +151,22 @@ export default function LandingPage() {
       href: "/time-analysis",
       color: "bg-orange-50 border-orange-200 hover:border-orange-400",
       iconColor: "text-orange-600"
+    },
+    {
+      title: "Returning Visitor Analysis",
+      description: "Track repeat visitors and analyze user retention patterns",
+      icon: UserCheck,
+      href: "/returning-analysis",
+      color: "bg-teal-50 border-teal-200 hover:border-teal-400",
+      iconColor: "text-teal-600"
+    },
+    {
+      title: "UTM List",
+      description: "Manage and view all UTM parameters and tracking codes",
+      icon: Tag,
+      href: "/utm-tools",
+      color: "bg-amber-50 border-amber-200 hover:border-amber-400",
+      iconColor: "text-amber-600"
     }
   ];
 

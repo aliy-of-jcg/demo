@@ -24,6 +24,7 @@ export function middleware(request: NextRequest) {
     const origin = request.headers.get('origin') || '';
     const allowedOrigins = [
       'https://aptdecor.uz',
+      'https://adservice.centras.ai',
       'https://www.aptdecor.uz',
       'https://jcg.asia',
       'https://www.jcg.asia',
