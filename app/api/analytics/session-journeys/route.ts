@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
           MIN(timestamp) as session_start,
           MAX(timestamp) as session_end,
           COUNT(*) as total_pages,
+          SUM(time_on_page) as duration,
           MAX(CASE WHEN is_landing_page = 1 THEN page_url ELSE '' END) as landing_page,
           MAX(CASE WHEN is_exit_page = 1 THEN page_url ELSE '' END) as exit_page,
           MAX(utm_source) as utm_source,
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
         groupArray((p.page_url, p.page_title, p.page_sequence, p.timestamp, p.time_on_page, p.event_type, p.is_landing_page, p.is_exit_page)) as pages
       FROM session_list s
       LEFT JOIN session_pages p ON s.session_id = p.session_id
-      GROUP BY s.session_id, s.user_id, s.session_start, s.session_end, s.total_pages, s.landing_page, s.exit_page, s.utm_source, s.utm_medium, s.utm_campaign, s.device_type, s.browser, s.os
+      GROUP BY s.session_id, s.user_id, s.session_start, s.session_end, s.total_pages, s.duration, s.landing_page, s.exit_page, s.utm_source, s.utm_medium, s.utm_campaign, s.device_type, s.browser, s.os
       ORDER BY s.session_start DESC
     `;
 
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
         device_type: session.device_type,
         browser: session.browser,
         os: session.os,
-        duration: Math.round((new Date(session.session_end).getTime() - new Date(session.session_start).getTime()) / 1000),
+        duration: Math.round(session.duration || 0), // Use pre-calculated duration from SUM(time_on_page)
         pages: pages,
         has_exit_event: !!exitEvent, // Add flag to indicate if session has ended
         exit_page_url: exitEvent ? exitEvent.page_url : null, // Store exit page URL
