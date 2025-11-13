@@ -64,12 +64,14 @@ CREATE TABLE IF NOT EXISTS courses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Campaigns table
+-- Note: source and medium are for ADMIN UI/ORGANIZATION ONLY
+-- Channel performance reports use actual UTM data from visit_logs, not these fields
 CREATE TABLE IF NOT EXISTS campaigns (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   course_id INT,
-  source VARCHAR(100) NOT NULL,
-  medium VARCHAR(100) NOT NULL,
+  source VARCHAR(100) NOT NULL COMMENT 'Primary channel (for admin UI only, not reporting)',
+  medium VARCHAR(100) NOT NULL COMMENT 'Primary medium (for admin UI only, not reporting)',
   status ENUM('active', 'waiting', 'paused', 'ended', 'hidden') DEFAULT 'active',
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,

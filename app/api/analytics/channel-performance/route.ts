@@ -39,84 +39,46 @@ export async function GET(request: NextRequest) {
       return date.toISOString().split('T')[0];
     })();
 
-    console.log(`📊 Channel Performance Analysis API - Date Range: ${startDate} to ${endDate}`);
+    console.log(`📊 Channel Performance Analysis API (GA Approach) - Date Range: ${startDate} to ${endDate}`);
 
     const pool = getPool();
 
-    // Step 1: Get all campaigns with their basic info and ad costs
-    const [campaigns] = await pool.execute(`
-      SELECT 
-        id,
-        name,
-        source,
-        medium,
-        status,
-        spent as ad_cost,
-        start_date,
-        end_date
-      FROM campaigns
-      WHERE start_date <= ? 
-        AND end_date >= ?
-        AND status != 'hidden'
-      ORDER BY source, name
-    `, [endDate, startDate]);
-
-    const campaignList = campaigns as any[];
-
-    if (campaignList.length === 0) {
-      return NextResponse.json({
-        success: true,
-        dateRange: { start: startDate, end: endDate },
-        channels: [],
-        chartData: []
-      });
-    }
-
-    // Step 2: Get visit and conversion data from ClickHouse for each campaign
-    const campaignIds = campaignList.map(c => c.id);
+    // ============================================================
+    // GOOGLE ANALYTICS APPROACH: Query actual traffic data first
+    // Group by utm_source, utm_medium from visit_logs (actual traffic)
+    // NOT by campaigns.source (configuration)
+    // ============================================================
     
-    if (campaignIds.length === 0) {
-      return NextResponse.json({
-        success: true,
-        dateRange: { start: startDate, end: endDate },
-        channels: [],
-        chartData: []
-      });
-    }
-    
-    const clickhouseQuery = `
+    // Step 1: Get actual traffic data grouped by UTM parameters
+    // Note: Now using tracking_code to link back to campaigns reliably
+    const trafficQuery = `
       SELECT 
-        campaign_id,
-        COUNT(DISTINCT user_id) as visits,
+        tracking_code,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        COUNT(DISTINCT session_id) as sessions,
+        COUNT(DISTINCT user_id) as users,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs
-      WHERE 
-        campaign_id > 0 
-        AND campaign_id IN (${campaignIds.join(',')})
-        AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
-      GROUP BY campaign_id
+      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        AND utm_source != ''
+        AND utm_source != '(direct)'
+      GROUP BY tracking_code, utm_source, utm_medium, utm_campaign
     `;
 
-    const clickhouseResult = await clickhouse.query({
-      query: clickhouseQuery,
+    const trafficResult = await clickhouse.query({
+      query: trafficQuery,
       format: 'JSONEachRow'
     });
 
-    const analyticsData = await clickhouseResult.json() as any[];
+    const trafficData = await trafficResult.json() as any[];
     
-    // Create a map for quick lookup
-    const analyticsMap = new Map();
-    analyticsData.forEach(item => {
-      analyticsMap.set(item.campaign_id, {
-        visits: parseInt(item.visits) || 0,
-        conversions: parseInt(item.conversions) || 0
-      });
-    });
-    
-    // Step 2.5: Get direct traffic data (utm_source = '(direct)')
+    // Step 1.5: Get direct traffic data (utm_source = '(direct)')
     const directTrafficQuery = `
       SELECT 
-        COUNT(DISTINCT session_id) as visits,
+        COUNT(DISTINCT session_id) as sessions,
+        COUNT(DISTINCT user_id) as users,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs
       WHERE 
@@ -130,82 +92,129 @@ export async function GET(request: NextRequest) {
     });
     
     const directTrafficData = await directTrafficResult.json() as any[];
-    const directVisits = parseInt(directTrafficData[0]?.visits) || 0;
+    const directSessions = parseInt(directTrafficData[0]?.sessions) || 0;
     const directConversions = parseInt(directTrafficData[0]?.conversions) || 0;
 
-    // Step 3: Get click data from utm_codes (tracking links)
-    const [utmCodes] = await pool.execute(`
-      SELECT 
-        campaign_id,
-        SUM(clicks) as total_clicks
-      FROM utm_codes
-      WHERE campaign_id IN (${campaignIds.join(',')})
-      GROUP BY campaign_id
-    `);
+    // If no traffic data at all, return empty
+    if (trafficData.length === 0 && directSessions === 0) {
+      return NextResponse.json({
+        success: true,
+        dateRange: { start: startDate, end: endDate },
+        channels: [],
+        chartData: []
+      });
+    }
 
-    const clicksMap = new Map();
-    (utmCodes as any[]).forEach(item => {
-      clicksMap.set(item.campaign_id, parseInt(item.total_clicks) || 0);
-    });
+    // Step 2: Get campaign metadata by tracking_code (most reliable method)
+    // This removes dependency on name matching - campaigns can be renamed freely
+    const trackingCodes = Array.from(new Set(trafficData
+      .map(t => t.tracking_code)
+      .filter(code => code && code !== '')));
+    
+    let campaignMap = new Map();
+    if (trackingCodes.length > 0) {
+      const placeholders = trackingCodes.map(() => '?').join(',');
+      const [campaigns] = await pool.execute(`
+        SELECT 
+          u.tracking_code,
+          c.id as campaign_id,
+          c.name as campaign_name,
+          c.status,
+          c.budget,
+          c.spent as ad_cost
+        FROM utm_codes u
+        JOIN campaigns c ON u.campaign_id = c.id
+        WHERE u.tracking_code IN (${placeholders})
+      `, trackingCodes);
 
-    // Step 4: Combine all data
-    const enrichedCampaigns: CampaignData[] = campaignList.map(campaign => {
-      const analytics = analyticsMap.get(campaign.id) || { visits: 0, conversions: 0 };
-      const clicks = clicksMap.get(campaign.id) || 0;
-      const visits = analytics.visits;
-      const conversions = analytics.conversions;
-      const adCost = parseFloat(campaign.ad_cost) || 0;
+      (campaigns as any[]).forEach(c => {
+        campaignMap.set(c.tracking_code, {
+          campaign_id: c.campaign_id,
+          name: c.campaign_name,
+          status: c.status,
+          ad_cost: parseFloat(c.ad_cost) || 0
+        });
+      });
+    }
+
+    // Step 3: Get click data from utm_codes by tracking_code
+    let clicksMap = new Map();
+    if (trackingCodes.length > 0) {
+      const placeholders = trackingCodes.map(() => '?').join(',');
+      const [utmCodes] = await pool.execute(`
+        SELECT 
+          tracking_code,
+          clicks
+        FROM utm_codes
+        WHERE tracking_code IN (${placeholders})
+      `, trackingCodes);
+
+      (utmCodes as any[]).forEach(item => {
+        clicksMap.set(item.tracking_code, parseInt(item.clicks) || 0);
+      });
+    }
+
+    // Step 4: Enrich traffic data with campaign metadata and clicks
+    const enrichedData: CampaignData[] = trafficData.map(traffic => {
+      const campaign = campaignMap.get(traffic.tracking_code) || { 
+        campaign_id: 0,
+        name: traffic.utm_campaign || 'Unknown Campaign', 
+        status: 'active',
+        ad_cost: 0 
+      };
+      
+      const clicks = clicksMap.get(traffic.tracking_code) || 0;
+      const sessions = parseInt(traffic.sessions) || 0;
+      const conversions = parseInt(traffic.conversions) || 0;
 
       // Calculate metrics
-      const conversionRate = visits > 0 ? (conversions / visits) * 100 : 0;
-      const ctr = clicks > 0 ? (visits / clicks) * 100 : 0;
+      const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
+      const ctr = clicks > 0 ? (sessions / clicks) * 100 : 0;
 
       return {
-        campaign_id: campaign.id,
+        campaign_id: campaign.campaign_id,
         campaign_name: campaign.name,
-        source: campaign.source,
-        medium: campaign.medium,
+        source: traffic.utm_source,      // ← From visit_logs (actual traffic)
+        medium: traffic.utm_medium,      // ← From visit_logs (actual traffic)
         status: campaign.status,
-        visits: visits,
+        visits: sessions,
         conversions: conversions,
         conversion_rate: parseFloat(conversionRate.toFixed(2)),
-        ad_cost: adCost,
+        ad_cost: campaign.ad_cost,
         clicks: clicks,
         ctr: parseFloat(ctr.toFixed(2))
       };
     });
 
-    // Step 5: Group campaigns by channel (source)
-    const channelMap = new Map<string, CampaignData[]>();
-    
-    enrichedCampaigns.forEach(campaign => {
-      const channel = campaign.source || 'other';
-      if (!channelMap.has(channel)) {
-        channelMap.set(channel, []);
-      }
-      channelMap.get(channel)!.push(campaign);
-    });
-    
-    // Step 5.5: Add Direct channel if there's direct traffic
-    if (directVisits > 0) {
-      const directConversionRate = directVisits > 0 ? (directConversions / directVisits) * 100 : 0;
+    // Step 4.5: Add Direct channel if there's direct traffic
+    if (directSessions > 0) {
+      const directConversionRate = directSessions > 0 ? (directConversions / directSessions) * 100 : 0;
       
-      const directChannel: CampaignData = {
+      enrichedData.push({
         campaign_id: 0, // Special ID for direct traffic
         campaign_name: 'Direct Traffic',
         source: 'direct',
         medium: '(none)',
         status: 'active',
-        visits: directVisits,
+        visits: directSessions,
         conversions: directConversions,
         conversion_rate: parseFloat(directConversionRate.toFixed(2)),
         ad_cost: 0, // Direct traffic has no ad cost
-        clicks: directVisits, // For direct, visits = clicks (no tracking link)
+        clicks: directSessions, // For direct, visits = clicks (no tracking link)
         ctr: 100 // 100% CTR for direct (they typed URL or bookmark)
-      };
-      
-      channelMap.set('direct', [directChannel]);
+      });
     }
+
+    // Step 5: Group by ACTUAL utm_source (channel) from traffic data
+    const channelMap = new Map<string, CampaignData[]>();
+    
+    enrichedData.forEach(item => {
+      const channel = item.source || 'other';  // ← From visit_logs, NOT campaigns.source
+      if (!channelMap.has(channel)) {
+        channelMap.set(channel, []);
+      }
+      channelMap.get(channel)!.push(item);
+    });
 
     // Step 6: Calculate channel summaries
     const channels: ChannelSummary[] = Array.from(channelMap.entries()).map(([channel, campaigns]) => {
@@ -247,7 +256,7 @@ export async function GET(request: NextRequest) {
       chartData: chartData
     };
 
-    console.log(`✅ Channel Performance data fetched: ${channels.length} channels, ${enrichedCampaigns.length} campaigns`);
+    console.log(`✅ Channel Performance data fetched (GA approach): ${channels.length} channels, ${enrichedData.length} traffic sources`);
 
     return NextResponse.json(response);
 

@@ -65,6 +65,8 @@ export const initClickHouseSchema = async () => {
       page_url String,
       page_title String,
       referrer String,
+      referrer_domain String,
+      tracking_code String DEFAULT '',
       utm_source String,
       utm_medium String,
       utm_campaign String,
@@ -94,6 +96,19 @@ export const initClickHouseSchema = async () => {
     SETTINGS index_granularity = 8192
     `,
   });
+  
+  // Add tracking_code column to existing visit_logs table if it doesn't exist
+  try {
+    await clickhouse.command({
+      query: `ALTER TABLE analytics.visit_logs ADD COLUMN IF NOT EXISTS tracking_code String DEFAULT ''`
+    });
+    await clickhouse.command({
+      query: `ALTER TABLE analytics.visit_logs ADD COLUMN IF NOT EXISTS referrer_domain String DEFAULT ''`
+    });
+  } catch (error) {
+    // Column might already exist, ignore error
+    console.log('Schema update note:', error);
+  }
 
   console.log('ClickHouse schema initialized successfully');
 };
