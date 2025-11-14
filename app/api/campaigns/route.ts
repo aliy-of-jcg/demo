@@ -190,47 +190,133 @@ export async function GET(request: NextRequest) {
         });
         
         // Query 2: Get UNIQUE VISITORS from visit_logs (UUID-based tracking)
+        // Query by tracking_code since campaign_id may not be populated
         // This counts actual unique users tracked by client-side cookies
         const visitorsQuery = await clickhouse.query({
           query: `
             SELECT 
-              campaign_id,
+              tracking_code,
               COUNT(DISTINCT user_id) as unique_visitors
             FROM analytics.visit_logs
-            WHERE campaign_id > 0
-            GROUP BY campaign_id
+            WHERE tracking_code != ''
+            GROUP BY tracking_code
           `,
           format: 'JSONEachRow'
         });
         
         const visitorsResults = await visitorsQuery.json() as any[];
-        const campaignVisitors = new Map();
+        const trackingCodeVisitors = new Map();
         visitorsResults.forEach((result: any) => {
-          campaignVisitors.set(result.campaign_id, parseInt(result.unique_visitors));
+          const code = result.tracking_code?.trim() || result.tracking_code;
+          if (code) {
+            trackingCodeVisitors.set(code, parseInt(result.unique_visitors));
+          }
         });
         
         // Aggregate analytics for ALL tracking codes per campaign
         (campaigns as any[]).forEach(campaign => {
           const trackingCodes = trackingCodesMap.get(campaign.id) || [];
           let totalClicks = 0;
+          let totalVisitors = 0;
           
-          // Sum clicks from all tracking codes
+          // Sum clicks and visitors from all tracking codes
           trackingCodes.forEach((trackingCode: string) => {
-            if (trackingCodeClicks.has(trackingCode)) {
+            const code = trackingCode?.trim() || trackingCode;
+            
+            // Try exact match first (trimmed)
+            if (trackingCodeClicks.has(code)) {
+              totalClicks += trackingCodeClicks.get(code);
+            }
+            if (trackingCodeVisitors.has(code)) {
+              totalVisitors += trackingCodeVisitors.get(code);
+            }
+            
+            // Also try original (untrimmed) if different
+            if (code !== trackingCode && trackingCodeClicks.has(trackingCode)) {
               totalClicks += trackingCodeClicks.get(trackingCode);
+            }
+            if (code !== trackingCode && trackingCodeVisitors.has(trackingCode)) {
+              totalVisitors += trackingCodeVisitors.get(trackingCode);
             }
           });
           
-          // Get unique visitors for this campaign from visit_logs
-          const totalVisitors = campaignVisitors.get(campaign.id) || 0;
-          
-          if (totalClicks > 0 || totalVisitors > 0) {
-            analyticsMap.set(campaign.id, {
-              clicks: totalClicks,
-              visitors: totalVisitors
-            });
-          }
+          // Always set analytics, even if 0, so campaigns show up
+          analyticsMap.set(campaign.id, {
+            clicks: totalClicks,
+            visitors: totalVisitors
+          });
         });
+        
+        // Fallback: If visitors are still 0 but we have clicks, try matching by UTM parameters
+        // This handles cases where visit_logs might not have tracking_code but has UTM params
+        if (trackingCodeVisitors.size === 0 || Array.from(analyticsMap.values()).every(a => a.visitors === 0)) {
+          try {
+            // Get all campaign IDs from the campaigns we're processing
+            const allCampaignIds = (campaigns as any[]).map(c => c.id);
+            
+            if (allCampaignIds.length > 0) {
+              // Get UTM parameters for campaigns
+              const placeholders = allCampaignIds.map(() => '?').join(',');
+              const [utmData] = await pool.execute(
+                `SELECT campaign_id, utm_campaign, utm_source, utm_medium 
+                 FROM utm_codes 
+                 WHERE campaign_id IN (${placeholders})`,
+                allCampaignIds
+              ) as [Array<{ campaign_id: number; utm_campaign: string; utm_source: string; utm_medium: string }>, any];
+              
+              if (utmData.length > 0) {
+                // Query visitors by UTM parameters
+                const utmVisitorsQuery = await clickhouse.query({
+                  query: `
+                    SELECT 
+                      utm_campaign,
+                      utm_source,
+                      utm_medium,
+                      COUNT(DISTINCT user_id) as unique_visitors
+                    FROM analytics.visit_logs
+                    WHERE utm_campaign != '' AND (tracking_code = '' OR tracking_code IS NULL)
+                    GROUP BY utm_campaign, utm_source, utm_medium
+                  `,
+                  format: 'JSONEachRow'
+                });
+                
+                const utmVisitorsResults = await utmVisitorsQuery.json() as any[];
+                
+                // Match UTM visitors to campaigns
+                utmVisitorsResults.forEach((result: any) => {
+                  const matchingUtm = utmData.find(utm => 
+                    utm.utm_campaign === result.utm_campaign &&
+                    utm.utm_source === result.utm_source &&
+                    utm.utm_medium === result.utm_medium
+                  );
+                  
+                  if (matchingUtm) {
+                    const existing = analyticsMap.get(matchingUtm.campaign_id) || { clicks: 0, visitors: 0 };
+                    analyticsMap.set(matchingUtm.campaign_id, {
+                      clicks: existing.clicks,
+                      visitors: existing.visitors + parseInt(result.unique_visitors)
+                    });
+                  }
+                });
+              }
+            }
+          } catch (utmError) {
+            console.warn('⚠️ UTM parameter fallback for visitors failed:', utmError);
+          }
+        }
+        
+        // Debug logging in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📊 Campaign analytics mapping:', {
+            totalTrackingCodes: trackingCodesMap.size,
+            totalClicksData: trackingCodeClicks.size,
+            totalVisitorsData: trackingCodeVisitors.size,
+            sampleTrackingCodes: Array.from(trackingCodesMap.entries()).slice(0, 3),
+            sampleClicks: Array.from(trackingCodeClicks.entries()).slice(0, 3),
+            sampleVisitors: Array.from(trackingCodeVisitors.entries()).slice(0, 3),
+            finalAnalytics: Array.from(analyticsMap.entries()).slice(0, 3)
+          });
+        }
       } catch (error) {
         console.error('Error fetching campaign analytics from ClickHouse:', error);
         // Continue without analytics data

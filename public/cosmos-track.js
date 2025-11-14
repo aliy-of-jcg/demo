@@ -44,7 +44,6 @@
       'jcg.asia',
       'www.jcg.asia',
       'localhost:3001',
-      'centra.ai',
     ],
 
     apiEndpoint: 'https://dev.cosmosai.co.kr/api/track',

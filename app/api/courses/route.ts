@@ -118,15 +118,74 @@ export async function GET(request: NextRequest) {
     });
 
     // Get total visits per course from ClickHouse
+    // First, get all tracking codes and their associated course_ids from utm_codes
+    let trackingCodeToCourseId = new Map<string, number>();
+    try {
+      const [utmCodes] = await pool.execute(
+        `SELECT tracking_code, campaign_id FROM utm_codes WHERE tracking_code != ''`
+      ) as [Array<{ tracking_code: string; campaign_id: number }>, any];
+      
+      // Get course_id for each campaign
+      if (utmCodes.length > 0) {
+        const campaignIds = Array.from(new Set(utmCodes.map(utm => utm.campaign_id)));
+        const placeholders = campaignIds.map(() => '?').join(',');
+        const [campaignRows] = await pool.execute(
+          `SELECT id, course_id FROM campaigns WHERE id IN (${placeholders})`,
+          campaignIds
+        ) as [Array<{ id: number; course_id: number }>, any];
+        
+        const campaignToCourseId = new Map<number, number>();
+        campaignRows.forEach((row: { id: number; course_id: number }) => {
+          campaignToCourseId.set(row.id, row.course_id);
+        });
+        
+        utmCodes.forEach((utm: { tracking_code: string; campaign_id: number }) => {
+          const courseId = campaignToCourseId.get(utm.campaign_id);
+          if (courseId) {
+            trackingCodeToCourseId.set(utm.tracking_code, courseId);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to map tracking codes to course IDs:', error);
+    }
+    
     let visitsMap = new Map<number, number>();
     try {
+      // First, try to get visits by course_id directly (if course_id is populated)
+      try {
+        const directCourseVisitsQuery = `
+          SELECT 
+            course_id,
+            COUNT(*) as total_visits
+          FROM analytics.visit_logs
+          WHERE course_id > 0
+          GROUP BY course_id
+        `;
+        
+        const directResult = await clickhouse.query({
+          query: directCourseVisitsQuery,
+          format: 'JSONEachRow'
+        });
+        
+        const directVisitsData = await directResult.json() as Array<{ course_id: number; total_visits: number }>;
+        directVisitsData.forEach((row) => {
+          const currentVisits = visitsMap.get(row.course_id) || 0;
+          visitsMap.set(row.course_id, currentVisits + row.total_visits);
+        });
+      } catch (directError) {
+        // Ignore if this query fails, continue with tracking_code approach
+        console.warn('⚠️ Direct course_id query failed, using tracking_code approach:', directError);
+      }
+      
+      // Also query visits by tracking_code and map to course_id
       const visitsQuery = `
         SELECT 
-          course_id,
-          COUNT(DISTINCT user_id) as total_visits
+          tracking_code,
+          COUNT(*) as total_visits
         FROM analytics.visit_logs
-        WHERE course_id > 0
-        GROUP BY course_id
+        WHERE tracking_code != ''
+        GROUP BY tracking_code
       `;
       
       const visitsResult = await clickhouse.query({
@@ -134,18 +193,113 @@ export async function GET(request: NextRequest) {
         format: 'JSONEachRow'
       });
       
-      const visitsData = await visitsResult.json() as VisitData[];
+      const visitsData = await visitsResult.json() as Array<{ tracking_code: string; total_visits: number }>;
       visitsData.forEach((row) => {
-        visitsMap.set(row.course_id, row.total_visits);
+        // Try exact match first
+        let courseId = trackingCodeToCourseId.get(row.tracking_code);
+        
+        // If no exact match, try trimming whitespace
+        if (!courseId) {
+          courseId = trackingCodeToCourseId.get(row.tracking_code.trim());
+        }
+        
+        if (courseId) {
+          const currentVisits = visitsMap.get(courseId) || 0;
+          visitsMap.set(courseId, currentVisits + row.total_visits);
+        }
       });
+      
+      // Fallback: Also try matching by UTM parameters if tracking_code didn't work
+      // Get all campaigns with their UTM parameters
+      try {
+        const [utmCampaigns] = await pool.execute(
+          `SELECT DISTINCT campaign_id, utm_campaign, utm_source, utm_medium 
+           FROM utm_codes 
+           WHERE utm_campaign != '' AND campaign_id IN (
+             SELECT id FROM campaigns WHERE course_id IS NOT NULL
+           )`
+        ) as [Array<{ campaign_id: number; utm_campaign: string; utm_source: string; utm_medium: string }>, any];
+        
+        if (utmCampaigns.length > 0) {
+          // Get course_id for these campaigns
+          const campaignIds = utmCampaigns.map(uc => uc.campaign_id);
+          const placeholders = campaignIds.map(() => '?').join(',');
+          const [campaignRows] = await pool.execute(
+            `SELECT id, course_id FROM campaigns WHERE id IN (${placeholders})`,
+            campaignIds
+          ) as [Array<{ id: number; course_id: number }>, any];
+          
+          const campaignToCourseIdMap = new Map<number, number>();
+          campaignRows.forEach((row: { id: number; course_id: number }) => {
+            campaignToCourseIdMap.set(row.id, row.course_id);
+          });
+          
+          // Query visits by UTM parameters
+          const utmVisitsQuery = `
+            SELECT 
+              utm_campaign,
+              utm_source,
+              utm_medium,
+              COUNT(*) as total_visits
+            FROM analytics.visit_logs
+            WHERE utm_campaign != '' AND tracking_code = ''
+            GROUP BY utm_campaign, utm_source, utm_medium
+          `;
+          
+          try {
+            const utmVisitsResult = await clickhouse.query({
+              query: utmVisitsQuery,
+              format: 'JSONEachRow'
+            });
+            
+            const utmVisitsData = await utmVisitsResult.json() as Array<{ 
+              utm_campaign: string; 
+              utm_source: string; 
+              utm_medium: string; 
+              total_visits: number 
+            }>;
+            
+            utmVisitsData.forEach((row) => {
+              // Find matching campaign by UTM parameters
+              const matchingCampaign = utmCampaigns.find(uc => 
+                uc.utm_campaign === row.utm_campaign &&
+                uc.utm_source === row.utm_source &&
+                uc.utm_medium === row.utm_medium
+              );
+              
+              if (matchingCampaign) {
+                const courseId = campaignToCourseIdMap.get(matchingCampaign.campaign_id);
+                if (courseId) {
+                  const currentVisits = visitsMap.get(courseId) || 0;
+                  visitsMap.set(courseId, currentVisits + row.total_visits);
+                }
+              }
+            });
+          } catch (utmError) {
+            // Ignore UTM matching errors
+            console.warn('⚠️ UTM parameter matching failed:', utmError);
+          }
+        }
+      } catch (utmMappingError) {
+        console.warn('⚠️ Failed to map UTM parameters to courses:', utmMappingError);
+      }
+      
+      // Debug: Log the mapping to help troubleshoot
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📊 Course visits mapping:', {
+          trackingCodeToCourseId: Array.from(trackingCodeToCourseId.entries()),
+          visitsMap: Array.from(visitsMap.entries()),
+          totalTrackingCodes: visitsData.length
+        });
+      }
     } catch (chError) {
       console.warn('⚠️ ClickHouse query failed, using 0 for visits:', chError);
       // Continue with 0 visits if ClickHouse fails
     }
 
-    // Get total visits for summary
+    // Get total visits for summary (count all visits, not unique visitors)
     const totalVisitsQuery = `
-      SELECT COUNT(DISTINCT user_id) as total
+      SELECT COUNT(*) as total
       FROM analytics.visit_logs
     `;
     
