@@ -1,6 +1,6 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.7.0
+ * Version: 4.8.0
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
@@ -12,7 +12,13 @@
  * - Proper landing page tracking across multiple sessions
  * - Client-side navigation tracking (SPA/Next.js router support)
  *
- * New in v4.7.0:
+ * New in v4.8.0:
+ * - Google Analytics approach: All data stored in localStorage (no cookies)
+ * - No CORS credentials required - simpler and more reliable
+ * - Works seamlessly across all domains without cookie restrictions
+ * - Better privacy compliance (no cookie consent needed)
+ *
+ * Previous Updates (v4.7.0):
  * - Google Analytics-style UTM persistence: UTMs locked at session start
  * - UTM parameters stored in localStorage and NEVER change during session
  * - New UTM parameters mid-session are ignored (GA behavior)
@@ -37,50 +43,40 @@
   window.__cosmos_tracker_initialized = true;
 
   const CONFIG = {
-    allowedDomains: [
-      'aptdecor.uz',
-      'adservice.centras.ai',
-      'www.aptdecor.uz',
-      'jcg.asia',
-      'www.jcg.asia',
-      'localhost:3001',
-    ],
-
     apiEndpoint: 'https://dev.cosmosai.co.kr/api/track',
     apiEndpointInternal: 'https://dev.cosmosai.co.kr/api/track-internal',
 
     requireUTMParams: false, // Now tracks ALL visitors, not just UTM ones
-    enableDomainValidation: true,
+    enableDomainValidation: false, // Google Analytics approach: allow all domains
 
-    cookieDomain: window.location.hostname,
-    visitorCookieName: 'cosmos_visitor_id',
-    sessionCookieName: 'cosmos_session_id',
-    visitCountCookieName: 'cosmos_visit_count',
-    firstVisitCookieName: 'cosmos_first_visit',
-    lastVisitCookieName: 'cosmos_last_visit',
-    lastActivityCookieName: 'cosmos_last_activity',
-    cookieExpireDays: 730,
+    // localStorage keys (Google Analytics approach - no cookies)
+    visitorStorageKey: 'cosmos_visitor_id',
+    visitCountStorageKey: 'cosmos_visit_count',
+    firstVisitStorageKey: 'cosmos_first_visit',
+    lastVisitStorageKey: 'cosmos_last_visit',
+    lastActivityStorageKey: 'cosmos_last_activity',
+    
     sessionTimeoutMinutes: 2,
     visitTimeoutMinutes: 0.5,
     pageViewDebounceMs: 500,
   };
 
   // ============================================================
-  // DOMAIN VALIDATION
+  // DOMAIN VALIDATION (Google Analytics approach: no restrictions)
   // ============================================================
   const currentDomain = window.location.hostname + (window.location.port ? ':' + window.location.port : '');
-  const isAllowedDomain = CONFIG.allowedDomains.some(domain =>
-    currentDomain === domain || currentDomain.endsWith('.' + domain)
-  );
-
+  
   const isInternalDomain =
     currentDomain.includes('localhost:3000') ||
     currentDomain.includes('cosmos') ||
     currentDomain.includes('vercel.app');
 
-  if (CONFIG.enableDomainValidation && !isAllowedDomain && !isInternalDomain) {
-    console.log('[CosMos] Tracking disabled - unauthorized domain:', currentDomain);
-    return;
+  // Domain validation disabled - allow tracking from any domain (GA approach)
+  // Security is handled via tracking code/ID validation on the server side
+  if (CONFIG.enableDomainValidation) {
+    // Legacy domain validation (disabled by default)
+    // This block is kept for backward compatibility but won't execute
+    console.log('[CosMos] Domain validation is disabled - allowing all domains');
   }
 
   if (isInternalDomain) {
@@ -101,29 +97,40 @@
         return v.toString(16);
       });
     },
-    setCookie: function(name, value, days) {
-      const expires = new Date();
-      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
-      document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
-    },
-    getCookie: function(name) {
-      const nameEQ = name + '=';
-      const ca = document.cookie.split(';');
-      for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') c = c.substring(1);
-        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length);
+    // Google Analytics approach: Use localStorage instead of cookies
+    setStorage: function(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.log('[CosMos] Failed to set localStorage:', e);
       }
-      return null;
     },
-    deleteCosmosCookies: function() {
-      const cookies = document.cookie.split(';');
-      cookies.forEach(c => {
-        const cookieName = c.split('=')[0].trim();
-        if (cookieName.startsWith('cosmos_')) {
-          document.cookie = cookieName + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
-        }
-      });
+    getStorage: function(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch (e) {
+        console.log('[CosMos] Failed to get localStorage:', e);
+        return null;
+      }
+    },
+    deleteCosmosStorage: function() {
+      try {
+        const keys = [
+          'cosmos_visitor_id',
+          'cosmos_visit_count',
+          'cosmos_first_visit',
+          'cosmos_last_visit',
+          'cosmos_last_activity',
+          'cosmos_session_data',
+          'cosmos_session_utm_data',
+          'cosmos_page_sequence_data',
+          'cosmos_page_flow_data',
+          'cosmos_exit_candidate'
+        ];
+        keys.forEach(key => localStorage.removeItem(key));
+      } catch (e) {
+        console.log('[CosMos] Failed to clear localStorage:', e);
+      }
     },
     getUrlParams: function() {
       const params = {};
@@ -209,7 +216,7 @@
       this.hasInitialized = true;
       this.pageLoadTime = Date.now();
       
-      console.log('[CosMos] Initializing tracker v4.7.0...');
+      console.log('[CosMos] Initializing tracker v4.8.0 (localStorage-only, no cookies)...');
       
       // Check for expired session and send delayed exit event if needed
       this.checkAndSendDelayedExitEvent();
@@ -354,9 +361,9 @@
       console.log('[CosMos] 🔄 Client-side navigation tracking enabled');
     },
 
-    // Setup visitor tracking (persistent UUID) - ONLY called after UTM validation
+    // Setup visitor tracking (persistent UUID) - Google Analytics approach (localStorage only)
     setupVisitorTracking: function() {
-      this.visitorId = utils.getCookie(CONFIG.visitorCookieName);
+      this.visitorId = utils.getStorage(CONFIG.visitorStorageKey);
       const now = utils.getTimestamp();
       
       if (!this.visitorId) {
@@ -367,15 +374,15 @@
         this.firstVisitTime = now;
         this.lastActivityTime = now;
         
-        utils.setCookie(CONFIG.visitorCookieName, this.visitorId, CONFIG.cookieExpireDays);
-        utils.setCookie(CONFIG.visitCountCookieName, '1', CONFIG.cookieExpireDays);
-        utils.setCookie(CONFIG.firstVisitCookieName, this.firstVisitTime.toString(), CONFIG.cookieExpireDays);
-        utils.setCookie(CONFIG.lastActivityCookieName, this.lastActivityTime.toString(), CONFIG.cookieExpireDays);
+        utils.setStorage(CONFIG.visitorStorageKey, this.visitorId);
+        utils.setStorage(CONFIG.visitCountStorageKey, '1');
+        utils.setStorage(CONFIG.firstVisitStorageKey, this.firstVisitTime.toString());
+        utils.setStorage(CONFIG.lastActivityStorageKey, this.lastActivityTime.toString());
       } else {
         // Returning visitor - check if it's a new visit or same visit
-        this.visitCount = parseInt(utils.getCookie(CONFIG.visitCountCookieName) || '1');
-        this.firstVisitTime = parseInt(utils.getCookie(CONFIG.firstVisitCookieName) || now.toString());
-        this.lastActivityTime = parseInt(utils.getCookie(CONFIG.lastActivityCookieName) || '0');
+        this.visitCount = parseInt(utils.getStorage(CONFIG.visitCountStorageKey) || '1');
+        this.firstVisitTime = parseInt(utils.getStorage(CONFIG.firstVisitStorageKey) || now.toString());
+        this.lastActivityTime = parseInt(utils.getStorage(CONFIG.lastActivityStorageKey) || '0');
         
         // Check if last activity was more than the visit timeout
         const minutesSinceLastActivity = (now - this.lastActivityTime) / 60;
@@ -384,7 +391,7 @@
           // New visit - increment visit count
           this.visitCount++;
           this.isNewVisitor = false;
-          utils.setCookie(CONFIG.visitCountCookieName, this.visitCount.toString(), CONFIG.cookieExpireDays);
+          utils.setStorage(CONFIG.visitCountStorageKey, this.visitCount.toString());
         } else {
           // Same visit - don't increment
           this.isNewVisitor = false;
@@ -392,12 +399,12 @@
         
         // Update last activity time
         this.lastActivityTime = now;
-        utils.setCookie(CONFIG.lastActivityCookieName, this.lastActivityTime.toString(), CONFIG.cookieExpireDays);
+        utils.setStorage(CONFIG.lastActivityStorageKey, this.lastActivityTime.toString());
       }
       
       // Update last visit time
       this.lastVisitTime = now;
-      utils.setCookie(CONFIG.lastVisitCookieName, this.lastVisitTime.toString(), CONFIG.cookieExpireDays);
+      utils.setStorage(CONFIG.lastVisitStorageKey, this.lastVisitTime.toString());
     },
 
     // Setup session tracking - ONLY called after UTM validation
@@ -489,10 +496,7 @@
         }
       }
       
-      // Update session cookie
-        utils.setCookie(CONFIG.sessionCookieName, this.sessionId, CONFIG.sessionTimeoutMinutes / (24 * 60));
-      
-      // Update session data in localStorage
+      // Update session data in localStorage (session_id is already stored in cosmos_session_data)
       localStorage.setItem('cosmos_session_data', JSON.stringify({
         session_id: this.sessionId,
         last_activity: now,
@@ -787,17 +791,20 @@
     },
 
     sendEvent: function(data) {
-      if (navigator.sendBeacon) {
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-        navigator.sendBeacon(CONFIG.apiEndpoint, blob);
-      } else {
+      // Force fetch instead of sendBeacon to ensure credentials: 'omit' is used
+      // sendBeacon doesn't support credentials option, which can cause CORS issues
+      // if (navigator.sendBeacon) {
+      //   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      //   navigator.sendBeacon(CONFIG.apiEndpoint, blob);
+      // } else {
         fetch(CONFIG.apiEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
           keepalive: true,
+          credentials: 'omit', // Google Analytics approach: no credentials needed
         }).catch(() => {});
-      }
+      // }
     },
 
      // Update exit candidate on beforeunload (Google Analytics approach)
