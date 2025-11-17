@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
+import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface EnvironmentItem {
@@ -84,9 +85,17 @@ export default function EnvironmentAnalysisPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">User Environment Analysis</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">Device, OS, and browser breakdown of your visitors</p>
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">User Environment Analysis</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Device, OS, and browser breakdown of your visitors</p>
+        </div>
+        <ExportToPDFButton
+          element="[data-export-content]"
+          filename={`environment-analysis-${dateRange.start}-to-${dateRange.end}.pdf`}
+          title={`User Environment Analysis - ${dateRange.start} to ${dateRange.end}`}
+          size="sm"
+        />
       </div>
 
       {/* Filters */}
@@ -150,7 +159,7 @@ export default function EnvironmentAnalysisPage() {
 
       {/* Data Display */}
       {!loading && !error && data && (
-        <>
+        <div data-export-content>
           {/* Summary Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
@@ -483,7 +492,7 @@ export default function EnvironmentAnalysisPage() {
               <p className="text-xs sm:text-sm text-gray-400 mt-1">Data will appear as visitors use your tracking links</p>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Footer */}
