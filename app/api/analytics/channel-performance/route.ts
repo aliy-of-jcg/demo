@@ -228,10 +228,45 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Step 4.75: CONSOLIDATE multiple tracking codes for the same campaign
+    // A campaign can have multiple UTM codes, but should appear as ONE row in the report
+    const campaignAggregateMap = new Map<string, CampaignData>();
+    
+    enrichedData.forEach(item => {
+      // Create unique key: campaign_id + source + medium
+      // This groups all tracking codes for the same campaign together
+      const key = `${item.campaign_id}_${item.source}_${item.medium}`;
+      
+      if (campaignAggregateMap.has(key)) {
+        // Aggregate with existing campaign data
+        const existing = campaignAggregateMap.get(key)!;
+        existing.visits += item.visits;
+        existing.conversions += item.conversions;
+        existing.clicks += item.clicks;
+        existing.ad_cost += item.ad_cost;
+        
+        // Recalculate metrics based on aggregated data
+        existing.conversion_rate = existing.visits > 0 
+          ? parseFloat(((existing.conversions / existing.visits) * 100).toFixed(2))
+          : 0;
+        existing.ctr = existing.clicks > 0 
+          ? parseFloat(((existing.visits / existing.clicks) * 100).toFixed(2))
+          : 0;
+      } else {
+        // First occurrence of this campaign
+        campaignAggregateMap.set(key, { ...item });
+      }
+    });
+    
+    // Convert aggregated map back to array
+    const consolidatedData = Array.from(campaignAggregateMap.values());
+    
+    console.log(`  📊 Consolidated ${enrichedData.length} tracking codes into ${consolidatedData.length} campaigns`);
+
     // Step 5: Group by ACTUAL utm_source (channel) from traffic data
     const channelMap = new Map<string, CampaignData[]>();
     
-    enrichedData.forEach(item => {
+    consolidatedData.forEach(item => {
       const channel = item.source || 'other';  // ← From visit_logs, NOT campaigns.source
       if (!channelMap.has(channel)) {
         channelMap.set(channel, []);
@@ -282,7 +317,7 @@ export async function GET(request: NextRequest) {
       chartData: chartData
     };
 
-    console.log(`✅ Channel Performance data fetched (GA approach): ${channels.length} channels, ${enrichedData.length} traffic sources`);
+    console.log(`✅ Channel Performance data fetched (GA approach): ${channels.length} channels, ${consolidatedData.length} campaigns`);
 
     return NextResponse.json(response);
 
