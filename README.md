@@ -1,343 +1,348 @@
-# CosMos AI - Marketing Analytics Platform
+# CosMos AI - 마케팅 분석 플랫폼
 
-A comprehensive marketing analytics and campaign management platform built with Next.js 14, featuring dual database architecture (ClickHouse + MySQL) for high-performance analytics and robust data management.
+Next.js 14로 구축된 포괄적인 마케팅 분석 및 캠페인 관리 플랫폼으로, 고성능 분석을 위한 이중 데이터베이스 아키텍처(ClickHouse + MySQL)와 견고한 데이터 관리를 제공합니다.
 
-## ✨ Features
+## ✨ 주요 기능
 
-### Core Features
-- 📊 **Real-time Dashboard** with live campaign metrics and performance insights
-- 🎯 **Campaign Management** - Create, edit, and track marketing campaigns across multiple channels
-- 📈 **Advanced Analytics** - Multiple analysis modules for deep insights:
-  - Campaign Performance Analysis
-  - Channel Performance Tracking
-  - Page Flow Analysis
-  - Environment Analysis (devices, browsers, OS)
-  - Time-based Visitor Patterns (KST timezone support)
-  - Returning User Analysis
-  - Conversion Tracking & Analysis
-- 🔗 **UTM Tools** - Link generator and tracking utilities with custom tracking codes
-- 📱 **Device & Environment Analysis** - Comprehensive user device, browser, and OS detection
-- 🌍 **Multi-Platform Support** - Track across Telegram, Kakao, Naver, Google, and more
+### 핵심 기능
+- 📊 **실시간 대시보드** - 라이브 캠페인 지표 및 성능 인사이트 제공
+- 🎯 **캠페인 관리** - 여러 채널에 걸쳐 마케팅 캠페인 생성, 편집 및 추적
+- 📈 **고급 분석** - 심층 인사이트를 위한 다양한 분석 모듈:
+  - 캠페인 성능 분석
+  - 채널 성능 추적
+  - 페이지 흐름 분석
+  - 환경 분석 (기기, 브라우저, OS)
+  - 시간 기반 방문자 패턴 (KST 시간대 지원)
+  - 재방문 사용자 분석
+  - 전환 추적 및 분석
+  - 세션 여정 - 페이지별 사용자 여정 시각화
+- 🔗 **UTM 도구** - 사용자 정의 추적 코드를 사용한 링크 생성기 및 추적 유틸리티
+- 📱 **기기 및 환경 분석** - 포괄적인 사용자 기기, 브라우저 및 OS 감지
+- 🌍 **다중 플랫폼 지원** - Telegram, Kakao, Naver, Google 등에서 추적
+- 📄 **PDF 내보내기** - 분석 대시보드 및 보고서를 PDF 형식으로 내보내기
 
-### Technical Features
-- ⚡ **Dual Database Architecture** - ClickHouse for analytics + MySQL for app data
-- 🔐 **Authentication System** - Secure JWT-based authentication with role-based access control
-- 👥 **User Management** - Support for Owner, Admin, Observer, and Regular user types
-- 📧 **Email Integration** - Automated notifications and password reset with Nodemailer
-- 🔄 **Session Management** - Visitor tracking with cookie-based sessions
-- 📍 **IP Geolocation** - Automatic country/city detection
-- 🎨 **Modern UI** - Beautiful, responsive interface with shadcn/ui and Tailwind CSS
-- 🐳 **Docker Support** - Containerized database setup for easy deployment
-- 🎯 **Client-Side Tracking Script** - External landing page integration with `cosmos-track.js`
+### 기술 기능
+- ⚡ **이중 데이터베이스 아키텍처** - 분석용 ClickHouse + 앱 데이터용 MySQL
+- 🔐 **인증 시스템** - 역할 기반 액세스 제어가 있는 안전한 JWT 기반 인증
+- 👥 **사용자 관리** - Owner, Admin, Observer, Regular 사용자 유형 지원
+- 📧 **이메일 통합** - Nodemailer를 사용한 자동 알림 및 비밀번호 재설정
+- 🔄 **세션 관리** - 쿠키 기반 세션을 사용한 방문자 추적
+- 📍 **IP 지리적 위치** - 자동 국가/도시 감지
+- 🎨 **모던 UI** - shadcn/ui 및 Tailwind CSS를 사용한 아름답고 반응형 인터페이스
+- 🐳 **Docker 지원** - 쉬운 배포를 위한 컨테이너화된 데이터베이스 설정
+- 🎯 **클라이언트 측 추적 스크립트** - 외부 랜딩 페이지 통합을 위한 `cosmos-track.js`
 
-## 🚀 Quick Start
+## 🚀 빠른 시작
 
-### Prerequisites
-- Node.js 18+ and npm
-- Docker and Docker Compose (for full setup)
-- Gmail account with app password (for email features, optional)
+### 사전 요구사항
+- Node.js 18+ 및 npm
+- Docker 및 Docker Compose (전체 설정용)
+- Gmail 계정 및 앱 비밀번호 (이메일 기능용, 선택사항)
 
-### Installation Steps
+### 설치 단계
 
-#### 1. Without Docker (Demo Mode)
+#### 1. Docker 없이 (데모 모드)
 ```bash
-# Install dependencies
+# 의존성 설치
 npm install
 
-# Start development server
+# 개발 서버 시작
 npm run dev
 ```
-Open http://localhost:3000
+http://localhost:3000 열기
 
-**Note:** Without Docker, the app will run but database features will be limited.
+**참고:** Docker 없이는 앱이 실행되지만 데이터베이스 기능이 제한됩니다.
 
-#### 2. With Full Database Setup (Recommended)
+#### 2. 전체 데이터베이스 설정 포함 (권장)
 
 ```bash
-# 1. Clone and navigate to project
+# 1. 프로젝트 클론 및 이동
 cd demo
 
-# 2. Create environment file
+# 2. 환경 변수 파일 생성
 cp .env.example .env.local
-# Edit .env.local with your configuration
+# .env.local 파일을 설정에 맞게 편집
 
-# 3. Start both ClickHouse and MySQL
+# 3. ClickHouse 및 MySQL 모두 시작
 docker-compose up -d
 
-# 4. Wait for databases to be ready (about 15 seconds)
+# 4. 데이터베이스가 준비될 때까지 대기 (약 15초)
 
-# 5. Install dependencies
+# 5. 의존성 설치
 npm install
 
-# 6. Initialize ClickHouse database
+# 6. ClickHouse 데이터베이스 초기화
 npm run clickhouse:init
 
-# 7. Initialize MySQL database
+# 7. MySQL 데이터베이스 초기화
 npm run mysql:init
 
-# 8. Add seed data (optional but recommended for testing)
+# 8. 시드 데이터 추가 (선택사항이지만 테스트에 권장)
 npm run clickhouse:seed
 npm run db:seed
 
-# 9. Start the development server
+# 9. 개발 서버 시작
 npm run dev
 ```
 
-#### 3. Access the Application
+#### 3. 애플리케이션 접근
 ```
-Application: http://localhost:3000
-Authentication: http://localhost:3000/auth
-API Documentation: http://localhost:3000/api-docs
+애플리케이션: http://localhost:3000
+인증: http://localhost:3000/auth
+API 문서: http://localhost:3000/api-docs
 ```
 
-### First-Time Setup
+### 최초 설정
 
-1. **Create your first user:**
-   - Navigate to http://localhost:3000
-   - You'll be redirected to the authentication page
-   - Click "Sign up" and create your account
+1. **첫 번째 사용자 생성:**
+   - http://localhost:3000 으로 이동
+   - 인증 페이지로 자동 리디렉션됩니다
+   - "Sign up"을 클릭하고 계정을 생성하세요
    
-2. **Upgrade to Owner (optional):**
+2. **Owner로 업그레이드 (선택사항):**
    ```bash
-   # Connect to MySQL
+   # MySQL에 연결
    docker exec -it mysql mysql -u appuser -papppassword -D appdb
    
-   # Upgrade first user to owner
+   # 첫 번째 사용자를 owner로 업그레이드
    UPDATE users SET user_type = 'owner' WHERE id = 1;
    SELECT id, email, company_name, user_type FROM users;
    exit;
    ```
 
-### Available Scripts
+### 사용 가능한 스크립트
 
 ```bash
-# Development
-npm run dev              # Start development server
-npm run build            # Build for production
-npm run start            # Start production server
-npm run lint             # Run ESLint
+# 개발
+npm run dev              # 개발 서버 시작
+npm run build            # 프로덕션 빌드
+npm run start            # 프로덕션 서버 시작
+npm run lint             # ESLint 실행
 
-# Database Management
-npm run db:reset         # Reset all databases (drop, init, seed)
-npm run db:init          # Initialize all database schemas
-npm run db:seed          # Seed sample data
-npm run db:drop          # Drop all tables (⚠️ destructive)
+# 데이터베이스 관리
+npm run db:reset         # 모든 데이터베이스 재설정 (삭제, 초기화, 시드)
+npm run db:init          # 모든 데이터베이스 스키마 초기화
+npm run db:seed          # 샘플 데이터 시드
+npm run db:drop          # 모든 테이블 삭제 (⚠️ 파괴적 작업)
 
-# ClickHouse Commands
-npm run clickhouse:init     # Initialize ClickHouse schema
-npm run clickhouse:clean    # Clean ClickHouse data
-npm run clickhouse:seed     # Add sample tracking events
-npm run clickhouse:migrate  # Run ClickHouse migrations
+# ClickHouse 명령어
+npm run clickhouse:init     # ClickHouse 스키마 초기화
+npm run clickhouse:clean    # ClickHouse 데이터 정리
+npm run clickhouse:seed     # 샘플 추적 이벤트 추가
+npm run clickhouse:migrate  # ClickHouse 마이그레이션 실행
 
-# MySQL Commands
-npm run mysql:init       # Initialize MySQL schema
+# MySQL 명령어
+npm run mysql:init       # MySQL 스키마 초기화
 
-# Utilities
-npm run generate:secret  # Generate new JWT secret
+# 유틸리티
+npm run generate:secret  # 새 JWT 시크릿 생성
 ```
 
-## 📁 Project Structure
+## 📁 프로젝트 구조
 
 ```
 demo/
-├── app/                    # Next.js app directory (App Router)
-│   ├── api/               # API routes
-│   │   ├── analytics/     # Analytics endpoints
-│   │   │   ├── campaign-analysis/    # Campaign performance metrics
-│   │   │   ├── channel-performance/  # Channel/source analysis
-│   │   │   ├── conversion-analysis/  # Conversion tracking analytics
-│   │   │   ├── environment-analysis/ # Device/browser/OS stats
-│   │   │   ├── page-flow-analysis/   # User navigation flow
-│   │   │   ├── performance/          # Dashboard metrics
-│   │   │   ├── returning-analysis/   # New vs returning visitors
-│   │   │   └── time-analysis/        # Time-based patterns (KST)
-│   │   ├── auth/          # Authentication
-│   │   │   ├── signup/               # User registration
-│   │   │   ├── login/                # User login
-│   │   │   ├── logout/               # Session termination
-│   │   │   ├── validate/             # Token validation
-│   │   │   ├── forgot-password/      # Password reset request
-│   │   │   └── reset-password/       # Password reset execution
-│   │   ├── campaigns/     # Campaign management CRUD
-│   │   ├── courses/       # Course management CRUD
-│   │   ├── performance/   # Performance metrics
-│   │   ├── tracking/      # Link tracking generation
-│   │   ├── track/         # External tracking endpoint
-│   │   ├── track-internal/# Internal testing endpoint
-│   │   └── utm-codes/     # UTM code utilities
-│   ├── auth/              # Authentication pages (login/signup)
-│   ├── campaigns/         # Campaign management interface
-│   ├── campaign-analysis/ # Campaign analytics dashboard
-│   ├── channel-performance/ # Channel analysis page
-│   ├── courses/           # Course management pages
-│   ├── environment-analysis/ # Device/browser analysis
-│   ├── page-flow-analysis/ # User flow visualization
-│   ├── performance/       # Main performance dashboard
-│   ├── returning-analysis/ # Returning user analysis
-│   ├── time-analysis/     # Time-based analytics (KST)
-│   ├── tracking-debug/    # Debug tools for tracking
-│   ├── utm-tools/         # UTM link generator
-│   ├── reset-password/    # Password reset page
-│   ├── link-expired/      # Expired link handler
-│   └── api-docs/          # Swagger API documentation
-├── components/            # React components
-│   ├── ui/               # shadcn/ui base components
-│   │   └── *.tsx         # Button, Input, Card, Dialog, etc.
-│   ├── auth-form.tsx     # Login/signup form
-│   ├── forgot-password-form.tsx # Password reset request form
-│   ├── layout-wrapper.tsx # Main layout with sidebar
-│   ├── sidebar.tsx       # Navigation sidebar
-│   ├── user-menu.tsx     # User dropdown menu
-│   └── page-footer.tsx   # Page footer component
-├── lib/                  # Utilities and database clients
-│   ├── clickhouse.ts     # ClickHouse client & schema
-│   ├── mysql.ts          # MySQL client & connection pool
-│   ├── jwt.ts            # JWT token utilities
-│   ├── email.ts          # Email service (Nodemailer)
-│   ├── email-templates.ts # HTML email templates
-│   ├── encryption.ts     # Data encryption utilities
-│   ├── rate-limit.ts     # Rate limiting for API endpoints
-│   ├── user-agent.ts     # User agent parsing
-│   ├── url-parser.ts     # URL parameter parsing
-│   ├── clipboard.ts      # Clipboard utilities
-│   ├── types.ts          # TypeScript type definitions
-│   ├── utils.ts          # General utilities
-│   ├── db-init.ts        # Database initialization
-│   ├── api-spec.ts       # Swagger API specification
-│   └── hooks/            # Custom React hooks
-├── scripts/              # Database management scripts
-│   ├── init-clickhouse.js # Initialize ClickHouse schema
-│   ├── init-mysql.js     # Initialize MySQL schema
-│   ├── init-mysql.sql    # MySQL schema definition
-│   ├── seed-data.js      # Seed ClickHouse with sample data
-│   ├── seed-campaigns-courses.js # Seed MySQL with campaigns
-│   ├── clean-clickhouse.js # Clean ClickHouse data
-│   ├── drop-all-tables.js # Drop all tables
-│   └── generate-secret.js # Generate JWT secret
-├── public/               # Static files
-│   ├── cosmos-track.js   # Client-side tracking script
-│   └── grid.svg          # Grid background pattern
-├── z_documentation/      # Project documentation
-│   ├── architecture/     # System architecture docs
-│   ├── features/         # Feature documentation
-│   └── setup/            # Setup guides
-├── docker-compose.yml    # ClickHouse + MySQL setup
-├── Dockerfile            # Container build configuration
-├── instrumentation.ts    # Next.js startup hook
-├── next.config.mjs       # Next.js configuration
-├── tailwind.config.ts    # Tailwind CSS configuration
-└── tsconfig.json         # TypeScript configuration
+├── app/                    # Next.js 앱 디렉토리 (App Router)
+│   ├── api/               # API 라우트
+│   │   ├── analytics/     # 분석 엔드포인트
+│   │   │   ├── campaign-analysis/    # 캠페인 성능 지표
+│   │   │   ├── channel-performance/  # 채널/소스 분석
+│   │   │   ├── conversion-analysis/  # 전환 추적 분석
+│   │   │   ├── environment-analysis/ # 기기/브라우저/OS 통계
+│   │   │   ├── page-flow-analysis/   # 사용자 네비게이션 흐름
+│   │   │   ├── performance/          # 대시보드 지표
+│   │   │   ├── returning-analysis/   # 신규 vs 재방문 방문자
+│   │   │   ├── session-journeys/     # 완전한 사용자 세션 여정
+│   │   │   └── time-analysis/        # 시간 기반 패턴 (KST)
+│   │   ├── auth/          # 인증
+│   │   │   ├── signup/               # 사용자 등록
+│   │   │   ├── login/                # 사용자 로그인
+│   │   │   ├── logout/               # 세션 종료
+│   │   │   ├── validate/             # 토큰 검증
+│   │   │   ├── forgot-password/      # 비밀번호 재설정 요청
+│   │   │   └── reset-password/       # 비밀번호 재설정 실행
+│   │   ├── campaigns/     # 캠페인 관리 CRUD
+│   │   ├── courses/       # 코스 관리 CRUD
+│   │   ├── performance/   # 성능 지표
+│   │   ├── tracking/      # 링크 추적 생성
+│   │   ├── track/         # 외부 추적 엔드포인트
+│   │   ├── track-internal/# 내부 테스트 엔드포인트
+│   │   └── utm-codes/     # UTM 코드 유틸리티
+│   ├── auth/              # 인증 페이지 (로그인/회원가입)
+│   ├── campaigns/         # 캠페인 관리 인터페이스
+│   ├── campaign-analysis/ # 캠페인 분석 대시보드
+│   ├── channel-performance/ # 채널 분석 페이지
+│   ├── courses/           # 코스 관리 페이지
+│   ├── environment-analysis/ # 기기/브라우저 분석
+│   ├── page-flow-analysis/ # 사용자 흐름 시각화
+│   ├── performance/       # 메인 성능 대시보드
+│   ├── returning-analysis/ # 재방문 사용자 분석
+│   ├── session-journeys/   # 완전한 사용자 세션 여정 시각화
+│   ├── time-analysis/     # 시간 기반 분석 (KST)
+│   ├── tracking-debug/    # 추적 디버그 도구
+│   ├── utm-tools/         # UTM 링크 생성기
+│   ├── reset-password/    # 비밀번호 재설정 페이지
+│   ├── link-expired/      # 만료된 링크 핸들러
+│   └── api-docs/          # Swagger API 문서
+├── components/            # React 컴포넌트
+│   ├── ui/               # shadcn/ui 기본 컴포넌트
+│   │   └── *.tsx         # Button, Input, Card, Dialog 등
+│   ├── auth-form.tsx     # 로그인/회원가입 폼
+│   ├── export-to-pdf-button.tsx # PDF 내보내기 버튼 컴포넌트
+│   ├── forgot-password-form.tsx # 비밀번호 재설정 요청 폼
+│   ├── layout-wrapper.tsx # 사이드바가 있는 메인 레이아웃
+│   ├── sidebar.tsx       # 네비게이션 사이드바
+│   ├── user-menu.tsx     # 사용자 드롭다운 메뉴
+│   └── page-footer.tsx   # 페이지 푸터 컴포넌트
+├── lib/                  # 유틸리티 및 데이터베이스 클라이언트
+│   ├── clickhouse.ts     # ClickHouse 클라이언트 및 스키마
+│   ├── mysql.ts          # MySQL 클라이언트 및 연결 풀
+│   ├── jwt.ts            # JWT 토큰 유틸리티
+│   ├── email.ts          # 이메일 서비스 (Nodemailer)
+│   ├── email-templates.ts # HTML 이메일 템플릿
+│   ├── encryption.ts     # 데이터 암호화 유틸리티
+│   ├── rate-limit.ts     # API 엔드포인트 속도 제한
+│   ├── user-agent.ts     # 사용자 에이전트 파싱
+│   ├── url-parser.ts     # URL 매개변수 파싱
+│   ├── clipboard.ts      # 클립보드 유틸리티
+│   ├── types.ts          # TypeScript 타입 정의
+│   ├── utils.ts          # 일반 유틸리티
+│   ├── db-init.ts        # 데이터베이스 초기화
+│   ├── api-spec.ts       # Swagger API 사양
+│   ├── pdf-export.ts     # PDF 내보내기 유틸리티 (html2canvas + jsPDF)
+│   └── hooks/            # 커스텀 React 훅
+├── scripts/              # 데이터베이스 관리 스크립트
+│   ├── init-clickhouse.js # ClickHouse 스키마 초기화
+│   ├── init-mysql.js     # MySQL 스키마 초기화
+│   ├── init-mysql.sql    # MySQL 스키마 정의
+│   ├── seed-data.js      # ClickHouse에 샘플 데이터 시드
+│   ├── seed-campaigns-courses.js # MySQL에 캠페인 시드
+│   ├── clean-clickhouse.js # ClickHouse 데이터 정리
+│   ├── drop-all-tables.js # 모든 테이블 삭제
+│   └── generate-secret.js # JWT 시크릿 생성
+├── public/               # 정적 파일
+│   ├── cosmos-track.js   # 클라이언트 측 추적 스크립트
+│   └── grid.svg          # 그리드 배경 패턴
+├── z_documentation/      # 프로젝트 문서
+│   ├── architecture/     # 시스템 아키텍처 문서
+│   ├── features/         # 기능 문서
+│   └── setup/            # 설정 가이드
+├── docker-compose.yml    # ClickHouse + MySQL 설정
+├── Dockerfile            # 컨테이너 빌드 구성
+├── instrumentation.ts    # Next.js 시작 훅
+├── next.config.mjs       # Next.js 구성
+├── tailwind.config.ts    # Tailwind CSS 구성
+└── tsconfig.json         # TypeScript 구성
 ```
 
-## 🏗️ Architecture
+## 🏗️ 아키텍처
 
-### System Overview
+### 시스템 개요
 
-CosMos AI uses a dual-database architecture optimized for both real-time analytics and reliable application data management:
+CosMos AI는 실시간 분석과 안정적인 애플리케이션 데이터 관리를 위해 최적화된 이중 데이터베이스 아키텍처를 사용합니다:
 
-**Frontend Layer (Next.js 14 App Router)**
-- Server-side rendered pages with React 18
-- Real-time dashboard with live metrics
-- Campaign and course management interfaces
-- Advanced analytics visualization modules
-- UTM tools and link generator
-- JWT-based authentication with role-based access
+**프론트엔드 레이어 (Next.js 14 App Router)**
+- React 18을 사용한 서버 사이드 렌더링 페이지
+- 라이브 지표가 있는 실시간 대시보드
+- 캠페인 및 코스 관리 인터페이스
+- 고급 분석 시각화 모듈
+- UTM 도구 및 링크 생성기
+- 역할 기반 액세스가 있는 JWT 기반 인증
 
-**Backend Layer (Next.js API Routes)**
-- RESTful API endpoints
-- `/api/auth/*` - User authentication & management
-  - Signup/login with JWT tokens
-  - Password reset with email verification
-  - Token validation and session management
-  - Rate limiting for security
-- `/api/campaigns/*` - Campaign CRUD operations
-- `/api/courses/*` - Course management
-- `/api/analytics/*` - Analytics data aggregation
-  - Campaign performance metrics
-  - Channel and source analysis
-  - Conversion tracking
-  - Environment analysis (device/browser/OS)
-  - Page flow visualization
-  - Time-based patterns (KST timezone)
-  - Returning visitor analysis
-- `/api/tracking/*` - Tracking link generation
-- `/api/track/*` - External tracking endpoint for landing pages
-- `/api/performance/*` - Dashboard performance metrics
-- `/api/utm-codes/*` - UTM code utilities
+**백엔드 레이어 (Next.js API Routes)**
+- RESTful API 엔드포인트
+- `/api/auth/*` - 사용자 인증 및 관리
+  - JWT 토큰을 사용한 회원가입/로그인
+  - 이메일 검증을 통한 비밀번호 재설정
+  - 토큰 검증 및 세션 관리
+  - 보안을 위한 속도 제한
+- `/api/campaigns/*` - 캠페인 CRUD 작업
+- `/api/courses/*` - 코스 관리
+- `/api/analytics/*` - 분석 데이터 집계
+  - 캠페인 성능 지표
+  - 채널 및 소스 분석
+  - 전환 추적
+  - 환경 분석 (기기/브라우저/OS)
+  - 페이지 흐름 시각화
+  - 시간 기반 패턴 (KST 시간대)
+  - 재방문 방문자 분석
+- `/api/tracking/*` - 추적 링크 생성
+- `/api/track/*` - 랜딩 페이지용 외부 추적 엔드포인트
+- `/api/performance/*` - 대시보드 성능 지표
+- `/api/utm-codes/*` - UTM 코드 유틸리티
 
-**Database Layer**
+**데이터베이스 레이어**
 
-1. **ClickHouse (Analytics Database)**
-   - High-performance columnar database
-   - Optimized for OLAP queries
-   - Stores tracking events and visit logs
-   - Partitioned by month for efficient querying
-   - Tables:
-     - `tracking_events` - Click tracking and UTM data
-     - `visit_logs` - Detailed pageview and session data
+1. **ClickHouse (분석 데이터베이스)**
+   - 고성능 컬럼형 데이터베이스
+   - OLAP 쿼리에 최적화
+   - 추적 이벤트 및 방문 로그 저장
+   - 효율적인 쿼리를 위해 월별로 파티션
+   - 테이블:
+     - `tracking_events` - 클릭 추적 및 UTM 데이터
+     - `visit_logs` - 상세 페이지뷰 및 세션 데이터
 
-2. **MySQL 8.0 (Application Database)**
-   - ACID-compliant relational database
-   - Stores structured application data
-   - Connection pooling for performance
-   - Tables:
-     - `users` - User accounts with role-based access
-     - `sessions` - Active user sessions
-     - `password_reset_tokens` - Password reset tokens
-     - `courses` - Course catalog
-     - `campaigns` - Marketing campaigns
-     - `utm_codes` - Tracking links with UTM parameters
+2. **MySQL 8.0 (애플리케이션 데이터베이스)**
+   - ACID 준수 관계형 데이터베이스
+   - 구조화된 애플리케이션 데이터 저장
+   - 성능을 위한 연결 풀링
+   - 테이블:
+     - `users` - 역할 기반 액세스가 있는 사용자 계정
+     - `sessions` - 활성 사용자 세션
+     - `password_reset_tokens` - 비밀번호 재설정 토큰
+     - `courses` - 코스 카탈로그
+     - `campaigns` - 마케팅 캠페인
+     - `utm_codes` - UTM 매개변수가 있는 추적 링크
 
-**External Integration**
-- Client-side tracking script (`cosmos-track.js`)
-- Integrates with external landing pages
-- Automatic session and visitor tracking
-- UTM parameter preservation
-- Device and browser detection
-- Conversion event tracking
+**외부 통합**
+- 클라이언트 측 추적 스크립트 (`cosmos-track.js`)
+- 외부 랜딩 페이지와 통합
+- 자동 세션 및 방문자 추적
+- UTM 매개변수 보존
+- 기기 및 브라우저 감지
+- 전환 이벤트 추적
 
-### Data Flow
+### 데이터 흐름
 
-1. **User Creates Campaign** → Stored in MySQL
-2. **Generate Tracking Link** → Creates UTM code in MySQL
-3. **User Clicks Link** → `cosmos-track.js` sends data to `/api/track`
-4. **Tracking Data Saved** → ClickHouse stores event
-5. **Dashboard Queries** → Aggregates data from ClickHouse
-6. **Real-time Display** → Shows metrics to user
+1. **사용자가 캠페인 생성** → MySQL에 저장
+2. **추적 링크 생성** → MySQL에 UTM 코드 생성
+3. **사용자가 링크 클릭** → `cosmos-track.js`가 `/api/track`로 데이터 전송
+4. **추적 데이터 저장** → ClickHouse가 이벤트 저장
+5. **대시보드 쿼리** → ClickHouse에서 데이터 집계
+6. **실시간 표시** → 사용자에게 지표 표시
 
-### Key Features by Layer
+### 레이어별 주요 기능
 
-**Authentication & Security**
-- JWT-based authentication with 7-day expiry
-- bcrypt password hashing
-- Rate limiting on sensitive endpoints
-- Role-based access control (Owner, Admin, Observer, Regular)
-- Session management with automatic cleanup
-- Password reset with email verification
+**인증 및 보안**
+- 7일 만료가 있는 JWT 기반 인증
+- bcrypt 비밀번호 해싱
+- 민감한 엔드포인트에 대한 속도 제한
+- 역할 기반 액세스 제어 (Owner, Admin, Observer, Regular)
+- 자동 정리가 있는 세션 관리
+- 이메일 검증을 통한 비밀번호 재설정
 
-**Analytics Engine**
-- Real-time event tracking
-- Session-based visitor identification
-- Device and environment detection
-- Geographic IP location tracking
-- Referrer source analysis
-- Conversion tracking and attribution
+**분석 엔진**
+- 실시간 이벤트 추적
+- 세션 기반 방문자 식별
+- 기기 및 환경 감지
+- 지리적 IP 위치 추적
+- 리퍼러 소스 분석
+- 전환 추적 및 속성
 
+## 🔧 구성
 
-## 🔧 Configuration
+### 환경 변수
 
-### Environment Variables
-
-Create `.env.local` in the project root:
+프로젝트 루트에 `.env.local` 생성:
 
 ```env
-# ClickHouse Configuration
+# ClickHouse 구성
 CLICKHOUSE_HOST=http://localhost:8123
 CLICKHOUSE_DATABASE=analytics
 CLICKHOUSE_USER=default
 CLICKHOUSE_PASSWORD=
 
-# MySQL Configuration
+# MySQL 구성
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_DATABASE=appdb
@@ -345,15 +350,15 @@ MYSQL_USER=appuser
 MYSQL_PASSWORD=apppassword
 MYSQL_ROOT_PASSWORD=rootpassword
 
-# Application Configuration
+# 애플리케이션 구성
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NODE_ENV=development
 
-# JWT Configuration (Security)
+# JWT 구성 (보안)
 JWT_SECRET=your-jwt-secret-here
 JWT_EXPIRES_IN=7d
 
-# Email Configuration (for password reset - optional)
+# 이메일 구성 (비밀번호 재설정용 - 선택사항)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_SECURE=false
@@ -361,101 +366,101 @@ EMAIL_USER=your-email@gmail.com
 EMAIL_PASSWORD=your-gmail-app-password
 EMAIL_FROM="CosMos AI <noreply@cosmos-ai.com>"
 
-# Optional: NextAuth Configuration (if using NextAuth)
+# 선택사항: NextAuth 구성 (NextAuth 사용 시)
 NEXTAUTH_SECRET=your-nextauth-secret
 NEXTAUTH_URL=http://localhost:3000
 ```
 
-### Email Setup (Optional)
+### 이메일 설정 (선택사항)
 
-For password reset functionality, configure email settings:
+비밀번호 재설정 기능을 위해 이메일 설정 구성:
 
-**Using Gmail:**
-1. Enable 2-Factor Authentication on your Gmail account
-2. Generate App Password: https://myaccount.google.com/apppasswords
-3. Copy the 16-character password to `EMAIL_PASSWORD`
+**Gmail 사용:**
+1. Gmail 계정에서 2단계 인증 활성화
+2. 앱 비밀번호 생성: https://myaccount.google.com/apppasswords
+3. 16자 비밀번호를 `EMAIL_PASSWORD`에 복사
 
-**Using Other Providers:**
-- SendGrid: Use API key as password
-- AWS SES: Configure with SMTP credentials
-- Custom SMTP: Use your server credentials
+**다른 제공업체 사용:**
+- SendGrid: API 키를 비밀번호로 사용
+- AWS SES: SMTP 자격 증명으로 구성
+- 사용자 정의 SMTP: 서버 자격 증명 사용
 
-### Docker Configuration
+### Docker 구성
 
-The `docker-compose.yml` configures two services:
+`docker-compose.yml`은 두 가지 서비스를 구성합니다:
 
-1. **ClickHouse** (Port 8123, 9000)
-   - Analytics database
-   - HTTP interface on 8123
-   - Native interface on 9000
+1. **ClickHouse** (포트 8123, 9000)
+   - 분석 데이터베이스
+   - 8123에서 HTTP 인터페이스
+   - 9000에서 네이티브 인터페이스
    
-2. **MySQL** (Port 3306)
-   - Application database
-   - Default user: appuser
-   - Default database: appdb
+2. **MySQL** (포트 3306)
+   - 애플리케이션 데이터베이스
+   - 기본 사용자: appuser
+   - 기본 데이터베이스: appdb
 
-### Database Schemas
+### 데이터베이스 스키마
 
-**ClickHouse Tables:**
-- `analytics.tracking_events` - Raw tracking data
-- `analytics.visit_logs` - Processed visitor logs
+**ClickHouse 테이블:**
+- `analytics.tracking_events` - 원시 추적 데이터
+- `analytics.visit_logs` - 처리된 방문자 로그
 
-**MySQL Tables:**
-- `users` - User accounts
-- `sessions` - Active sessions
-- `password_reset_tokens` - Reset tokens
-- `courses` - Course catalog
-- `campaigns` - Marketing campaigns
-- `utm_codes` - Tracking links
+**MySQL 테이블:**
+- `users` - 사용자 계정
+- `sessions` - 활성 세션
+- `password_reset_tokens` - 재설정 토큰
+- `courses` - 코스 카탈로그
+- `campaigns` - 마케팅 캠페인
+- `utm_codes` - 추적 링크
 
-## 📝 Usage Guide
+## 📝 사용 가이드
 
-### Getting Started
+### 시작하기
 
-#### 1. Authentication
-- Navigate to http://localhost:3000
-- You'll be automatically redirected to the authentication page
-- Create an account or log in with existing credentials
+#### 1. 인증
+- http://localhost:3000 으로 이동
+- 자동으로 인증 페이지로 리디렉션됩니다
+- 계정을 생성하거나 기존 자격 증명으로 로그인
 
-#### 2. User Roles & Permissions
-- **Owner** - Full system access (manually assigned via database)
-- **Admin** - Manage campaigns, view analytics, export data
-- **Observer** - View-only access to analytics and dashboards
-- **Regular** - Basic view access
+#### 2. 사용자 역할 및 권한
+- **Owner** - 전체 시스템 액세스 (데이터베이스를 통해 수동 할당)
+- **Admin** - 캠페인 관리, 분석 보기, 데이터 내보내기
+- **Observer** - 분석 및 대시보드에 대한 읽기 전용 액세스
+- **Regular** - 기본 보기 액세스
 
-#### 3. Create Your First Campaign
-1. Navigate to **Campaigns** from the sidebar
-2. Click **"Create Campaign"**
-3. Fill in campaign details:
-   - Campaign name
-   - Associated course
-   - Source (e.g., "google", "facebook", "telegram")
-   - Medium (e.g., "cpc", "social", "email")
-   - Budget and dates
-   - Status (active/waiting/paused)
-4. Save the campaign
+#### 3. 첫 번째 캠페인 생성
+1. 사이드바에서 **Campaigns**로 이동
+2. **"Create Campaign"** 클릭
+3. 캠페인 세부 정보 입력:
+   - 캠페인 이름
+   - 연결된 코스
+   - 소스 (예: "google", "facebook", "telegram")
+   - 미디엄 (예: "cpc", "social", "email")
+   - 예산 및 날짜
+   - 상태 (active/waiting/paused)
+4. 캠페인 저장
 
-#### 4. Generate Tracking Links
-1. Go to **UTM Tools** from the sidebar
-2. Select a campaign
-3. Configure UTM parameters:
-   - Source (auto-filled from campaign)
-   - Medium (auto-filled from campaign)
-   - Campaign name
-   - Content (optional)
-   - Term (optional)
-4. Enter your landing page URL
-5. Click **"Generate Link"**
-6. Copy the tracking link and use it in your marketing materials
+#### 4. 추적 링크 생성
+1. 사이드바에서 **UTM Tools**로 이동
+2. 캠페인 선택
+3. UTM 매개변수 구성:
+   - 소스 (캠페인에서 자동 채움)
+   - 미디엄 (캠페인에서 자동 채움)
+   - 캠페인 이름
+   - 콘텐츠 (선택사항)
+   - 용어 (선택사항)
+4. 랜딩 페이지 URL 입력
+5. **"Generate Link"** 클릭
+6. 추적 링크를 복사하여 마케팅 자료에 사용
 
-#### 5. Integrate Tracking Script
-Add to your external landing pages:
+#### 5. 추적 스크립트 통합
+외부 랜딩 페이지에 추가:
 ```html
-<!-- Add before closing </body> tag -->
+<!-- </body> 태그 닫기 전에 추가 -->
 <script src="https://your-cosmos-ai-domain.com/cosmos-track.js"></script>
 ```
 
-Configure allowed domains in `public/cosmos-track.js`:
+`public/cosmos-track.js`에서 허용된 도메인 구성:
 ```javascript
 allowedDomains: [
   'your-landing-page.com',
@@ -463,16 +468,16 @@ allowedDomains: [
 ]
 ```
 
-#### 6. Track Conversions (Optional)
-Add conversion tracking to your landing page:
+#### 6. 전환 추적 (선택사항)
+랜딩 페이지에 전환 추적 추가:
 ```javascript
-// When user completes a signup
+// 사용자가 회원가입을 완료할 때
 window.CosmosTracker.trackConversion({
   type: 'signup',
   value: 0
 });
 
-// When user makes a purchase
+// 사용자가 구매할 때
 window.CosmosTracker.trackConversion({
   type: 'purchase',
   value: 99.99,
@@ -480,210 +485,228 @@ window.CosmosTracker.trackConversion({
 });
 ```
 
-#### 7. View Analytics
-Access various analytics modules:
+#### 7. 분석 보기
+다양한 분석 모듈에 액세스:
 
-**Dashboard (Performance)**
-- Overview of all campaigns
-- Total clicks, visitors, conversions
-- Budget tracking
-- Recent activity
+**대시보드 (성능)**
+- 모든 캠페인 개요
+- 총 클릭, 방문자, 전환
+- 예산 추적
+- 최근 활동
 
-**Campaign Analysis**
-- Individual campaign performance
-- Click-through rates
-- Conversion rates by campaign
+**캠페인 분석**
+- 개별 캠페인 성능
+- 클릭률
+- 캠페인별 전환율
 
-**Channel Performance**
-- Traffic by source (Google, Facebook, etc.)
-- Traffic by medium (CPC, Social, Email)
-- ROI by channel
+**채널 성능**
+- 소스별 트래픽 (Google, Facebook 등)
+- 미디엄별 트래픽 (CPC, Social, Email)
+- 채널별 ROI
 
-**Environment Analysis**
-- Device breakdown (Desktop, Mobile, Tablet)
-- Browser statistics (Chrome, Safari, Firefox, etc.)
-- Operating system distribution
-- Screen resolutions
+**환경 분석**
+- 기기 분류 (데스크톱, 모바일, 태블릿)
+- 브라우저 통계 (Chrome, Safari, Firefox 등)
+- 운영 체제 분포
+- 화면 해상도
 
-**Time Analysis (KST)**
-- Visitor patterns by hour of day
-- Day of week analysis
-- Peak traffic times
-- Timezone-aware analytics
+**시간 분석 (KST)**
+- 시간대별 방문자 패턴
+- 요일별 분석
+- 피크 트래픽 시간
+- 시간대 인식 분석
 
-**Page Flow Analysis**
-- Landing page performance
-- Navigation paths
-- Exit pages
-- Bounce rates
+**페이지 흐름 분석**
+- 랜딩 페이지 성능
+- 네비게이션 경로
+- 종료 페이지
+- 이탈률
 
-**Returning Analysis**
-- New vs returning visitors
-- Visit frequency
-- User retention metrics
+**재방문 분석**
+- 신규 vs 재방문 방문자
+- 방문 빈도
+- 사용자 유지 지표
 
-**Conversion Analysis**
-- Conversion rates by campaign
-- Conversion value tracking
-- Attribution analysis
+**세션 여정**
+- 완전한 페이지별 사용자 여정 시각화
+- 타임스탬프가 있는 세션 타임라인
+- 랜딩 페이지 및 종료 페이지 추적
+- 세션 지속 시간 및 페이지 순서
+- 세션별 기기 및 소스 정보
+- 활성 vs 완료된 세션 표시기
 
-### Key Features
+**전환 분석**
+- 캠페인별 전환율
+- 전환 가치 추적
+- 속성 분석
 
-#### Campaign Management
-- Create and manage multiple campaigns
-- Track budget and spending
-- Auto-pause campaigns when budget is reached
-- Campaign status management (active/paused/ended)
-- Link campaigns to courses
+**PDF 내보내기**
+- 모든 분석 대시보드를 PDF로 내보내기
+- 고품질 이미지 렌더링
+- 사용자 정의 내보내기 옵션
+- 성능 및 환경 분석 페이지에서 사용 가능
 
-#### UTM Link Generation
-- Automatic UTM parameter generation
-- Unique tracking codes
-- Link click tracking
-- Budget allocation per link
-- Link status management
+### 주요 기능
 
-#### Advanced Analytics
-- Real-time data updates
-- Customizable date ranges
-- Export capabilities (coming soon)
-- Multi-dimensional analysis
-- Visual charts and graphs
+#### 캠페인 관리
+- 여러 캠페인 생성 및 관리
+- 예산 및 지출 추적
+- 예산 도달 시 캠페인 자동 일시 중지
+- 캠페인 상태 관리 (active/paused/ended)
+- 캠페인을 코스에 연결
 
-#### Debugging Tools
-- Tracking Debug page for testing links
-- Real-time event monitoring
-- Session and visitor ID tracking
-- UTM parameter validation
+#### UTM 링크 생성
+- 자동 UTM 매개변수 생성
+- 고유 추적 코드
+- 링크 클릭 추적
+- 링크당 예산 할당
+- 링크 상태 관리
 
-## 🛠 Tech Stack
+#### 고급 분석
+- 실시간 데이터 업데이트
+- 사용자 정의 날짜 범위
+- 대시보드 및 보고서용 PDF 내보내기 기능
+- 다차원 분석
+- 시각적 차트 및 그래프
 
-### Frontend
-- **Next.js 14** - React framework with App Router and Server Components
-- **React 18** - UI library with latest features
-- **TypeScript 5** - Type-safe development
-- **Tailwind CSS 3.4** - Utility-first CSS framework
-- **shadcn/ui** - Modern, accessible UI component library
-- **Recharts 2.12** - Composable charting library for data visualization
-- **Lucide React** - Beautiful, consistent icon library
-- **Sonner** - Toast notifications
+#### 디버깅 도구
+- 링크 테스트용 추적 디버그 페이지
+- 실시간 이벤트 모니터링
+- 세션 및 방문자 ID 추적
+- UTM 매개변수 검증
 
-### Backend
-- **Next.js API Routes** - Serverless API endpoints
-- **Node.js 18+** - JavaScript runtime
-- **JWT (jsonwebtoken 9.0)** - Secure token-based authentication
-- **bcryptjs 3.0** - Password hashing and verification
-- **Nodemailer 7.0** - Email service integration (SMTP)
+## 🛠 기술 스택
 
-### Databases
-- **ClickHouse** - High-performance columnar analytics database
-  - Optimized for OLAP queries
-  - Petabyte-scale data processing
-  - Real-time data ingestion
-- **MySQL 8.0** - Reliable relational database for application data
-  - ACID compliance
-  - Connection pooling
-  - Foreign key constraints
+### 프론트엔드
+- **Next.js 14** - App Router 및 Server Components가 있는 React 프레임워크
+- **React 18** - 최신 기능이 있는 UI 라이브러리
+- **TypeScript 5** - 타입 안전 개발
+- **Tailwind CSS 3.4** - 유틸리티 우선 CSS 프레임워크
+- **shadcn/ui** - 현대적이고 접근 가능한 UI 컴포넌트 라이브러리
+- **Recharts 2.12** - 데이터 시각화를 위한 구성 가능한 차트 라이브러리
+- **Lucide React** - 아름답고 일관된 아이콘 라이브러리
+- **Sonner** - 토스트 알림
 
-### Data & Analytics
-- **@clickhouse/client 1.5** - Official ClickHouse client for Node.js
-- **mysql2 3.15** - Fast MySQL client with Promise support
-- **GeoIP Lite 1.4** - IP-based geolocation (country/city detection)
-- **UA Parser JS 2.0** - User agent parsing (device/browser/OS detection)
-- **Query String 9.3** - URL parameter parsing and manipulation
+### 백엔드
+- **Next.js API Routes** - 서버리스 API 엔드포인트
+- **Node.js 18+** - JavaScript 런타임
+- **JWT (jsonwebtoken 9.0)** - 안전한 토큰 기반 인증
+- **bcryptjs 3.0** - 비밀번호 해싱 및 검증
+- **Nodemailer 7.0** - 이메일 서비스 통합 (SMTP)
 
-### Developer Tools
-- **Docker & Docker Compose** - Containerized development environment
-- **ESLint** - Code linting and formatting
-- **Autoprefixer** - CSS vendor prefixing
-- **PostCSS** - CSS transformation
+### 데이터베이스
+- **ClickHouse** - 고성능 컬럼형 분석 데이터베이스
+  - OLAP 쿼리에 최적화
+  - 페타바이트 규모 데이터 처리
+  - 실시간 데이터 수집
+- **MySQL 8.0** - 애플리케이션 데이터용 안정적인 관계형 데이터베이스
+  - ACID 준수
+  - 연결 풀링
+  - 외래 키 제약 조건
 
-### Additional Libraries
-- **nanoid 5.0** - Unique ID generation for tracking codes
-- **uuid 13.0** - UUID generation for sessions and users
-- **next-swagger-doc 0.4** - API documentation with Swagger UI
-- **swagger-ui-react 5.29** - Interactive API documentation interface
-- **SweetAlert2 11.26** - Beautiful, responsive alerts and modals
-- **class-variance-authority 0.7** - CVA for component variants
-- **clsx 2.1** - Conditional className utility
-- **tailwind-merge 2.4** - Merge Tailwind classes without conflicts
-- **dotenv 16.4** - Environment variable management
+### 데이터 및 분석
+- **@clickhouse/client 1.5** - Node.js용 공식 ClickHouse 클라이언트
+- **mysql2 3.15** - Promise 지원이 있는 빠른 MySQL 클라이언트
+- **GeoIP Lite 1.4** - IP 기반 지리적 위치 (국가/도시 감지)
+- **UA Parser JS 2.0** - 사용자 에이전트 파싱 (기기/브라우저/OS 감지)
+- **Query String 9.3** - URL 매개변수 파싱 및 조작
 
-### Performance Optimizations
-- Server-side rendering (SSR) with Next.js
-- Static generation for public pages
-- API route caching
-- Database connection pooling
-- ClickHouse partitioning by month
-- Indexed database queries
-- Image optimization with Next.js Image
-- Code splitting and lazy loading
+### 내보내기 및 보고
+- **html2canvas 1.4** - PDF 내보내기를 위한 HTML 요소를 캔버스로 변환
+- **jsPDF 3.0** - 클라이언트 측 PDF 생성 라이브러리
 
-## 📚 Documentation
+### 개발자 도구
+- **Docker & Docker Compose** - 컨테이너화된 개발 환경
+- **ESLint** - 코드 린팅 및 포맷팅
+- **Autoprefixer** - CSS 벤더 접두사
+- **PostCSS** - CSS 변환
 
-Additional documentation is available in the `z_documentation/` directory:
+### 추가 라이브러리
+- **nanoid 5.0** - 추적 코드용 고유 ID 생성
+- **uuid 13.0** - 세션 및 사용자용 UUID 생성
+- **next-swagger-doc 0.4** - Swagger UI가 있는 API 문서
+- **swagger-ui-react 5.29** - 대화형 API 문서 인터페이스
+- **SweetAlert2 11.26** - 아름답고 반응형 알림 및 모달
+- **class-variance-authority 0.7** - 컴포넌트 변형용 CVA
+- **clsx 2.1** - 조건부 className 유틸리티
+- **tailwind-merge 2.4** - 충돌 없이 Tailwind 클래스 병합
+- **dotenv 16.4** - 환경 변수 관리
 
-### Architecture Documentation
-- **`architecture/SYSTEM_ARCHITECTURE.md`** - Complete system architecture overview
-- **`architecture/API_ENDPOINTS.md`** - Detailed API endpoint documentation
+### 성능 최적화
+- Next.js를 사용한 서버 사이드 렌더링 (SSR)
+- 공개 페이지용 정적 생성
+- API 라우트 캐싱
+- 데이터베이스 연결 풀링
+- 월별 ClickHouse 파티셔닝
+- 인덱싱된 데이터베이스 쿼리
+- Next.js Image를 사용한 이미지 최적화
+- 코드 분할 및 지연 로딩
 
-### Feature Documentation
-- **`AUTHENTICATION_COMPLETE.md`** - Authentication system implementation guide
-- **`PASSWORD_RESET.md`** - Password reset flow and email configuration
-- **`JWT_IMPLEMENTATION.md`** - JWT token implementation details
-- **`GMAIL_SETUP.md`** - Gmail SMTP configuration guide
-- **`CLIPBOARD_FALLBACK_IMPLEMENTATION.md`** - Clipboard functionality
+## 📚 문서
 
-### Implementation Guides
-- **`zz_temp-md-files/CONVERSION_TRACKING_GUIDE.md`** - Conversion tracking setup
-- **`zz_temp-md-files/EXTERNAL_TRACKING_INSTALLATION.md`** - External script integration
-- **`zz_temp-md-files/TRACKING_VALIDATION_GUIDE.md`** - Testing and validation
+추가 문서는 `z_documentation/` 디렉토리에서 확인할 수 있습니다:
 
-### API Documentation
-Access interactive API documentation at: **http://localhost:3000/api-docs**
+### 아키텍처 문서
+- **`architecture/SYSTEM_ARCHITECTURE.md`** - 완전한 시스템 아키텍처 개요
+- **`architecture/API_ENDPOINTS.md`** - 상세한 API 엔드포인트 문서
 
-## 🚢 Deployment
+### 기능 문서
+- **`AUTHENTICATION_COMPLETE.md`** - 인증 시스템 구현 가이드
+- **`PASSWORD_RESET.md`** - 비밀번호 재설정 흐름 및 이메일 구성
+- **`JWT_IMPLEMENTATION.md`** - JWT 토큰 구현 세부 사항
+- **`GMAIL_SETUP.md`** - Gmail SMTP 구성 가이드
+- **`CLIPBOARD_FALLBACK_IMPLEMENTATION.md`** - 클립보드 기능
 
-### Production Deployment
+### 구현 가이드
+- **`zz_temp-md-files/CONVERSION_TRACKING_GUIDE.md`** - 전환 추적 설정
+- **`zz_temp-md-files/EXTERNAL_TRACKING_INSTALLATION.md`** - 외부 스크립트 통합
+- **`zz_temp-md-files/TRACKING_VALIDATION_GUIDE.md`** - 테스트 및 검증
 
-#### Using Docker
+### API 문서
+대화형 API 문서에 액세스: **http://localhost:3000/api-docs**
 
-1. **Build the production image:**
+## 🚢 배포
+
+### 프로덕션 배포
+
+#### Docker 사용
+
+1. **프로덕션 이미지 빌드:**
 ```bash
 docker build -t cosmos-ai:latest .
 ```
 
-2. **Run with docker-compose:**
+2. **docker-compose로 실행:**
 ```bash
-# Use production profile
+# 프로덕션 프로필 사용
 docker-compose --profile prod up -d
 ```
 
-3. **Environment variables:**
-Create `.env.production` with production values:
+3. **환경 변수:**
+프로덕션 값으로 `.env.production` 생성:
 ```env
 NODE_ENV=production
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 JWT_SECRET=your-production-jwt-secret
-# ... other production values
+# ... 기타 프로덕션 값
 ```
 
-#### Using Vercel/Netlify
+#### Vercel/Netlify 사용
 
-1. Connect your repository
-2. Set environment variables in the dashboard
-3. Configure build settings:
-   - Build command: `npm run build`
-   - Output directory: `.next`
-4. Deploy
+1. 저장소 연결
+2. 대시보드에서 환경 변수 설정
+3. 빌드 설정 구성:
+   - 빌드 명령: `npm run build`
+   - 출력 디렉토리: `.next`
+4. 배포
 
-**Note:** You'll need to host ClickHouse and MySQL separately (e.g., cloud providers)
+**참고:** ClickHouse와 MySQL을 별도로 호스팅해야 합니다 (예: 클라우드 제공업체)
 
-### Database Hosting Options
+### 데이터베이스 호스팅 옵션
 
 **ClickHouse:**
-- ClickHouse Cloud (recommended)
-- AWS (self-hosted on EC2)
+- ClickHouse Cloud (권장)
+- AWS (EC2에서 자체 호스팅)
 - DigitalOcean Droplets
 - Google Cloud Platform
 
@@ -694,89 +717,89 @@ JWT_SECRET=your-production-jwt-secret
 - PlanetScale
 - DigitalOcean Managed Databases
 
-## 🔒 Security Considerations
+## 🔒 보안 고려사항
 
-### Authentication & Authorization
-- ✅ JWT tokens with expiration (7 days)
-- ✅ bcrypt password hashing (10 rounds)
-- ✅ Role-based access control (Owner/Admin/Observer/Regular)
-- ✅ Session management with automatic cleanup
-- ✅ Password reset with secure tokens (10-hour expiry)
-- ✅ Rate limiting on sensitive endpoints
+### 인증 및 권한 부여
+- ✅ 만료가 있는 JWT 토큰 (7일)
+- ✅ bcrypt 비밀번호 해싱 (10 라운드)
+- ✅ 역할 기반 액세스 제어 (Owner/Admin/Observer/Regular)
+- ✅ 자동 정리가 있는 세션 관리
+- ✅ 안전한 토큰을 사용한 비밀번호 재설정 (10시간 만료)
+- ✅ 민감한 엔드포인트에 대한 속도 제한
 
-### API Security
-- ✅ CORS configuration
-- ✅ Input validation and sanitization
-- ✅ SQL injection prevention (parameterized queries)
-- ✅ XSS protection
-- ⚠️ **Recommended:** Add HTTPS in production
-- ⚠️ **Recommended:** Implement CSRF tokens
-- ⚠️ **Recommended:** Add API rate limiting globally
+### API 보안
+- ✅ CORS 구성
+- ✅ 입력 검증 및 정제
+- ✅ SQL 주입 방지 (매개변수화된 쿼리)
+- ✅ XSS 보호
+- ⚠️ **권장:** 프로덕션에서 HTTPS 추가
+- ⚠️ **권장:** CSRF 토큰 구현
+- ⚠️ **권장:** 전역 API 속도 제한 추가
 
-### Database Security
-- ✅ Separate databases for analytics and app data
-- ✅ Connection pooling with limits
-- ✅ Prepared statements for all queries
-- ⚠️ **Recommended:** Use read-only database users where possible
-- ⚠️ **Recommended:** Enable database encryption at rest
+### 데이터베이스 보안
+- ✅ 분석 및 앱 데이터용 별도 데이터베이스
+- ✅ 제한이 있는 연결 풀링
+- ✅ 모든 쿼리에 대한 준비된 문
+- ⚠️ **권장:** 가능한 경우 읽기 전용 데이터베이스 사용자 사용
+- ⚠️ **권장:** 데이터베이스 암호화 활성화
 
-### Privacy & GDPR
-- ✅ IP address collection (can be anonymized)
-- ✅ Cookie-based tracking (inform users)
-- ⚠️ **Recommended:** Add cookie consent banner
-- ⚠️ **Recommended:** Implement data retention policies
-- ⚠️ **Recommended:** Add data export/deletion functionality
+### 개인정보 보호 및 GDPR
+- ✅ IP 주소 수집 (익명화 가능)
+- ✅ 쿠키 기반 추적 (사용자에게 알림)
+- ⚠️ **권장:** 쿠키 동의 배너 추가
+- ⚠️ **권장:** 데이터 보존 정책 구현
+- ⚠️ **권장:** 데이터 내보내기/삭제 기능 추가
 
-## 🐛 Troubleshooting
+## 🐛 문제 해결
 
-### Common Issues
+### 일반적인 문제
 
-**1. Database Connection Failed**
+**1. 데이터베이스 연결 실패**
 ```bash
-# Check if containers are running
+# 컨테이너가 실행 중인지 확인
 docker ps
 
-# Restart containers
+# 컨테이너 재시작
 docker-compose restart
 
-# Check logs
+# 로그 확인
 docker-compose logs clickhouse
 docker-compose logs mysql
 ```
 
-**2. Tables Not Found**
+**2. 테이블을 찾을 수 없음**
 ```bash
-# Re-initialize databases
+# 데이터베이스 재초기화
 npm run db:drop
 npm run clickhouse:init
 npm run mysql:init
 ```
 
-**3. Authentication Errors**
+**3. 인증 오류**
 ```bash
-# Generate new JWT secret
+# 새 JWT 시크릿 생성
 npm run generate:secret
 
-# Update .env.local with the new secret
-# Restart the development server
+# .env.local을 새 시크릿으로 업데이트
+# 개발 서버 재시작
 ```
 
-**4. Email Not Sending**
-- Verify Gmail app password is correct (16 characters)
-- Check 2FA is enabled on Gmail account
-- Verify EMAIL_* environment variables are set
-- Check spam folder for test emails
+**4. 이메일 전송 안 됨**
+- Gmail 앱 비밀번호가 올바른지 확인 (16자)
+- Gmail 계정에서 2FA가 활성화되어 있는지 확인
+- EMAIL_* 환경 변수가 설정되어 있는지 확인
+- 테스트 이메일의 스팸 폴더 확인
 
-**5. Tracking Script Not Working**
-- Verify domain is in `allowedDomains` array
-- Check browser console for errors
-- Verify API endpoint is accessible
-- Check UTM parameters are present in URL
+**5. 추적 스크립트 작동 안 함**
+- 도메인이 `allowedDomains` 배열에 있는지 확인
+- 브라우저 콘솔에서 오류 확인
+- API 엔드포인트에 액세스할 수 있는지 확인
+- URL에 UTM 매개변수가 있는지 확인
 
-**6. Port Already in Use**
+**6. 포트가 이미 사용 중**
 ```bash
-# Change ports in docker-compose.yml
-# Or kill processes using the ports:
+# docker-compose.yml에서 포트 변경
+# 또는 포트를 사용하는 프로세스 종료:
 # Windows:
 netstat -ano | findstr :3306
 taskkill /PID <PID> /F
@@ -785,61 +808,62 @@ taskkill /PID <PID> /F
 lsof -ti:3306 | xargs kill -9
 ```
 
-### Getting Help
+### 도움 받기
 
-- Check documentation in `z_documentation/`
-- Review API docs at `/api-docs`
-- Check Docker logs: `docker-compose logs`
-- Verify environment variables are set correctly
+- `z_documentation/`의 문서 확인
+- `/api-docs`에서 API 문서 검토
+- Docker 로그 확인: `docker-compose logs`
+- 환경 변수가 올바르게 설정되어 있는지 확인
 
-## 📊 Performance Tips
+## 📊 성능 팁
 
-### Optimizing ClickHouse Queries
-- Use date range filters
-- Partition by month for better query performance
-- Use materialized views for frequently accessed aggregations
-- Limit result sets with `LIMIT` clause
+### ClickHouse 쿼리 최적화
+- 날짜 범위 필터 사용
+- 더 나은 쿼리 성능을 위해 월별로 파티션
+- 자주 액세스하는 집계에 대한 구체화된 뷰 사용
+- `LIMIT` 절로 결과 집합 제한
 
-### Optimizing MySQL
-- Add indexes on frequently queried columns
-- Use connection pooling (already configured)
-- Clean up old sessions regularly
-- Monitor slow query log
+### MySQL 최적화
+- 자주 쿼리되는 열에 인덱스 추가
+- 연결 풀링 사용 (이미 구성됨)
+- 오래된 세션 정기적으로 정리
+- 느린 쿼리 로그 모니터링
 
-### Frontend Performance
-- Enable Next.js image optimization
-- Use server components where possible
-- Implement pagination for large datasets
-- Add loading states for better UX
+### 프론트엔드 성능
+- Next.js 이미지 최적화 활성화
+- 가능한 경우 서버 컴포넌트 사용
+- 대용량 데이터셋에 대한 페이지네이션 구현
+- 더 나은 UX를 위한 로딩 상태 추가
 
-## 🤝 Contributing
+## 🤝 기여
 
-Contributions are welcome! Please follow these guidelines:
+기여를 환영합니다! 다음 가이드라인을 따르세요:
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. 저장소 포크
+2. 기능 브랜치 생성 (`git checkout -b feature/amazing-feature`)
+3. 변경 사항 커밋 (`git commit -m 'Add amazing feature'`)
+4. 브랜치에 푸시 (`git push origin feature/amazing-feature`)
+5. Pull Request 열기
 
-### Development Guidelines
-- Follow TypeScript best practices
-- Write meaningful commit messages
-- Add comments for complex logic
-- Test thoroughly before submitting
-- Update documentation as needed
+### 개발 가이드라인
+- TypeScript 모범 사례 따르기
+- 의미 있는 커밋 메시지 작성
+- 복잡한 로직에 주석 추가
+- 제출 전 철저히 테스트
+- 필요에 따라 문서 업데이트
 
-## 📄 License
+## 📄 라이선스
 
-This project is proprietary software. All rights reserved.
+이 프로젝트는 독점 소프트웨어입니다. 모든 권리 보유.
 
-## 📞 Support
+## 📞 지원
 
-For support and questions:
-- Documentation: `z_documentation/` folder
-- API Docs: http://localhost:3000/api-docs
-- Issues: Create an issue in the repository
+지원 및 질문:
+- 문서: `z_documentation/` 폴더
+- API 문서: http://localhost:3000/api-docs
+- 이슈: 저장소에 이슈 생성
 
 ---
 
-**Built with ❤️ using Next.js, ClickHouse, and MySQL**
+**Next.js, ClickHouse 및 MySQL로 ❤️를 담아 제작**
+

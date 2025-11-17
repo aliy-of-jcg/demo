@@ -93,12 +93,13 @@ export default function SessionJourneysPage() {
   };
 
   const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
+    // Timestamp is already in KST from the API
+    return timestamp.split(' ')[1]?.substring(0, 5) || timestamp;
+  };
+
+  const formatDateTime = (timestamp: string) => {
+    // Timestamp is already in KST from the API
+    return timestamp.replace('T', ' ').substring(0, 19);
   };
 
   const getPageName = (url: string) => {
@@ -113,12 +114,14 @@ export default function SessionJourneysPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+        {/* Header */}        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
             <Route className="w-10 h-10 text-blue-600" />
-            Session Journeys
-          </h1>
+            <h1 className="text-4xl font-bold text-gray-900">Session Journeys</h1>
+            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+              KST (UTC+9)
+            </span>
+          </div>
           <p className="text-gray-600">
             Complete page-by-page journey for each user session
           </p>
@@ -214,10 +217,10 @@ export default function SessionJourneysPage() {
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 border-b border-gray-200">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
-                      <div className="text-xs text-gray-500 mb-1">Session Start</div>
+                      <div className="text-xs text-gray-500 mb-1">Session Start (KST)</div>
                       <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                         <Clock className="w-4 h-4 text-gray-400" />
-                        {new Date(session.session_start).toLocaleString()}
+                        {formatDateTime(session.session_start)}
                       </div>
                     </div>
                     <div>
@@ -305,7 +308,7 @@ export default function SessionJourneysPage() {
                               </div>
                               <div className="text-right flex-shrink-0">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {formatTime(page.timestamp)}
+                                  {formatTime(page.timestamp)} <span className="text-xs text-gray-500">KST</span>
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {page.time_on_page > 0 ? `${page.time_on_page}s` : '-'}
@@ -352,7 +355,7 @@ export default function SessionJourneysPage() {
                             </div>
                             <div className="text-right flex-shrink-0">
                               <div className="text-sm font-medium text-red-900">
-                                {formatTime(session.session_end)}
+                                {formatTime(session.session_end)} <span className="text-xs text-red-700">KST</span>
                               </div>
                               <div className="text-xs text-red-700">
                                 {formatDuration(session.duration)} total

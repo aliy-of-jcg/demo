@@ -12,14 +12,14 @@ export async function GET(request: NextRequest) {
     
     console.log(`🛤️ Session Journeys API - Fetching up to ${limit} sessions`);
 
-    // Build WHERE clause for date filtering
+    // Build WHERE clause for date filtering (using KST timezone)
     let whereClause = '1=1';
 
     if (startDate) {
-      whereClause += ` AND toDate(timestamp) >= '${startDate}'`;
+      whereClause += ` AND toDate(toDateTime(timestamp, 'Asia/Seoul')) >= '${startDate}'`;
     }
     if (endDate) {
-      whereClause += ` AND toDate(timestamp) <= '${endDate}'`;
+      whereClause += ` AND toDate(toDateTime(timestamp, 'Asia/Seoul')) <= '${endDate}'`;
     }
 
     // Fetch all sessions with their complete page journeys
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
         SELECT DISTINCT
           session_id,
           user_id,
-          MIN(timestamp) as session_start,
-          MAX(timestamp) as session_end,
+          toString(toDateTime(MIN(timestamp), 'Asia/Seoul')) as session_start,
+          toString(toDateTime(MAX(timestamp), 'Asia/Seoul')) as session_end,
           COUNT(*) as total_pages,
           SUM(time_on_page) as duration,
           MAX(CASE WHEN is_landing_page = 1 THEN page_url ELSE '' END) as landing_page,
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
           v.page_url,
           v.page_title,
           v.page_sequence,
-          v.timestamp,
+          toString(toDateTime(v.timestamp, 'Asia/Seoul')) as timestamp,
           v.time_on_page,
           v.event_type,
           v.is_landing_page,
