@@ -218,14 +218,15 @@
       
       console.log('[CosMos] Initializing tracker v4.8.0 (localStorage-only, no cookies)...');
       
-      // Clean URL in browser address bar (remove UTM parameters after capturing them)
-      this.cleanUrlParameters();
-      
       // Check for expired session and send delayed exit event if needed
       this.checkAndSendDelayedExitEvent();
       
       // Track initial pageview immediately (including refreshes)
+      // IMPORTANT: This must happen BEFORE cleanUrlParameters() to capture UTM params
       this.trackPageview();
+      
+      // Clean URL in browser address bar AFTER capturing UTM parameters
+      this.cleanUrlParameters();
       
       // Setup client-side navigation tracking (for SPA/Next.js)
       this.setupClientSideNavigation();
