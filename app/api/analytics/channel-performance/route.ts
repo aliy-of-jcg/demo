@@ -115,6 +115,8 @@ export async function GET(request: NextRequest) {
       .filter(code => code && code !== '')));
     
     let campaignMap = new Map();
+    let campaignNameMap = new Map(); // Fallback: map by campaign name for legacy data
+    
     if (trackingCodes.length > 0) {
       const placeholders = trackingCodes.map(() => '?').join(',');
       const [campaigns] = await pool.execute(`
@@ -137,7 +139,51 @@ export async function GET(request: NextRequest) {
           status: c.status,
           ad_cost: parseFloat(c.ad_cost) || 0
         });
+        
+        // Also store by name for fallback matching
+        if (!campaignNameMap.has(c.campaign_name)) {
+          campaignNameMap.set(c.campaign_name, {
+            campaign_id: c.campaign_id,
+            name: c.campaign_name,
+            status: c.status,
+            ad_cost: parseFloat(c.ad_cost) || 0
+          });
+        }
       });
+    }
+    
+    // FALLBACK: For legacy data without tracking codes, get campaigns by name
+    // This handles visits logged before we added the _tc parameter
+    const campaignNamesWithoutCodes = Array.from(new Set(trafficData
+      .filter(t => !t.tracking_code || t.tracking_code === '')
+      .map(t => t.utm_campaign)
+      .filter(name => name && name !== '')));
+    
+    if (campaignNamesWithoutCodes.length > 0) {
+      const namePlaceholders = campaignNamesWithoutCodes.map(() => '?').join(',');
+      const [campaignsByName] = await pool.execute(`
+        SELECT 
+          c.id as campaign_id,
+          c.name as campaign_name,
+          c.status,
+          c.budget,
+          c.spent as ad_cost
+        FROM campaigns c
+        WHERE c.name IN (${namePlaceholders})
+      `, campaignNamesWithoutCodes);
+      
+      (campaignsByName as any[]).forEach(c => {
+        if (!campaignNameMap.has(c.campaign_name)) {
+          campaignNameMap.set(c.campaign_name, {
+            campaign_id: c.campaign_id,
+            name: c.campaign_name,
+            status: c.status,
+            ad_cost: parseFloat(c.ad_cost) || 0
+          });
+        }
+      });
+      
+      console.log(`  📝 Loaded ${campaignNamesWithoutCodes.length} campaigns by name for legacy data without tracking codes`);
     }
 
     // Step 3: Get click data from ClickHouse tracking_events (single source of truth)
@@ -176,12 +222,27 @@ export async function GET(request: NextRequest) {
 
     // Step 4: Enrich traffic data with campaign metadata and clicks
     const enrichedData: CampaignData[] = trafficData.map(traffic => {
-      const campaign = campaignMap.get(traffic.tracking_code) || { 
-        campaign_id: 0,
-        name: traffic.utm_campaign || 'Unknown Campaign', 
-        status: 'active',
-        ad_cost: 0 
-      };
+      // Try to get campaign by tracking_code first (most reliable)
+      let campaign = campaignMap.get(traffic.tracking_code);
+      
+      // FALLBACK: If no tracking_code or not found, try matching by campaign name
+      // This handles legacy data logged before we added the _tc parameter
+      if (!campaign && traffic.utm_campaign) {
+        campaign = campaignNameMap.get(traffic.utm_campaign);
+        if (campaign) {
+          console.log(`  🔄 Matched legacy data by name: ${traffic.utm_campaign}`);
+        }
+      }
+      
+      // If still not found, create unknown campaign entry
+      if (!campaign) {
+        campaign = { 
+          campaign_id: 0,
+          name: traffic.utm_campaign || 'Unknown Campaign', 
+          status: 'active',
+          ad_cost: 0 
+        };
+      }
       
       const clicks = clicksMap.get(traffic.tracking_code) || 0;
       const sessions = parseInt(traffic.sessions) || 0;
@@ -192,7 +253,7 @@ export async function GET(request: NextRequest) {
       const ctr = clicks > 0 ? (sessions / clicks) * 100 : 0;
 
       // Debug logging
-      console.log(`  Campaign ${traffic.utm_campaign} (code: ${traffic.tracking_code}): ${clicks} clicks, ${sessions} visits, CTR: ${ctr.toFixed(2)}%`);
+      console.log(`  Campaign ${traffic.utm_campaign} (code: ${traffic.tracking_code || 'none'}): ${clicks} clicks, ${sessions} visits, CTR: ${ctr.toFixed(2)}%`);
 
       return {
         campaign_id: campaign.campaign_id,
