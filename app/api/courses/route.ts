@@ -322,13 +322,16 @@ export async function GET(request: NextRequest) {
       total_visits: visitsMap.get(course.id) || 0
     }));
 
+    // Calculate total active campaigns (sum of all campaigns across all courses)
+    const totalCampaigns = Array.from(campaignsMap.values()).reduce((sum, count) => sum + count, 0);
+
     return NextResponse.json({
       success: true,
       courses: enhancedCourses,
       summary: {
         total_courses: summary.total_courses,
         active_courses: summary.active_courses,
-        total_campaigns: campaignsMap.size,
+        total_campaigns: totalCampaigns,
         total_visits: totalVisits
       }
     });
