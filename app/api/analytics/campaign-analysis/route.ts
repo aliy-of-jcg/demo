@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
 
     const clickQuery = `
       SELECT COUNT(*) as total_clicks
-      FROM tracking_events
+      FROM analytics.tracking_events
       WHERE ${clickWhereClause}
     `;
 

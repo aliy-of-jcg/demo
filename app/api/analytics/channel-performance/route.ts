@@ -137,21 +137,34 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Step 3: Get click data from utm_codes by tracking_code
+    // Step 3: Get click data from ClickHouse tracking_events (single source of truth)
     let clicksMap = new Map();
     if (trackingCodes.length > 0) {
-      const placeholders = trackingCodes.map(() => '?').join(',');
-      const [utmCodes] = await pool.execute(`
-        SELECT 
-          tracking_code,
-          clicks
-        FROM utm_codes
-        WHERE tracking_code IN (${placeholders})
-      `, trackingCodes);
+      try {
+        const escapedCodes = trackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        
+        const clicksQuery = `
+          SELECT 
+            tracking_code,
+            COUNT(*) as total_clicks
+          FROM analytics.tracking_events
+          WHERE tracking_code IN (${escapedCodes})
+          GROUP BY tracking_code
+        `;
 
-      (utmCodes as any[]).forEach(item => {
-        clicksMap.set(item.tracking_code, parseInt(item.clicks) || 0);
-      });
+        const clicksResult = await clickhouse.query({
+          query: clicksQuery,
+          format: 'JSONEachRow'
+        });
+
+        const clicksData = await clicksResult.json() as any[];
+        clicksData.forEach((row: any) => {
+          clicksMap.set(row.tracking_code, parseInt(row.total_clicks) || 0);
+        });
+      } catch (error) {
+        console.warn('⚠️ Failed to fetch clicks from ClickHouse:', error);
+        // Continue with empty clicks map if ClickHouse fails
+      }
     }
 
     // Step 4: Enrich traffic data with campaign metadata and clicks

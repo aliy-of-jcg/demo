@@ -24,7 +24,6 @@ export async function GET(
         utm_codes.utm_content,
         utm_codes.landing_url,
         utm_codes.full_url,
-        utm_codes.clicks,
         utm_codes.status,
         utm_codes.budget,
         utm_codes.spent,
@@ -43,13 +42,14 @@ export async function GET(
 
     if (trackingCodes.length > 0) {
       try {
+        const escapedCodes = trackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
         const analyticsQuery = await clickhouse.query({
           query: `
             SELECT 
               tracking_code,
               COUNT(*) as total_clicks
             FROM analytics.tracking_events
-            WHERE tracking_code != ''
+            WHERE tracking_code IN (${escapedCodes})
             GROUP BY tracking_code
           `,
           format: 'JSONEachRow'
