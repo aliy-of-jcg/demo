@@ -158,7 +158,7 @@ export async function GET(
     const utmTerm = trackingData.utm_term || '';
     const utmContent = trackingData.utm_content || '';
     
-    // Build final redirect URL with UTM parameters
+    // Build final redirect URL with UTM parameters AND tracking_code
     // These are needed by the client-side tracking script to link the visit to the campaign
     let redirectUrl: URL;
     try {
@@ -170,6 +170,8 @@ export async function GET(
         message: "The landing URL is not valid" 
       }, { status: 500 });
     }
+    // CRITICAL: Pass tracking_code as URL parameter for reliable CTR tracking
+    redirectUrl.searchParams.set('_tc', trackingCode);
     if (utmCampaign) redirectUrl.searchParams.set('utm_campaign', utmCampaign);
     if (utmSource) redirectUrl.searchParams.set('utm_source', utmSource);
     if (utmMedium) redirectUrl.searchParams.set('utm_medium', utmMedium);

@@ -218,6 +218,9 @@
       
       console.log('[CosMos] Initializing tracker v4.8.0 (localStorage-only, no cookies)...');
       
+      // Clean URL in browser address bar (remove UTM parameters after capturing them)
+      this.cleanUrlParameters();
+      
       // Check for expired session and send delayed exit event if needed
       this.checkAndSendDelayedExitEvent();
       
@@ -236,6 +239,42 @@
         sessionStorage.removeItem('cosmos_navigation_time');
         console.log('[CosMos] 🧹 Navigation flags cleared');
       }, 100);
+    },
+    
+    // Clean UTM parameters from browser URL
+    cleanUrlParameters: function() {
+      if (!window.location.search) {
+        console.log('[CosMos] No query parameters to clean');
+        return;
+      }
+      
+      try {
+        const url = new URL(window.location.href);
+        const hasUtmParams = url.searchParams.has('utm_source') || 
+                             url.searchParams.has('utm_medium') || 
+                             url.searchParams.has('utm_campaign') ||
+                             url.searchParams.has('utm_term') || 
+                             url.searchParams.has('utm_content') ||
+                             url.searchParams.has('_tc'); // Also remove tracking code
+        
+        if (hasUtmParams) {
+          // Remove all UTM parameters and tracking code
+          url.searchParams.delete('utm_source');
+          url.searchParams.delete('utm_medium');
+          url.searchParams.delete('utm_campaign');
+          url.searchParams.delete('utm_term');
+          url.searchParams.delete('utm_content');
+          url.searchParams.delete('_tc'); // Remove tracking code from URL
+          
+          // Replace URL without reloading the page
+          window.history.replaceState({}, '', url.toString());
+          console.log('[CosMos] 🧹 URL cleaned (UTM parameters and tracking code removed from address bar)');
+        } else {
+          console.log('[CosMos] No UTM parameters found in URL');
+        }
+      } catch (e) {
+        console.log('[CosMos] Failed to clean URL:', e);
+      }
     },
     
     // Check for expired previous session and send delayed exit event
@@ -457,22 +496,29 @@
         // NEW SESSION: Set UTM parameters from current URL or mark as direct
         const hasUTMParams = urlParams.utm_campaign || urlParams.utm_source || urlParams.utm_medium;
         
-        // Extract tracking_code from referrer if user came from /t/{code}
-        let trackingCode = '';
-        try {
-          const referrer = document.referrer;
-          if (referrer) {
-            const referrerUrl = new URL(referrer);
-            const referrerPath = referrerUrl.pathname;
-            // Check if referrer is our tracking redirect: /t/{code}
-            const trackMatch = referrerPath.match(/^\/t\/([a-zA-Z0-9]+)$/);
-            if (trackMatch) {
-              trackingCode = trackMatch[1];
-              console.log('[CosMos] 🔗 Tracking code captured from referrer:', trackingCode);
+        // Extract tracking_code from URL parameter _tc (most reliable method)
+        let trackingCode = urlParams._tc || '';
+        
+        // FALLBACK: Extract tracking_code from referrer if user came from /t/{code}
+        // This is less reliable due to Safari/browser referrer stripping
+        if (!trackingCode) {
+          try {
+            const referrer = document.referrer;
+            if (referrer) {
+              const referrerUrl = new URL(referrer);
+              const referrerPath = referrerUrl.pathname;
+              // Check if referrer is our tracking redirect: /t/{code}
+              const trackMatch = referrerPath.match(/^\/t\/([a-zA-Z0-9]+)$/);
+              if (trackMatch) {
+                trackingCode = trackMatch[1];
+                console.log('[CosMos] 🔗 Tracking code captured from referrer (fallback):', trackingCode);
+              }
             }
+          } catch (e) {
+            // Ignore errors in referrer parsing
           }
-        } catch (e) {
-          // Ignore errors in referrer parsing
+        } else {
+          console.log('[CosMos] 🔗 Tracking code captured from URL parameter:', trackingCode);
         }
         
         const sessionUTMData = {

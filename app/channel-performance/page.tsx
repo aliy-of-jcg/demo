@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
+import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface Campaign {
@@ -131,9 +132,17 @@ export default function ChannelPerformancePage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Channel Performance</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">Detailed analysis of campaign performance by media channel</p>
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Channel Performance</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Detailed analysis of campaign performance by media channel</p>
+        </div>
+        <ExportToPDFButton
+          element="[data-export-content]"
+          filename={`channel-performance-${dateRange.start}-to-${dateRange.end}.pdf`}
+          title={`Channel Performance - ${dateRange.start} to ${dateRange.end}`}
+          size="sm"
+        />
       </div>
 
       {/* Filters */}
@@ -198,7 +207,7 @@ export default function ChannelPerformancePage() {
 
       {/* Data Display */}
       {!loading && !error && data && (
-        <>
+        <div data-export-content>
           {/* Chart Section - Channel Comparison */}
           {data.chartData && data.chartData.length > 0 && (
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
@@ -451,7 +460,7 @@ export default function ChannelPerformancePage() {
                 </div>
               );
             })}
-        </>
+        </div>
       )}
 
       {/* Footer with extra spacing */}

@@ -74,6 +74,9 @@ export async function GET(request: NextRequest) {
 
     const trafficData = await trafficResult.json() as any[];
     
+    console.log(`  📈 Traffic data: ${trafficData.length} records found`);
+    console.log(`  Sample traffic codes:`, trafficData.slice(0, 3).map(t => ({ code: t.tracking_code, campaign: t.utm_campaign, sessions: t.sessions })));
+    
     // Step 1.5: Get direct traffic data (utm_source = '(direct)')
     const directTrafficQuery = `
       SELECT 
@@ -138,6 +141,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 3: Get click data from ClickHouse tracking_events (single source of truth)
+    // IMPORTANT: Filter clicks by same date range as traffic data for accurate CTR calculation
     let clicksMap = new Map();
     if (trackingCodes.length > 0) {
       try {
@@ -149,6 +153,7 @@ export async function GET(request: NextRequest) {
             COUNT(*) as total_clicks
           FROM analytics.tracking_events
           WHERE tracking_code IN (${escapedCodes})
+            AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           GROUP BY tracking_code
         `;
 
@@ -161,6 +166,8 @@ export async function GET(request: NextRequest) {
         clicksData.forEach((row: any) => {
           clicksMap.set(row.tracking_code, parseInt(row.total_clicks) || 0);
         });
+        console.log(`  🖱️ Clicks data: ${clicksData.length} tracking codes with clicks`);
+        console.log(`  Sample clicks:`, clicksData.slice(0, 3).map(c => ({ code: c.tracking_code, clicks: c.total_clicks })));
       } catch (error) {
         console.warn('⚠️ Failed to fetch clicks from ClickHouse:', error);
         // Continue with empty clicks map if ClickHouse fails
@@ -183,6 +190,9 @@ export async function GET(request: NextRequest) {
       // Calculate metrics
       const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
       const ctr = clicks > 0 ? (sessions / clicks) * 100 : 0;
+
+      // Debug logging
+      console.log(`  Campaign ${traffic.utm_campaign} (code: ${traffic.tracking_code}): ${clicks} clicks, ${sessions} visits, CTR: ${ctr.toFixed(2)}%`);
 
       return {
         campaign_id: campaign.campaign_id,
@@ -234,8 +244,11 @@ export async function GET(request: NextRequest) {
       const totalVisits = campaigns.reduce((sum, c) => sum + c.visits, 0);
       const totalConversions = campaigns.reduce((sum, c) => sum + c.conversions, 0);
       const totalAdCost = campaigns.reduce((sum, c) => sum + c.ad_cost, 0);
-      const avgCTR = campaigns.length > 0 
-        ? campaigns.reduce((sum, c) => sum + c.ctr, 0) / campaigns.length 
+      const totalClicks = campaigns.reduce((sum, c) => sum + c.clicks, 0);
+      
+      // Calculate CTR correctly: (Total Visits / Total Clicks) * 100
+      const avgCTR = totalClicks > 0 
+        ? (totalVisits / totalClicks) * 100 
         : 0;
 
       return {
