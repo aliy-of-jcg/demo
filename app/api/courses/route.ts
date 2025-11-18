@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
         const directCourseVisitsQuery = `
           SELECT 
             course_id,
-            COUNT(*) as total_visits
+            COUNT(DISTINCT user_id) as total_visits
           FROM analytics.visit_logs
           WHERE course_id > 0
           GROUP BY course_id
@@ -166,6 +166,7 @@ export async function GET(request: NextRequest) {
         const directResult = await clickhouse.query({
           query: directCourseVisitsQuery,
           format: 'JSONEachRow'
+
         });
         
         const directVisitsData = await directResult.json() as Array<{ course_id: number; total_visits: number }>;
@@ -182,7 +183,7 @@ export async function GET(request: NextRequest) {
       const visitsQuery = `
         SELECT 
           tracking_code,
-          COUNT(*) as total_visits
+          COUNT(DISTINCT user_id) as total_visits
         FROM analytics.visit_logs
         WHERE tracking_code != ''
         GROUP BY tracking_code
@@ -240,7 +241,7 @@ export async function GET(request: NextRequest) {
               utm_campaign,
               utm_source,
               utm_medium,
-              COUNT(*) as total_visits
+              COUNT(DISTINCT user_id) as total_visits
             FROM analytics.visit_logs
             WHERE utm_campaign != '' AND tracking_code = ''
             GROUP BY utm_campaign, utm_source, utm_medium
@@ -297,10 +298,12 @@ export async function GET(request: NextRequest) {
       // Continue with 0 visits if ClickHouse fails
     }
 
-    // Get total visits for summary (count all visits, not unique visitors)
+    // Get total unique visitors for summary (GA standard - Users metric)
+    // This counts ALL visitors including those from deleted/hidden courses (historical data)
     const totalVisitsQuery = `
-      SELECT COUNT(*) as total
+      SELECT COUNT(DISTINCT user_id) as total
       FROM analytics.visit_logs
+      WHERE tracking_code != ''
     `;
     
     let totalVisits = 0;
