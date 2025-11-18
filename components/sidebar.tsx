@@ -31,7 +31,8 @@ const logAnalysisItems = [
   { name: "Time-based Analysis", href: "/time-analysis" },
   { name: "Returning Visitor Analysis", href: "/returning-analysis" },
   { name: "Page Flow Analysis", href: "/page-flow-analysis" },
-  {name: "Session Journeys", href: '/session-journeys'},
+  { name: "Session Journeys", href: '/session-journeys' },
+  { name: "Tracked Websites", href: '/tracked-websites' },
 ];
 
 interface SidebarProps {
