@@ -12,8 +12,6 @@ export async function GET(request: NextRequest) {
     const platform = searchParams.get('platform'); // Filter by utm_medium
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
-    
-    console.log(`📊 Campaign Analysis API - Campaign ID: ${campaignId}, Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
 
     if (!campaignId) {
       return NextResponse.json(
@@ -24,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     const pool = getPool();
 
-    // 1. Get campaign details
+    // 1. Get campaign details (allow hidden campaigns for historical data viewing)
     const [campaignRows] = await pool.query<RowDataPacket[]>(
       `SELECT c.*, co.name as course_name 
        FROM campaigns c 
@@ -80,23 +78,21 @@ export async function GET(request: NextRequest) {
       .map(tc => tc.tracking_code)
       .filter(code => code && code !== '');
     
-    console.log(`  🔍 Campaign Analysis - Campaign ID: ${campaignId}, Found ${trackingCodes.length} UTM codes, ${validTrackingCodes.length} with tracking codes`);
-    if (validTrackingCodes.length > 0) {
-      console.log(`  📝 Tracking codes to query:`, validTrackingCodes);
-    }
+    // Get utm_campaign names for legacy data fallback
+    const utmCampaigns = Array.from(new Set(trackingCodes.map(tc => tc.utm_campaign))).filter(Boolean);
     
     let whereClause: string;
     if (validTrackingCodes.length === 0) {
-      // Fallback: use utm_campaign if no tracking codes available (legacy data)
-      const utmCampaigns = Array.from(new Set(trackingCodes.map(tc => tc.utm_campaign))).filter(Boolean);
+      // Fallback: use utm_campaign if no tracking codes available (legacy data only)
       const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
       whereClause = `utm_campaign IN (${utmCampaignsList})`;
-      console.log(`  ⚠️ Using fallback: utm_campaign IN (${utmCampaignsList})`);
     } else {
-      // Primary method: use tracking_code (matches channel-performance API approach)
+      // Primary method: use tracking_code + include legacy data with empty tracking codes
       const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-      whereClause = `tracking_code IN (${trackingCodesList})`;
-      console.log(`  ✅ Using tracking_code filter`);
+      const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
+      
+      // Include both: visits with valid tracking codes AND legacy visits with empty tracking codes
+      whereClause = `(tracking_code IN (${trackingCodesList}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))`;
     }
 
     if (startDate) {
@@ -132,17 +128,10 @@ export async function GET(request: NextRequest) {
 
     const visitData = await visitResult.json() as Array<{ tracking_code: string; unique_visitors_per_code: number; conversions_per_code: number }>;
     
-    console.log(`  📊 Campaign Analysis - Found ${visitData.length} tracking code groups`);
-    visitData.forEach(row => {
-      console.log(`    - Tracking code: ${row.tracking_code || '(empty)'}, Visitors: ${row.unique_visitors_per_code}, Conversions: ${row.conversions_per_code}`);
-    });
-    
     // Sum up visits and conversions across all tracking codes (matches channel-performance behavior)
-    const visitors = visitData.reduce((sum, row) => sum + (parseInt(row.unique_visitors_per_code) || 0), 0);
-    const conversions = visitData.reduce((sum, row) => sum + (parseInt(row.conversions_per_code) || 0), 0);
+    const visitors = visitData.reduce((sum, row) => sum + (row.unique_visitors_per_code || 0), 0);
+    const conversions = visitData.reduce((sum, row) => sum + (row.conversions_per_code || 0), 0);
     const conversionRate = visitors > 0 ? ((conversions / visitors) * 100).toFixed(2) : '0.00';
-    
-    console.log(`  ✅ Campaign Analysis - Total: ${visitors} visitors, ${conversions} conversions`);
 
     // 5. Get click metrics from tracking_events
     // Use actual tracking_code from database (same as visit query)
@@ -209,10 +198,10 @@ export async function GET(request: NextRequest) {
     
     // Aggregate daily data by date (sum visitors and conversions across all tracking codes per day)
     const dailyMap = new Map<string, { visitors: number; conversions: number }>();
-    dailyJson.forEach((row: any) => {
+    dailyJson.forEach((row) => {
       const date = row.date;
-      const visitors = parseInt(row.visitors_per_code) || 0;
-      const conversions = parseInt(row.conversions_per_code) || 0;
+      const visitors = row.visitors_per_code || 0;
+      const conversions = row.conversions_per_code || 0;
       
       if (dailyMap.has(date)) {
         const existing = dailyMap.get(date)!;

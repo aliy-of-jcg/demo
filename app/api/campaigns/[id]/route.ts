@@ -25,27 +25,27 @@ export async function GET(
 
     const campaign = (campaigns as any)[0];
 
-    // Fetch ALL tracking codes for this campaign (not just one)
+    // Fetch ALL tracking codes and UTM campaign names for this campaign
     const [trackingCodes] = await pool.execute(
-      'SELECT tracking_code FROM utm_codes WHERE campaign_id = ? AND status = "active"',
+      'SELECT tracking_code, utm_campaign FROM utm_codes WHERE campaign_id = ? AND status = "active"',
       [id]
     );
 
-    const trackingCodesList = (trackingCodes as any[]).map(tc => tc.tracking_code);
+    const trackingCodesList = (trackingCodes as any[]).map(tc => tc.tracking_code).filter(code => code && code !== '');
+    const utmCampaigns = Array.from(new Set((trackingCodes as any[]).map(tc => tc.utm_campaign).filter(Boolean)));
 
-    // Fetch analytics from ClickHouse for ALL tracking codes
+    // Fetch analytics from ClickHouse for ALL tracking codes + legacy data
     let clicks = 0;
     let visitors = 0;
 
+    // Get clicks from tracking_events (only valid tracking codes)
     if (trackingCodesList.length > 0) {
-      // Build IN clause for multiple tracking codes
       const placeholders = trackingCodesList.map((_, i) => `{code${i}:String}`).join(',');
       const queryParams: any = {};
       trackingCodesList.forEach((code, i) => {
         queryParams[`code${i}`] = code;
       });
 
-      // Get clicks from tracking_events
       const clicksQuery = await clickhouse.query({
         query: `
           SELECT 
@@ -63,20 +63,58 @@ export async function GET(
       clicksData.forEach((result: any) => {
         clicks += parseInt(result.total_clicks || '0');
       });
+    }
 
-      // Get unique visitors from visit_logs (same as campaigns list)
-      const visitorsQuery = await clickhouse.query({
-        query: `
-          SELECT 
-            COUNT(DISTINCT user_id) as unique_visitors
-          FROM analytics.visit_logs
-          WHERE tracking_code IN (${placeholders})
-        `,
-        query_params: queryParams,
+    // Get unique visitors from visit_logs (include both tracking codes AND legacy data)
+    // Match channel-performance and campaigns list approach
+    // Use string interpolation for consistency with campaign-analysis API
+    let visitorsQuery: string;
+    
+    if (trackingCodesList.length === 0 && utmCampaigns.length > 0) {
+      // Fallback: only legacy data available
+      const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
+      visitorsQuery = `
+        SELECT 
+          COUNT(DISTINCT user_id) as unique_visitors
+        FROM analytics.visit_logs
+        WHERE utm_campaign IN (${utmCampaignsList})
+          AND (tracking_code = '' OR tracking_code IS NULL)
+          AND utm_source != '' AND utm_source != '(direct)'
+      `;
+    } else if (trackingCodesList.length > 0 && utmCampaigns.length > 0) {
+      // Both tracking codes and legacy data
+      const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+      const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
+      
+      visitorsQuery = `
+        SELECT 
+          COUNT(DISTINCT user_id) as unique_visitors
+        FROM analytics.visit_logs
+        WHERE (tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
+          AND utm_source != '' AND utm_source != '(direct)'
+      `;
+    } else if (trackingCodesList.length > 0) {
+      // Only tracking codes
+      const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+      
+      visitorsQuery = `
+        SELECT 
+          COUNT(DISTINCT user_id) as unique_visitors
+        FROM analytics.visit_logs
+        WHERE tracking_code IN (${trackingCodesListEscaped})
+      `;
+    } else {
+      // No data available
+      visitorsQuery = null as any;
+    }
+
+    if (visitorsQuery) {
+      const visitorsResult = await clickhouse.query({
+        query: visitorsQuery,
         format: 'JSONEachRow'
       });
 
-      const visitorsData = await visitorsQuery.json() as any[];
+      const visitorsData = await visitorsResult.json() as any[];
       if (visitorsData.length > 0) {
         visitors = parseInt((visitorsData[0] as any).unique_visitors || '0');
       }

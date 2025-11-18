@@ -190,26 +190,39 @@ export async function GET(request: NextRequest) {
         });
         
         // Query 2: Get UNIQUE VISITORS from visit_logs (UUID-based tracking)
-        // Query by tracking_code since campaign_id may not be populated
-        // This counts actual unique users tracked by client-side cookies
+        // Include both tracking codes AND legacy data with empty tracking codes
+        // This matches channel-performance API approach
         const visitorsQuery = await clickhouse.query({
           query: `
             SELECT 
               tracking_code,
+              utm_campaign,
               COUNT(DISTINCT user_id) as unique_visitors
             FROM analytics.visit_logs
-            WHERE tracking_code != ''
-            GROUP BY tracking_code
+            WHERE utm_source != '' AND utm_source != '(direct)'
+            GROUP BY tracking_code, utm_campaign
           `,
           format: 'JSONEachRow'
         });
         
         const visitorsResults = await visitorsQuery.json() as any[];
         const trackingCodeVisitors = new Map();
+        const legacyCampaignVisitors = new Map(); // For empty tracking codes matched by campaign name
+        
         visitorsResults.forEach((result: any) => {
           const code = result.tracking_code?.trim() || result.tracking_code;
-          if (code) {
-            trackingCodeVisitors.set(code, parseInt(result.unique_visitors));
+          const visitors = parseInt(result.unique_visitors) || 0;
+          
+          if (code && code !== '') {
+            // Valid tracking code
+            trackingCodeVisitors.set(code, visitors);
+          } else if (result.utm_campaign) {
+            // Legacy data - match by campaign name
+            const campaignName = result.utm_campaign;
+            if (!legacyCampaignVisitors.has(campaignName)) {
+              legacyCampaignVisitors.set(campaignName, 0);
+            }
+            legacyCampaignVisitors.set(campaignName, legacyCampaignVisitors.get(campaignName) + visitors);
           }
         });
         
@@ -240,6 +253,11 @@ export async function GET(request: NextRequest) {
             }
           });
           
+          // Also check for legacy data by campaign name (matches channel-performance approach)
+          if (legacyCampaignVisitors.has(campaign.name)) {
+            totalVisitors += legacyCampaignVisitors.get(campaign.name);
+          }
+          
           // Always set analytics, even if 0, so campaigns show up
           analyticsMap.set(campaign.id, {
             clicks: totalClicks,
@@ -248,8 +266,10 @@ export async function GET(request: NextRequest) {
         });
         
         // Fallback: If visitors are still 0 but we have clicks, try matching by UTM parameters
-        // This handles cases where visit_logs might not have tracking_code but has UTM params
-        if (trackingCodeVisitors.size === 0 || Array.from(analyticsMap.values()).every(a => a.visitors === 0)) {
+        // This handles edge cases where visit_logs might not match by campaign name
+        // (Note: Most legacy data is now handled in the main query above)
+        if ((trackingCodeVisitors.size === 0 && legacyCampaignVisitors.size === 0) || 
+            Array.from(analyticsMap.values()).every(a => a.visitors === 0)) {
           try {
             // Get all campaign IDs from the campaigns we're processing
             const allCampaignIds = (campaigns as any[]).map(c => c.id);
@@ -355,7 +375,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Calculate summary stats
+    // Calculate summary stats (exclude hidden campaigns - soft deleted)
     const summaryQuery = `
       SELECT 
         COUNT(*) as total_campaigns,
@@ -363,6 +383,7 @@ export async function GET(request: NextRequest) {
         COALESCE(SUM(budget), 0) as total_budget,
         COALESCE(AVG(spent / NULLIF(budget, 0)) * 100, 0) as avg_spent_percentage
       FROM campaigns
+      WHERE status != 'hidden'
     `;
     
     const [summaryResult] = await pool.execute(summaryQuery);
