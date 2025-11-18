@@ -27,6 +27,7 @@ interface CampaignSummary {
   total_spent: number;
   total_clicks: number;
   total_visitors: number;
+  total_visitors_all_channels: number;
 }
 
 interface Campaign {
@@ -81,7 +82,7 @@ export default function LandingPage() {
     },
     {
       label: "Unique Visitors",
-      value: summary?.total_visitors || 0,
+      value: summary?.total_visitors_all_channels || summary?.total_visitors || 0,
       icon: Users,
       color: "bg-purple-500",
       gradient: "from-purple-500 to-purple-600"

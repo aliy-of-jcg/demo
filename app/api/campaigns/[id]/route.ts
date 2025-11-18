@@ -45,31 +45,44 @@ export async function GET(
         queryParams[`code${i}`] = code;
       });
 
-      const analyticsQuery = await clickhouse.query({
+      // Get clicks from tracking_events
+      const clicksQuery = await clickhouse.query({
         query: `
           SELECT 
-            SUM(total_clicks) as total_clicks,
-            SUM(unique_visitors) as unique_visitors
-          FROM (
-            SELECT 
-              tracking_code,
-              COUNT(*) as total_clicks,
-              COUNT(DISTINCT ip_address) as unique_visitors
-            FROM analytics.tracking_events
-            WHERE tracking_code IN (${placeholders})
-            GROUP BY tracking_code
-          )
+            tracking_code,
+            COUNT(*) as total_clicks
+          FROM analytics.tracking_events
+          WHERE tracking_code IN (${placeholders})
+          GROUP BY tracking_code
         `,
         query_params: queryParams,
         format: 'JSONEachRow'
       });
 
-      const analyticsData = await analyticsQuery.json();
-      if (analyticsData.length > 0) {
-        clicks = parseInt((analyticsData[0] as any).total_clicks || '0');
-        visitors = parseInt((analyticsData[0] as any).unique_visitors || '0');
+      const clicksData = await clicksQuery.json() as any[];
+      clicksData.forEach((result: any) => {
+        clicks += parseInt(result.total_clicks || '0');
+      });
+
+      // Get unique visitors from visit_logs (same as campaigns list)
+      const visitorsQuery = await clickhouse.query({
+        query: `
+          SELECT 
+            COUNT(DISTINCT user_id) as unique_visitors
+          FROM analytics.visit_logs
+          WHERE tracking_code IN (${placeholders})
+        `,
+        query_params: queryParams,
+        format: 'JSONEachRow'
+      });
+
+      const visitorsData = await visitorsQuery.json() as any[];
+      if (visitorsData.length > 0) {
+        visitors = parseInt((visitorsData[0] as any).unique_visitors || '0');
       }
     }
+
+
 
     // Calculate CTR and Conversion Rate
     const ctr = clicks > 0 && visitors > 0

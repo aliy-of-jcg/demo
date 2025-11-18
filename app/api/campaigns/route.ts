@@ -380,6 +380,24 @@ export async function GET(request: NextRequest) {
     // Calculate total spent based on actual clicks (demo calculation)
     const DEMO_COST_PER_CLICK = 0.50;
     const total_spent = total_clicks * DEMO_COST_PER_CLICK;
+    
+    let total_visitors_all_channels = 0;
+    try {
+      const allChannelVisitorsQuery = await clickhouse.query({
+      query: `
+        SELECT COUNT(DISTINCT user_id) as unique_visitors
+        FROM analytics.visit_logs
+        `,
+        format: 'JSONEachRow'
+      });
+
+      const allChannelData = await allChannelVisitorsQuery.json() as any[];
+      if(allChannelData.length > 0) {
+        total_visitors_all_channels = parseInt(allChannelData[0].unique_visitors || "0");
+      } 
+    } catch (error) {
+      console.warn('Failed to fetch all-channel visitors:', error);
+    }
 
     return NextResponse.json({
       success: true,
@@ -397,6 +415,7 @@ export async function GET(request: NextRequest) {
         total_spent: total_spent,
         total_clicks: total_clicks,
         total_visitors: total_visitors,
+        total_visitors_all_channels: total_visitors_all_channels,
         avg_conversion_rate: total_clicks > 0 && total_visitors > 0
           ? parseFloat(((total_visitors / total_clicks) * 100).toFixed(1))
           : 0
@@ -423,6 +442,7 @@ export async function GET(request: NextRequest) {
             total_spent: 0,
             total_clicks: 0,
             total_visitors: 0,
+            total_visitors_all_channels: 0,
             avg_conversion_rate: 0
           },
           message: 'No campaigns data available yet. Database tables will be created automatically.'
@@ -449,6 +469,7 @@ export async function GET(request: NextRequest) {
           total_spent: 0,
           total_clicks: 0,
           total_visitors: 0,
+          total_visitors_all_channels: 0,
           avg_conversion_rate: 0
         },
         message: 'Unable to fetch campaigns data. Please try again later.'
