@@ -96,10 +96,11 @@ export async function GET(request: NextRequest) {
     
     const directTrafficData = await directTrafficResult.json() as any[];
     const directSessions = parseInt(directTrafficData[0]?.sessions) || 0;
+    const directUsers = parseInt(directTrafficData[0]?.users) || 0;
     const directConversions = parseInt(directTrafficData[0]?.conversions) || 0;
 
     // If no traffic data at all, return empty
-    if (trafficData.length === 0 && directSessions === 0) {
+    if (trafficData.length === 0 && directUsers === 0) {
       return NextResponse.json({
         success: true,
         dateRange: { start: startDate, end: endDate },
@@ -246,14 +247,15 @@ export async function GET(request: NextRequest) {
       
       const clicks = clicksMap.get(traffic.tracking_code) || 0;
       const sessions = parseInt(traffic.sessions) || 0;
+      const users = parseInt(traffic.users) || 0;
       const conversions = parseInt(traffic.conversions) || 0;
 
       // Calculate metrics
-      const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
-      const ctr = clicks > 0 ? (sessions / clicks) * 100 : 0;
+      const conversionRate = users > 0 ? (conversions / users) * 100 : 0;
+      const ctr = clicks > 0 ? (users / clicks) * 100 : 0;
 
       // Debug logging
-      console.log(`  Campaign ${traffic.utm_campaign} (code: ${traffic.tracking_code || 'none'}): ${clicks} clicks, ${sessions} visits, CTR: ${ctr.toFixed(2)}%`);
+      console.log(`  Campaign ${traffic.utm_campaign} (code: ${traffic.tracking_code || 'none'}): ${clicks} clicks, ${users} visits, CTR: ${ctr.toFixed(2)}%`);
 
       return {
         campaign_id: campaign.campaign_id,
@@ -261,7 +263,7 @@ export async function GET(request: NextRequest) {
         source: traffic.utm_source,      // ← From visit_logs (actual traffic)
         medium: traffic.utm_medium,      // ← From visit_logs (actual traffic)
         status: campaign.status,
-        visits: sessions,
+        visits: users,
         conversions: conversions,
         conversion_rate: parseFloat(conversionRate.toFixed(2)),
         ad_cost: campaign.ad_cost,
@@ -271,8 +273,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Step 4.5: Add Direct channel if there's direct traffic
-    if (directSessions > 0) {
-      const directConversionRate = directSessions > 0 ? (directConversions / directSessions) * 100 : 0;
+    if (directUsers > 0) {
+      const directConversionRate = directUsers > 0 ? (directConversions / directUsers) * 100 : 0;
       
       enrichedData.push({
         campaign_id: 0, // Special ID for direct traffic
@@ -280,11 +282,11 @@ export async function GET(request: NextRequest) {
         source: 'direct',
         medium: '(none)',
         status: 'active',
-        visits: directSessions,
+        visits: directUsers,
         conversions: directConversions,
         conversion_rate: parseFloat(directConversionRate.toFixed(2)),
         ad_cost: 0, // Direct traffic has no ad cost
-        clicks: directSessions, // For direct, visits = clicks (no tracking link)
+        clicks: directUsers, // For direct, visits = clicks (no tracking link)
         ctr: 100 // 100% CTR for direct (they typed URL or bookmark)
       });
     }
