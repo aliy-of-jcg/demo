@@ -29,9 +29,10 @@ export async function GET(request: NextRequest) {
     console.log(`📊 Tracked Websites Analysis - Date Range: ${startDate} to ${endDate}`);
 
     // Query to extract domains from page_url and aggregate metrics
+    // Normalize domains: remove www. prefix, convert to lowercase, ignore protocol/port
     const query = `
       SELECT 
-        domain,
+        normalized_domain as domain,
         COUNT(DISTINCT session_id) as total_sessions,
         COUNT(DISTINCT user_id) as unique_visitors,
         SUM(CASE WHEN event_type = 'pageview' THEN 1 ELSE 0 END) as total_pageviews,
@@ -42,7 +43,10 @@ export async function GET(request: NextRequest) {
         CASE WHEN MAX(timestamp) >= now() - INTERVAL 7 DAY THEN 1 ELSE 0 END as is_active
       FROM (
         SELECT 
-          concat(protocol(page_url), '://', domain(page_url)) as domain,
+          -- Normalize domain: remove www. prefix and convert to lowercase
+          lower(if(startsWith(domain(page_url), 'www.'), 
+            substring(domain(page_url), 5), 
+            domain(page_url))) as normalized_domain,
           session_id,
           user_id,
           event_type,
@@ -53,16 +57,13 @@ export async function GET(request: NextRequest) {
           AND page_url IS NOT NULL
           AND domain(page_url) != ''
       )
-      GROUP BY domain
-      HAVING domain NOT IN (
-        'http://dev.cosmosai.co.kr',
-        'https://dev.cosmosai.co.kr',
-        'http://cosmosai.co.kr',
-        'https://cosmosai.co.kr',
-        'http://localhost:3000',
-        'http://localhost',
-        'http://127.0.0.1',
-        'http://0.0.0.0'
+      GROUP BY normalized_domain
+      HAVING normalized_domain NOT IN (
+        'dev.cosmosai.co.kr',
+        'cosmosai.co.kr',
+        'localhost',
+        '127.0.0.1',
+        '0.0.0.0'
       )
       ORDER BY total_sessions DESC
     `;
