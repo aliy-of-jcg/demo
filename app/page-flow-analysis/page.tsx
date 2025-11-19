@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar, Route } from 'lucide-react';
+import { Calendar, Route, Search } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 interface PageData {
   page: string;
@@ -54,6 +55,12 @@ export default function PageFlowAnalysisPage() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [limit, setLimit] = useState(20);
+  const [searchInput, setSearchInput] = useState('');
+  const debouncedSearch = useDebounce(searchInput, 500);
+  const [selectedDomain, setSelectedDomain] = useState<string>('');
+  const [domains, setDomains] = useState<{ domain: string }[]>([]);
+  const [domainsLoading, setDomainsLoading] = useState(false);
 
   // Quick date range selection
   const setQuickRange = (days: number) => {
@@ -67,6 +74,31 @@ export default function PageFlowAnalysisPage() {
     });
   };
 
+  // Fetch domains for dropdown
+  useEffect(() => {
+    const fetchDomains = async () => {
+      setDomainsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          start: dateRange.start,
+          end: dateRange.end
+        });
+        const response = await fetch(`/api/analytics/tracked-websites?${params}`);
+        const result = await response.json();
+        
+        if (result.success && result.websites) {
+          setDomains(result.websites.map((w: { domain: string }) => ({ domain: w.domain })));
+        }
+      } catch (err) {
+        console.error('Error fetching domains:', err);
+      } finally {
+        setDomainsLoading(false);
+      }
+    };
+
+    fetchDomains();
+  }, [dateRange]);
+
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
@@ -75,8 +107,18 @@ export default function PageFlowAnalysisPage() {
       try {
         const params = new URLSearchParams({
           start_date: dateRange.start,
-          end_date: dateRange.end
+          end_date: dateRange.end,
+          limit: limit.toString()
         });
+        
+        if (selectedDomain) {
+          params.set('domain', selectedDomain);
+        }
+        
+        if (debouncedSearch) {
+          params.set('search', debouncedSearch);
+        }
+        
         const response = await fetch(`/api/analytics/page-flow-analysis?${params}`);
         const result = await response.json();
         
@@ -94,7 +136,7 @@ export default function PageFlowAnalysisPage() {
     };
 
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, limit, debouncedSearch, selectedDomain]);
 
   // Truncate long URLs for display
   const truncateUrl = (url: string, maxLength: number = 50) => {
@@ -249,6 +291,52 @@ export default function PageFlowAnalysisPage() {
                   />
                 </BarChart>
               </ResponsiveContainer>
+              
+              {/* Page Filters - Search, Domain Filter, and Limit Selector */}
+              <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                  {/* Search Input */}
+                  <div className="flex-1 min-w-[200px] relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by domain or page URL..."
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* Domain Dropdown */}
+                  <div className="flex-1 min-w-[200px]">
+                    <select
+                      value={selectedDomain}
+                      onChange={(e) => setSelectedDomain(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={domainsLoading}
+                    >
+                      <option value="">All Domains</option>
+                      {domains.map((d) => (
+                        <option key={d.domain} value={d.domain}>
+                          {d.domain}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Limit Selector */}
+                  <div className="flex-shrink-0">
+                    <select
+                      value={limit}
+                      onChange={(e) => setLimit(parseInt(e.target.value))}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="20">Show 20</option>
+                      <option value="50">Show 50</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

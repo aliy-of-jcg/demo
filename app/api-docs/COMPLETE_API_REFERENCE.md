@@ -231,7 +231,13 @@ All authentication endpoints include comprehensive error handling and security m
   - Exit pages with exit rate
   - UTM source breakdown
   - Average session depth
-- **Console Log:** `🔗 Page Flow Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`
+- **Query Parameters:**
+  - `start_date` (optional): Start date filter (YYYY-MM-DD)
+  - `end_date` (optional): End date filter (YYYY-MM-DD)
+  - `limit` (optional, default: 20): Number of results to return (20 or 50)
+  - `domain` (optional): Filter by domain name
+  - `search` (optional): Search by domain or page URL
+- **Console Log:** `🔗 Page Flow Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Limit: ${limit}, Domain: ${domain || 'all'}, Search: ${search || 'none'}`
 
 ---
 

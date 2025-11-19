@@ -1050,6 +1050,24 @@ export const apiSpec = {
             in: "query",
             schema: { type: "string", format: "date" },
           },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 20 },
+            description: "Number of results to return (20 or 50)",
+          },
+          {
+            name: "domain",
+            in: "query",
+            schema: { type: "string" },
+            description: "Filter by domain name",
+          },
+          {
+            name: "search",
+            in: "query",
+            schema: { type: "string" },
+            description: "Search by domain or page URL",
+          },
         ],
         responses: {
           200: {

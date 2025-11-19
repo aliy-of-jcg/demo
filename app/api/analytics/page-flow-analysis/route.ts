@@ -8,8 +8,11 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const domain = searchParams.get('domain');
+    const search = searchParams.get('search');
     
-    console.log(`🔗 Page Flow Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
+    console.log(`🔗 Page Flow Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Limit: ${limit}, Domain: ${domain || 'all'}, Search: ${search || 'none'}`);
 
     // Build WHERE clause for date filtering
     let whereClause = '1=1';
@@ -19,6 +22,19 @@ export async function GET(request: NextRequest) {
     }
     if (endDate) {
       whereClause += ` AND toDate(timestamp) <= '${endDate}'`;
+    }
+
+    // Build filter clause for landing/exit pages (domain and search)
+    let pageFilterClause = '';
+    if (domain) {
+      // Normalize domain (remove www. prefix and convert to lowercase for matching)
+      const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
+      pageFilterClause += ` AND lower(if(startsWith(domain(page_url), 'www.'), substring(domain(page_url), 5), domain(page_url))) = '${normalizedDomain}'`;
+    }
+    if (search) {
+      // Escape single quotes in search term for SQL
+      const escapedSearch = search.replace(/'/g, "''");
+      pageFilterClause += ` AND page_url LIKE '%${escapedSearch}%'`;
     }
 
     // 1. Total Pageviews
@@ -84,6 +100,7 @@ export async function GET(request: NextRequest) {
         WHERE ${whereClause}
           AND is_landing_page = 1
           AND event_type = 'pageview'
+          ${pageFilterClause}
       ),
       session_stats AS (
         SELECT 
@@ -106,7 +123,7 @@ export async function GET(request: NextRequest) {
       FROM session_stats
       GROUP BY landing_page
       ORDER BY visits DESC
-      LIMIT 20
+      LIMIT ${limit}
     `;
 
     const landingPagesResult = await clickhouse.query({
@@ -143,9 +160,10 @@ export async function GET(request: NextRequest) {
       FROM analytics.visit_logs
       WHERE ${whereClause}
         AND is_exit_page = 1
+        ${pageFilterClause}
       GROUP BY page_url
       ORDER BY exits DESC
-      LIMIT 20
+      LIMIT ${limit}
     `;
 
     const exitPagesResult = await clickhouse.query({
