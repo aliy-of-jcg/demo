@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
       const [allPlatforms] = await pool.execute(
         `SELECT campaign_id, utm_source, utm_medium 
          FROM utm_codes 
-         WHERE campaign_id IN (${placeholders})
+         WHERE campaign_id IN (${placeholders}) AND status != 'hidden'
          GROUP BY campaign_id, utm_source, utm_medium
          ORDER BY campaign_id, utm_source`,
         campaignIds
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       const [allTrackingCodes] = await pool.execute(
         `SELECT campaign_id, tracking_code 
          FROM utm_codes
-         WHERE campaign_id IN (${placeholders})
+         WHERE campaign_id IN (${placeholders}) AND status != 'hidden'
          ORDER BY campaign_id`,
         campaignIds
       );
@@ -280,7 +280,7 @@ export async function GET(request: NextRequest) {
               const [utmData] = await pool.execute(
                 `SELECT campaign_id, utm_campaign, utm_source, utm_medium 
                  FROM utm_codes 
-                 WHERE campaign_id IN (${placeholders})`,
+                 WHERE campaign_id IN (${placeholders}) AND status != 'hidden'`,
                 allCampaignIds
               ) as [Array<{ campaign_id: number; utm_campaign: string; utm_source: string; utm_medium: string }>, any];
               

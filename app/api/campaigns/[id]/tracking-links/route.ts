@@ -31,7 +31,7 @@ export async function GET(
         utm_codes.created_at,
         utm_codes.updated_at
       FROM utm_codes
-      WHERE utm_codes.campaign_id = ?
+      WHERE utm_codes.campaign_id = ? AND utm_codes.status != 'hidden'
       ORDER BY utm_codes.created_at DESC`,
       [campaignId]
     );
@@ -147,7 +147,7 @@ export async function POST(
     if (budget && budget > 0) {
       // Get total allocated budget from existing links
       const [budgetResult] = await pool.execute(
-        'SELECT COALESCE(SUM(budget), 0) as total_allocated FROM utm_codes WHERE campaign_id = ? AND budget > 0',
+        'SELECT COALESCE(SUM(budget), 0) as total_allocated FROM utm_codes WHERE campaign_id = ? AND budget > 0 AND status != \'hidden\'',
         [campaignId]
       );
       
@@ -185,7 +185,8 @@ export async function POST(
        AND utm_campaign = ?
        AND utm_term = ?
        AND utm_content = ?
-       AND landing_url = ?`,
+       AND landing_url = ?
+       AND status != 'hidden'`,
       [
         campaignId,
         utm_source,

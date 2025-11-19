@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const pool = getPool();
 
     // Build WHERE conditions
-    let whereConditions = 'WHERE 1=1';
+    let whereConditions = 'WHERE utm_codes.status != \'hidden\''; // Exclude hidden UTM codes (soft deleted)
     const queryParams: any[] = [];
 
     if (search) {

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
             c.name as campaign_name
           FROM utm_codes u
           INNER JOIN campaigns c ON u.campaign_id = c.id
-          WHERE 1=1
+          WHERE u.status != 'hidden'
         `;
         const params: any[] = [];
 

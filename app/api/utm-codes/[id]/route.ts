@@ -47,10 +47,10 @@ export async function DELETE(
     const id = params.id;
     const pool = getPool();
     
-    // Delete the UTM code
+    // Soft delete - set status to 'hidden' instead of deleting
     await pool.execute(
-      'DELETE FROM utm_codes WHERE id = ?',
-      [id]
+      'UPDATE utm_codes SET status = ? WHERE id = ?',
+      ['hidden', id]
     );
 
     return NextResponse.json({

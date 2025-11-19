@@ -109,6 +109,16 @@ export async function GET(
       return response;
     };
 
+    // Check if UTM is hidden (soft deleted)
+    if (utmStatus === 'hidden') {
+      const expiredUrl = new URL(`${baseUrl}/link-expired`);
+      expiredUrl.searchParams.set('reason', 'deleted');
+      if (campaignName) {
+        expiredUrl.searchParams.set('campaign', campaignName);
+      }
+      return createRedirect(expiredUrl.toString());
+    }
+
     // Check if UTM is inactive
     if (utmStatus === 'inactive' || utmStatus === 'ended') {
       const expiredUrl = new URL(`${baseUrl}/link-expired`);

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     const campaign = campaignRows[0];
 
-    // 2. Get all tracking codes for this campaign
+    // 2. Get all tracking codes for this campaign (include hidden for historical analytics)
     const [trackingCodes] = await pool.query<RowDataPacket[]>(
       'SELECT tracking_code, utm_campaign, utm_source, utm_medium FROM utm_codes WHERE campaign_id = ?',
       [campaignId]

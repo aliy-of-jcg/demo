@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
     let trackingCodeToCourseId = new Map<string, number>();
     try {
       const [utmCodes] = await pool.execute(
-        `SELECT tracking_code, campaign_id FROM utm_codes WHERE tracking_code != ''`
+        `SELECT tracking_code, campaign_id FROM utm_codes WHERE tracking_code != '' AND status != 'hidden'`
       ) as [Array<{ tracking_code: string; campaign_id: number }>, any];
       
       // Get course_id for each campaign
@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
         const [utmCampaigns] = await pool.execute(
           `SELECT DISTINCT campaign_id, utm_campaign, utm_source, utm_medium 
            FROM utm_codes 
-           WHERE utm_campaign != '' AND campaign_id IN (
+           WHERE utm_campaign != '' AND status != 'hidden' AND campaign_id IN (
              SELECT id FROM campaigns WHERE course_id IS NOT NULL
            )`
         ) as [Array<{ campaign_id: number; utm_campaign: string; utm_source: string; utm_medium: string }>, any];

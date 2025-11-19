@@ -181,7 +181,7 @@ export async function initMySQLSchema(): Promise<void> {
         landing_url text,
         full_url text,
         clicks INT DEFAULT 0,
-        status ENUM('active', 'inactive') DEFAULT 'active',
+        status ENUM('active', 'inactive', 'hidden') DEFAULT 'active',
         budget DECIMAL(12, 2) DEFAULT 0.00,
         spent DECIMAL(12, 2) DEFAULT 0.00,
         auto_pause_on_budget tinyint(1) DEFAULT 0,
