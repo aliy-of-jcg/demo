@@ -140,6 +140,21 @@ export async function PUT(
 
     const utm_campaign = (campaignRows as any[])[0].name;
 
+    // Build full URL with UTM parameters
+    let fullUrlWithUtm = landing_url;
+    try {
+      const urlObj = new URL(landing_url);
+      if (utm_campaign) urlObj.searchParams.set('utm_campaign', utm_campaign);
+      if (utm_source) urlObj.searchParams.set('utm_source', utm_source);
+      if (utm_medium) urlObj.searchParams.set('utm_medium', utm_medium);
+      if (utm_term) urlObj.searchParams.set('utm_term', utm_term);
+      if (utm_content) urlObj.searchParams.set('utm_content', utm_content);
+      fullUrlWithUtm = urlObj.toString();
+    } catch (error) {
+      // If landing_url is invalid, use it as-is
+      console.warn('Invalid landing URL, using as-is:', landing_url);
+    }
+
     // Update the UTM code
     await pool.execute(
       `UPDATE utm_codes SET 
@@ -151,6 +166,7 @@ export async function PUT(
         utm_term = ?,
         utm_content = ?,
         landing_url = ?,
+        full_url = ?,
         status = ?
       WHERE id = ?`,
       [
@@ -162,6 +178,7 @@ export async function PUT(
         utm_term || null,
         utm_content || null,
         landing_url,
+        fullUrlWithUtm,
         status || 'active',
         id
       ]
@@ -179,4 +196,3 @@ export async function PUT(
     );
   }
 }
-
