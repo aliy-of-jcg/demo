@@ -6,7 +6,7 @@ import { getPool } from '@/lib/mysql';
 export const dynamic = 'force-dynamic';
 
 // In-memory cache for domain status (refreshed every 5 minutes)
-let domainCache: Map<string, { is_enabled: boolean; last_refresh: number }> = new Map();
+let domainCache: Map<string, { is_enabled: boolean; last_refresh: number; updated_at: number }> = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 // Helper function to normalize domain
@@ -31,74 +31,96 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
   const now = Date.now();
   const cached = domainCache.get(domain);
   
-  // If cached as disabled, always check database (allows quick re-enabling)
-  // This ensures disabling and re-enabling take effect immediately
-  if (cached && cached.is_enabled === false) {
-    // Force refresh for disabled domains to allow immediate re-enabling
-    const pool = getPool();
-    try {
-      const [rows] = await pool.execute(
-        'SELECT is_enabled FROM tracked_websites WHERE domain = ?',
-        [domain]
-      );
-      const domainRows = rows as any[];
-      if (domainRows.length > 0) {
-        const isEnabled = domainRows[0].is_enabled === 1;
-        domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now });
-        return isEnabled;
-      }
-    } catch (error) {
-      console.error('Error checking disabled domain status:', error);
-      return false; // Fail closed for disabled domains
-    }
-  }
-  
-  // Return cached value if still fresh (only for enabled domains)
-  if (cached && cached.is_enabled === true && (now - cached.last_refresh) < CACHE_TTL) {
-    return cached.is_enabled;
-  }
-  
-  // Query MySQL for domain status
+  // Always check database to get the latest updated_at timestamp
+  // This ensures immediate effect when a domain is disabled/enabled
+  const pool = getPool();
   try {
-    const pool = getPool();
     const [rows] = await pool.execute(
-      'SELECT is_enabled, last_seen FROM tracked_websites WHERE domain = ?',
+      'SELECT is_enabled, updated_at FROM tracked_websites WHERE domain = ?',
       [domain]
     );
-    
     const domainRows = rows as any[];
     
     if (domainRows.length > 0) {
-      // Domain exists, update cache and last_seen timestamp
+      // Domain exists in database
       const isEnabled = domainRows[0].is_enabled === 1;
-      domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now });
+      const dbUpdatedAt = new Date(domainRows[0].updated_at).getTime();
       
-      // Update last_seen timestamp only if enabled (no point tracking disabled domains)
-      if (isEnabled) {
-        await pool.execute(
-          'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
-          [domain]
-        );
+      // If we have a cache entry, check if DB was updated after cache was refreshed
+      if (cached) {
+        // If DB is newer than cache, or status changed, update cache
+        if (dbUpdatedAt > cached.updated_at || cached.is_enabled !== isEnabled) {
+          console.log(`🔄 Cache invalidated for ${domain}: DB updated at ${new Date(dbUpdatedAt).toISOString()}, cache from ${new Date(cached.updated_at).toISOString()}`);
+          domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
+          
+          // Update last_seen only if enabled
+          if (isEnabled) {
+            await pool.execute(
+              'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
+              [domain]
+            );
+          }
+          
+          return isEnabled;
+        }
+        
+        // Cache is still valid (DB hasn't been updated since cache refresh)
+        // Return cached value if it's still fresh
+        if ((now - cached.last_refresh) < CACHE_TTL) {
+          // Update last_seen only if enabled (and cache is still fresh)
+          if (cached.is_enabled) {
+            await pool.execute(
+              'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
+              [domain]
+            );
+          }
+          return cached.is_enabled;
+        }
+        
+        // Cache is stale, refresh it
+        domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
+        
+        if (isEnabled) {
+          await pool.execute(
+            'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
+            [domain]
+          );
+        }
+        
+        return isEnabled;
+      } else {
+        // No cache entry, create one
+        domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
+        
+        if (isEnabled) {
+          await pool.execute(
+            'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
+            [domain]
+          );
+        }
+        
+        return isEnabled;
       }
-      
-      return isEnabled;
     } else {
-      // Auto-register new domain as enabled
+      // Domain doesn't exist, auto-register as enabled
       await pool.execute(
         'INSERT INTO tracked_websites (domain, is_enabled, first_seen, last_seen) VALUES (?, TRUE, NOW(), NOW())',
         [domain]
       );
       
-      // Add to cache
-      domainCache.set(domain, { is_enabled: true, last_refresh: now });
+      // Add to cache (use current timestamp as updated_at)
+      domainCache.set(domain, { is_enabled: true, last_refresh: now, updated_at: now });
       
       console.log(`✅ Auto-registered new domain: ${domain}`);
       return true;
     }
   } catch (error) {
     console.error('Error checking domain status:', error);
-    // On error, allow tracking (fail open)
-    return true;
+    // On error, check if we have cached value, otherwise fail open
+    if (cached && (now - cached.last_refresh) < CACHE_TTL) {
+      return cached.is_enabled;
+    }
+    return true; // Fail open if no cache
   }
 }
 
