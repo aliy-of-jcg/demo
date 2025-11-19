@@ -31,8 +31,30 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
   const now = Date.now();
   const cached = domainCache.get(domain);
   
-  // Return cached value if still fresh
-  if (cached && (now - cached.last_refresh) < CACHE_TTL) {
+  // If cached as disabled, always check database (allows quick re-enabling)
+  // This ensures disabling and re-enabling take effect immediately
+  if (cached && cached.is_enabled === false) {
+    // Force refresh for disabled domains to allow immediate re-enabling
+    const pool = getPool();
+    try {
+      const [rows] = await pool.execute(
+        'SELECT is_enabled FROM tracked_websites WHERE domain = ?',
+        [domain]
+      );
+      const domainRows = rows as any[];
+      if (domainRows.length > 0) {
+        const isEnabled = domainRows[0].is_enabled === 1;
+        domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now });
+        return isEnabled;
+      }
+    } catch (error) {
+      console.error('Error checking disabled domain status:', error);
+      return false; // Fail closed for disabled domains
+    }
+  }
+  
+  // Return cached value if still fresh (only for enabled domains)
+  if (cached && cached.is_enabled === true && (now - cached.last_refresh) < CACHE_TTL) {
     return cached.is_enabled;
   }
   
@@ -51,11 +73,13 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
       const isEnabled = domainRows[0].is_enabled === 1;
       domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now });
       
-      // Update last_seen timestamp
-      await pool.execute(
-        'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
-        [domain]
-      );
+      // Update last_seen timestamp only if enabled (no point tracking disabled domains)
+      if (isEnabled) {
+        await pool.execute(
+          'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
+          [domain]
+        );
+      }
       
       return isEnabled;
     } else {
