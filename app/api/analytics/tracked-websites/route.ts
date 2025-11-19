@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
+import { getPool } from '@/lib/mysql';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,8 @@ interface WebsiteData {
   first_seen: string;
   last_seen: string;
   is_active: boolean;
+  is_enabled: boolean;
+  status: 'Active' | 'Inactive' | 'Disabled';
 }
 
 export async function GET(request: NextRequest) {
@@ -75,22 +78,54 @@ export async function GET(request: NextRequest) {
 
     const websites = await result.json() as WebsiteData[];
 
+    // Get enabled/disabled status from MySQL
+    const pool = getPool();
+    const [mysqlRows] = await pool.execute(
+      'SELECT domain, is_enabled FROM tracked_websites'
+    );
+    const domainStatusMap = new Map<string, boolean>();
+    (mysqlRows as any[]).forEach(row => {
+      domainStatusMap.set(row.domain, row.is_enabled === 1);
+    });
+
+    // Enrich websites with is_enabled and calculate status
+    const enrichedWebsites = websites.map(website => {
+      const isEnabled = domainStatusMap.get(website.domain) ?? true; // Default to enabled if not in MySQL
+      let status: 'Active' | 'Inactive' | 'Disabled';
+      
+      if (!isEnabled) {
+        status = 'Disabled';
+      } else if (website.is_active) {
+        status = 'Active';
+      } else {
+        status = 'Inactive';
+      }
+      
+      return {
+        ...website,
+        is_enabled: isEnabled,
+        status
+      };
+    });
+
     // Calculate summary stats
     const summary = {
-      total_websites: websites.length,
-      active_websites: websites.filter(w => w.is_active).length,
-      total_sessions: websites.reduce((sum, w) => sum + parseInt(w.total_sessions.toString()), 0),
-      total_visitors: websites.reduce((sum, w) => sum + parseInt(w.unique_visitors.toString()), 0),
-      total_pageviews: websites.reduce((sum, w) => sum + parseInt(w.total_pageviews.toString()), 0),
-      total_conversions: websites.reduce((sum, w) => sum + parseInt(w.total_conversions.toString()), 0),
+      total_websites: enrichedWebsites.length,
+      active_websites: enrichedWebsites.filter(w => w.status === 'Active').length,
+      inactive_websites: enrichedWebsites.filter(w => w.status === 'Inactive').length,
+      disabled_websites: enrichedWebsites.filter(w => w.status === 'Disabled').length,
+      total_sessions: enrichedWebsites.reduce((sum, w) => sum + parseInt(w.total_sessions.toString()), 0),
+      total_visitors: enrichedWebsites.reduce((sum, w) => sum + parseInt(w.unique_visitors.toString()), 0),
+      total_pageviews: enrichedWebsites.reduce((sum, w) => sum + parseInt(w.total_pageviews.toString()), 0),
+      total_conversions: enrichedWebsites.reduce((sum, w) => sum + parseInt(w.total_conversions.toString()), 0),
     };
 
-    console.log(`✅ Found ${websites.length} tracked websites (${summary.active_websites} active)`);
+    console.log(`✅ Found ${enrichedWebsites.length} tracked websites (${summary.active_websites} active, ${summary.disabled_websites} disabled)`);
 
     return NextResponse.json({
       success: true,
       dateRange: { start: startDate, end: endDate },
-      websites: websites,
+      websites: enrichedWebsites,
       summary: summary
     });
 

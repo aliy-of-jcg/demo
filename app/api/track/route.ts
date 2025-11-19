@@ -1,8 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { nanoid } from 'nanoid';
+import { getPool } from '@/lib/mysql';
 
 export const dynamic = 'force-dynamic';
+
+// In-memory cache for domain status (refreshed every 5 minutes)
+let domainCache: Map<string, { is_enabled: boolean; last_refresh: number }> = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+// Helper function to normalize domain
+function normalizeDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    let domain = urlObj.hostname.toLowerCase();
+    // Remove www. prefix
+    if (domain.startsWith('www.')) {
+      domain = domain.substring(4);
+    }
+    return domain;
+  } catch (error) {
+    return '';
+  }
+}
+
+// Check if domain is enabled (with caching and auto-registration)
+async function isDomainEnabled(domain: string): Promise<boolean> {
+  if (!domain) return true; // Allow if domain can't be extracted
+  
+  const now = Date.now();
+  const cached = domainCache.get(domain);
+  
+  // Return cached value if still fresh
+  if (cached && (now - cached.last_refresh) < CACHE_TTL) {
+    return cached.is_enabled;
+  }
+  
+  // Query MySQL for domain status
+  try {
+    const pool = getPool();
+    const [rows] = await pool.execute(
+      'SELECT is_enabled, last_seen FROM tracked_websites WHERE domain = ?',
+      [domain]
+    );
+    
+    const domainRows = rows as any[];
+    
+    if (domainRows.length > 0) {
+      // Domain exists, update cache and last_seen timestamp
+      const isEnabled = domainRows[0].is_enabled === 1;
+      domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now });
+      
+      // Update last_seen timestamp
+      await pool.execute(
+        'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
+        [domain]
+      );
+      
+      return isEnabled;
+    } else {
+      // Auto-register new domain as enabled
+      await pool.execute(
+        'INSERT INTO tracked_websites (domain, is_enabled, first_seen, last_seen) VALUES (?, TRUE, NOW(), NOW())',
+        [domain]
+      );
+      
+      // Add to cache
+      domainCache.set(domain, { is_enabled: true, last_refresh: now });
+      
+      console.log(`✅ Auto-registered new domain: ${domain}`);
+      return true;
+    }
+  } catch (error) {
+    console.error('Error checking domain status:', error);
+    // On error, allow tracking (fail open)
+    return true;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,6 +118,16 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    // Check if domain is enabled (with caching and auto-registration)
+    const domain = normalizeDomain(page_url);
+    const enabled = await isDomainEnabled(domain);
+    
+    if (!enabled) {
+      console.log(`🚫 Tracking blocked for disabled domain: ${domain}`);
+      // Return 200 OK to avoid client errors, but don't track
+      return NextResponse.json({ success: true, message: 'Domain disabled' });
     }
 
     // Insert into ClickHouse visit_logs table

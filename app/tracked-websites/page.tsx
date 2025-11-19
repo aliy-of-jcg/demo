@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar, Globe, Activity, Users, Eye, TrendingUp } from 'lucide-react';
+import { Calendar, Globe, Activity, Users, Eye, TrendingUp, Ban, CheckCircle } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
+import { toast } from 'sonner';
+import Swal from 'sweetalert2';
 
 interface WebsiteData {
   domain: string;
@@ -14,11 +16,15 @@ interface WebsiteData {
   first_seen: string;
   last_seen: string;
   is_active: boolean;
+  is_enabled: boolean;
+  status: 'Active' | 'Inactive' | 'Disabled';
 }
 
 interface Summary {
   total_websites: number;
   active_websites: number;
+  inactive_websites: number;
+  disabled_websites: number;
   total_sessions: number;
   total_visitors: number;
   total_pageviews: number;
@@ -48,7 +54,63 @@ export default function TrackedWebsitesPage() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'disabled'>('all');
+  const [togglingDomain, setTogglingDomain] = useState<string | null>(null);
+
+  // Toggle website status
+  const handleToggleStatus = async (domain: string, currentStatus: boolean) => {
+    const action = currentStatus ? 'disable' : 'enable';
+    const actionText = currentStatus ? 'Disable' : 'Enable';
+    
+    const result = await Swal.fire({
+      title: `${actionText} Tracking?`,
+      text: currentStatus
+        ? `Are you sure you want to disable tracking for ${domain}? New tracking requests from this domain will be blocked, but historical data will remain intact.`
+        : `Enable tracking for ${domain}? This domain will be able to send tracking data again.`,
+      icon: currentStatus ? 'warning' : 'question',
+      showCancelButton: true,
+      confirmButtonColor: currentStatus ? '#ef4444' : '#10b981',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: `Yes, ${actionText} it!`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setTogglingDomain(domain);
+
+    const promise = (async () => {
+      const response = await fetch('/api/tracked-websites/toggle', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, is_enabled: !currentStatus })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to toggle status');
+      }
+      
+      await fetchData();
+      return result;
+    })();
+
+    toast.promise(
+      promise,
+      {
+        loading: `${actionText}ing tracking...`,
+        success: currentStatus 
+          ? `Tracking disabled for ${domain}`
+          : `Tracking enabled for ${domain}`,
+        error: (err) => `Failed to ${action}: ${err.message}`,
+      }
+    );
+
+    promise.finally(() => {
+      setTogglingDomain(null);
+    });
+  };
 
   // Quick date range selection
   const setQuickRange = (days: number) => {
@@ -63,38 +125,39 @@ export default function TrackedWebsitesPage() {
   };
 
   // Fetch data from API
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams({
-          start: dateRange.start,
-          end: dateRange.end
-        });
-        const response = await fetch(`/api/analytics/tracked-websites?${params}`);
-        const result = await response.json();
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch data');
-        }
-        
-        setData(result);
-      } catch (err) {
-        console.error('Error fetching tracked websites data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
-        setLoading(false);
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        start: dateRange.start,
+        end: dateRange.end
+      });
+      const response = await fetch(`/api/analytics/tracked-websites?${params}`);
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch data');
       }
-    };
+      
+      setData(result);
+    } catch (err) {
+      console.error('Error fetching tracked websites data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, [dateRange]);
 
   // Filter websites based on status
   const filteredWebsites = data?.websites.filter(website => {
-    if (filterStatus === 'active') return website.is_active;
-    if (filterStatus === 'inactive') return !website.is_active;
+    if (filterStatus === 'active') return website.status === 'Active';
+    if (filterStatus === 'inactive') return website.status === 'Inactive';
+    if (filterStatus === 'disabled') return website.status === 'Disabled';
     return true;
   }) || [];
 
@@ -299,7 +362,17 @@ export default function TrackedWebsitesPage() {
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                Inactive ({data.websites.length - data.summary.active_websites})
+                Inactive ({data.summary.inactive_websites})
+              </button>
+              <button
+                onClick={() => setFilterStatus('disabled')}
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  filterStatus === 'disabled'
+                    ? 'bg-red-50 text-red-700 border-b-2 border-red-500'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Disabled ({data.summary.disabled_websites})
               </button>
             </div>
           </div>
@@ -348,6 +421,9 @@ export default function TrackedWebsitesPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Last Seen
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -362,8 +438,14 @@ export default function TrackedWebsitesPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {website.is_active ? (
+                          {website.status === 'Disabled' ? (
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                              <Ban className="w-3 h-3 mr-1" />
+                              Disabled
+                            </span>
+                          ) : website.status === 'Active' ? (
                             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              <Activity className="w-3 h-3 mr-1" />
                               Active
                             </span>
                           ) : (
@@ -389,6 +471,34 @@ export default function TrackedWebsitesPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(website.last_seen)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handleToggleStatus(website.domain, website.is_enabled)}
+                            disabled={togglingDomain === website.domain}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                              website.is_enabled
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {togglingDomain === website.domain ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                ...
+                              </>
+                            ) : website.is_enabled ? (
+                              <>
+                                <Ban className="w-3 h-3" />
+                                Disable
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-3 h-3" />
+                                Enable
+                              </>
+                            )}
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -417,8 +527,14 @@ export default function TrackedWebsitesPage() {
                         </div>
                       </div>
                     </div>
-                    {website.is_active ? (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 ml-2 flex-shrink-0">
+                    {website.status === 'Disabled' ? (
+                      <span className="px-2 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 ml-2 flex-shrink-0">
+                        <Ban className="w-3 h-3 mr-1" />
+                        Disabled
+                      </span>
+                    ) : website.status === 'Active' ? (
+                      <span className="px-2 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 ml-2 flex-shrink-0">
+                        <Activity className="w-3 h-3 mr-1" />
                         Active
                       </span>
                     ) : (
@@ -427,7 +543,7 @@ export default function TrackedWebsitesPage() {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                     <div>
                       <span className="text-gray-500 text-xs">Sessions</span>
                       <p className="font-medium text-gray-900">{website.total_sessions.toLocaleString()}</p>
@@ -445,6 +561,32 @@ export default function TrackedWebsitesPage() {
                       <p className="font-medium text-orange-600">{website.total_conversions}</p>
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleToggleStatus(website.domain, website.is_enabled)}
+                    disabled={togglingDomain === website.domain}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                      website.is_enabled
+                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {togglingDomain === website.domain ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Processing...
+                      </>
+                    ) : website.is_enabled ? (
+                      <>
+                        <Ban className="w-3 h-3" />
+                        Disable Tracking
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-3 h-3" />
+                        Enable Tracking
+                      </>
+                    )}
+                  </button>
                 </div>
               ))}
             </div>

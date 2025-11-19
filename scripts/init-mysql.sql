@@ -119,3 +119,17 @@ CREATE TABLE IF NOT EXISTS utm_codes (
   INDEX idx_utm_medium (utm_medium),
   INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tracked websites table (for enable/disable tracking control)
+CREATE TABLE IF NOT EXISTS tracked_websites (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  domain VARCHAR(255) NOT NULL UNIQUE COMMENT 'Normalized domain (lowercase, no www, no protocol)',
+  is_enabled BOOLEAN DEFAULT TRUE COMMENT 'Whether tracking is enabled for this domain',
+  first_seen TIMESTAMP NULL DEFAULT NULL COMMENT 'First time this domain was tracked',
+  last_seen TIMESTAMP NULL DEFAULT NULL COMMENT 'Most recent tracking event',
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_domain (domain),
+  INDEX idx_is_enabled (is_enabled),
+  INDEX idx_last_seen (last_seen)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
