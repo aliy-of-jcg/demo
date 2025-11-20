@@ -80,7 +80,7 @@ export default function NewCampaignPage() {
         // Populate form with campaign data except dates
         setFormData({
           name: campaign.name + ' (Copy)',
-          utm_name: '', // Leave empty for user to set
+          utm_name: '', // Will be auto-filled from campaign name via useEffect
           course_id: campaign.course_id?.toString() || '',
           source: campaign.source || 'select',
           medium: campaign.medium || 'select',
@@ -114,6 +114,14 @@ export default function NewCampaignPage() {
       setFormData(prev => ({
         ...prev,
         utm_campaign: cleanName
+      }));
+    }
+
+    // Auto-fill UTM name from campaign name (read-only, like UTM generator)
+    if (formData.name) {
+      setFormData(prev => ({
+        ...prev,
+        utm_name: formData.name
       }));
     }
 
@@ -174,10 +182,7 @@ export default function NewCampaignPage() {
       newErrors.name = t('errors.nameInvalid');
     }
 
-    // UTM name is optional - will be auto-generated if not provided
-    if (formData.utm_name && !/^[a-zA-Z0-9_]+$/.test(formData.utm_name)) {
-      newErrors.utm_name = t('errors.utmNameInvalid');
-    }
+    // UTM name is auto-filled from campaign name, so no separate validation needed
 
     if (!formData.course_id) {
       newErrors.course_id = t('errors.courseRequired');
@@ -349,16 +354,14 @@ export default function NewCampaignPage() {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    {t('fields.utmTrackingLinkName')}
+                    {t('fields.utmName')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.utm_name}
-                    onChange={(e) => setFormData({ ...formData, utm_name: e.target.value })}
-                    placeholder={t('placeholders.utmTrackingLinkName')}
-                    className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.utm_name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    readOnly
+                    className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50"
                   />
-                  {errors.utm_name && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.utm_name}</p>}
                   <p className="text-xs text-gray-500 mt-1">{t('hints.utmNameAuto')}</p>
                 </div>
 

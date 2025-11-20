@@ -334,18 +334,6 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        // Debug logging in development
-        if (process.env.NODE_ENV === 'development') {
-          console.log('📊 Campaign analytics mapping:', {
-            totalTrackingCodes: trackingCodesMap.size,
-            totalClicksData: trackingCodeClicks.size,
-            totalVisitorsData: trackingCodeVisitors.size,
-            sampleTrackingCodes: Array.from(trackingCodesMap.entries()).slice(0, 3),
-            sampleClicks: Array.from(trackingCodeClicks.entries()).slice(0, 3),
-            sampleVisitors: Array.from(trackingCodeVisitors.entries()).slice(0, 3),
-            finalAnalytics: Array.from(analyticsMap.entries()).slice(0, 3)
-          });
-        }
       } catch (error) {
         console.error('Error fetching campaign analytics from ClickHouse:', error);
         // Continue without analytics data

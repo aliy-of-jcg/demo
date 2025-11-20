@@ -241,6 +241,7 @@
       "fields": {
         "campaignName": "캠페인 이름",
         "utmTrackingLinkName": "UTM 추적 링크 이름",
+        "utmName": "UTM 이름",
         "course": "과정",
         "status": "상태",
         "description": "설명",
@@ -267,7 +268,7 @@
       },
       "hints": {
         "campaignNameChars": "문자, 숫자 및 밑줄만 허용됩니다",
-        "utmNameAuto": "추적 링크의 고유 식별자 (비워두면 자동 생성됩니다)",
+        "utmNameAuto": "선택한 캠페인에서 자동으로 채워짐",
         "utmSourceDesc": "광고가 실행될 플랫폼 (예: Google, Naver, Kakao)",
         "utmMediumDesc": "광고 형식 유형 (예: 검색, 배너, 비디오, SNS)",
         "utmTermDesc": "유료 검색 키워드 식별 (선택사항)",

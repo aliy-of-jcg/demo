@@ -45,8 +45,6 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
-    
-    console.log(`📚 Courses API - Page: ${page}, Limit: ${limit}, Search: ${search || 'none'}`);
     const status = searchParams.get('status') || '';
     
     const pool = getPool();
@@ -315,15 +313,6 @@ export async function GET(request: NextRequest) {
         }
       } catch (utmMappingError) {
         console.warn('⚠️ Failed to map UTM parameters to courses:', utmMappingError);
-      }
-      
-      // Debug: Log the mapping to help troubleshoot
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📊 Course visits mapping:', {
-          trackingCodeToCourseId: Array.from(trackingCodeToCourseId.entries()),
-          visitsMap: Array.from(visitsMap.entries()),
-          totalTrackingCodes: visitsData.length
-        });
       }
     } catch (chError) {
       console.warn('⚠️ ClickHouse query failed, using 0 for visits:', chError);

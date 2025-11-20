@@ -241,6 +241,7 @@
       "fields": {
         "campaignName": "Campaign Name",
         "utmTrackingLinkName": "UTM Tracking Link Name",
+        "utmName": "UTM Name",
         "course": "Course",
         "status": "Status",
         "description": "Description",
@@ -267,7 +268,7 @@
       },
       "hints": {
         "campaignNameChars": "Only letters, numbers, and underscores allowed",
-        "utmNameAuto": "Unique identifier for the tracking link (will be auto-generated if left empty)",
+        "utmNameAuto": "Auto-filled from campaign name",
         "utmSourceDesc": "Platform where the ad will run (e.g., Google, Naver, Kakao)",
         "utmMediumDesc": "Ad format type (e.g., Search, Banner, Video, SNS)",
         "utmTermDesc": "Identify paid search keywords (optional)",
