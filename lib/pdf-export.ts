@@ -64,27 +64,71 @@ export async function exportToPDF(options: ExportToPDFOptions = {}): Promise<voi
     // Convert element to canvas
     const canvas = await html2canvas(elementToCapture, canvasOptions);
 
+    // Validate canvas
+    if (!canvas || canvas.width === 0 || canvas.height === 0) {
+      throw new Error('Failed to capture content: canvas is empty');
+    }
+
+    // Convert canvas to data URL with error handling
+    let imageData: string;
+    try {
+      imageData = canvas.toDataURL('image/png', 1.0);
+      // Validate the data URL
+      if (!imageData || !imageData.startsWith('data:image/png;base64,')) {
+        throw new Error('Invalid PNG data generated');
+      }
+    } catch (error) {
+      throw new Error(`Failed to convert canvas to image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
     // Calculate PDF dimensions
     const imgWidth = canvas.width;
     const imgHeight = canvas.height;
     const pdfWidth = imgWidth * 0.264583; // Convert pixels to mm (1px = 0.264583mm at 96dpi)
     const pdfHeight = imgHeight * 0.264583;
 
+    // Validate dimensions
+    if (pdfWidth <= 0 || pdfHeight <= 0) {
+      throw new Error('Invalid PDF dimensions calculated');
+    }
+
+    // Create PDF with standard format if dimensions are too large
+    const maxDimension = 1000; // Max 1000mm (about 39 inches)
+    let finalPdfWidth = pdfWidth;
+    let finalPdfHeight = pdfHeight;
+    
+    if (pdfWidth > maxDimension || pdfHeight > maxDimension) {
+      // Scale down proportionally
+      const scale = Math.min(maxDimension / pdfWidth, maxDimension / pdfHeight);
+      finalPdfWidth = pdfWidth * scale;
+      finalPdfHeight = pdfHeight * scale;
+    }
+
     // Create PDF
     const pdf = new jsPDF({
-      orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+      orientation: finalPdfWidth > finalPdfHeight ? 'landscape' : 'portrait',
       unit: 'mm',
-      format: [pdfWidth, pdfHeight],
+      format: [finalPdfWidth, finalPdfHeight],
     });
 
     // Add title if provided
     if (title) {
       pdf.setFontSize(16);
       pdf.text(title, 10, 10);
-      // Move content down to make room for title
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 15, pdfWidth, pdfHeight - 15);
+      // Calculate image dimensions accounting for title space
+      const titleSpace = 15;
+      const imageHeight = Math.max(1, finalPdfHeight - titleSpace); // Ensure positive height
+      try {
+        pdf.addImage(imageData, 'PNG', 0, titleSpace, finalPdfWidth, imageHeight);
+      } catch (error) {
+        throw new Error(`Failed to add image to PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     } else {
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, pdfHeight);
+      try {
+        pdf.addImage(imageData, 'PNG', 0, 0, finalPdfWidth, finalPdfHeight);
+      } catch (error) {
+        throw new Error(`Failed to add image to PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
 
     // Save the PDF

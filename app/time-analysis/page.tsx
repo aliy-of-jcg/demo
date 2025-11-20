@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
+import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
 
@@ -101,14 +102,24 @@ export default function TimeAnalysisPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
-          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium rounded-full inline-block w-fit">
-            {t('timezone')}
-          </span>
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium rounded-full inline-block w-fit">
+              {t('timezone')}
+            </span>
+          </div>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
+        <div className="flex-shrink-0">
+          <ExportToPDFButton
+            element="[data-export-content]"
+            filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+            title={t('export.title', { start: dateRange.start, end: dateRange.end })}
+            size="sm"
+          />
+        </div>
       </div>
 
       {/* Filters */}
@@ -162,7 +173,7 @@ export default function TimeAnalysisPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
       )}
-
+      
       {/* Error State */}
       {error && !loading && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -172,7 +183,7 @@ export default function TimeAnalysisPage() {
 
       {/* Data Display */}
       {!loading && !error && data && (
-        <>
+        <div data-export-content>
           {/* Insights Cards */}
           {data.insights && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
@@ -412,7 +423,7 @@ export default function TimeAnalysisPage() {
               <p className="text-sm text-gray-400 mt-1">Data will appear as visitors use your site</p>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Footer */}

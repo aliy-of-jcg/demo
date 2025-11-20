@@ -64,8 +64,15 @@ export function ExportToPDFButton({
         if (!targetElement) {
           throw new Error(`Element with selector "${element}" not found`);
         }
+        // Validate that the element has content
+        if (targetElement.offsetWidth === 0 || targetElement.offsetHeight === 0) {
+          throw new Error(`Element with selector "${element}" has no visible content`);
+        }
       } else {
         targetElement = element;
+        if (targetElement && (targetElement.offsetWidth === 0 || targetElement.offsetHeight === 0)) {
+          throw new Error('Target element has no visible content');
+        }
       }
 
       await exportToPDF({

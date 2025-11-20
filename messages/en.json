@@ -518,8 +518,7 @@
       "ctr": "CTR",
       "status": "Status",
       "channelTotal": "Channel Total",
-      "campaigns": "campaigns",
-      "campaign": "campaign"
+      "campaigns": "campaigns"
     },
     "mobile": {
       "visits": "Visits",
@@ -606,6 +605,10 @@
     "errors": {
       "loadFailed": "Failed to load data",
       "fetchFailed": "Failed to fetch data"
+    },
+    "export": {
+      "filename": "campaign-analysis-{start}-to-{end}.pdf",
+      "title": "Campaign Analysis - {start} to {end}"
     },
     "loading": "Loading..."
   },
@@ -704,7 +707,11 @@
       "loadFailed": "Failed to load data",
       "fetchFailed": "Failed to fetch data"
     },
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "export": {
+      "filename": "time-based-analysis-{start}-to-{end}.pdf",
+      "title": "Time-based Analysis - {start} to {end}"
+    }
   },
   "returningAnalysis": {
     "title": "Returning Visitor Analysis",
@@ -757,7 +764,11 @@
       "loadFailed": "Failed to load data",
       "fetchFailed": "Failed to fetch data"
     },
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "export": {
+      "filename": "returning-visitor-analysis-{start}-to-{end}.pdf",
+      "title": "Returning Visitor Analysis - {start} to {end}"
+    }
   },
   "pageFlowAnalysis": {
     "title": "UTM Performance Analysis",
@@ -816,7 +827,12 @@
       "loadFailed": "Failed to load data",
       "fetchFailed": "Failed to fetch data"
     },
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "export": {
+      "filename": "page-flow-analysis-{start}-to-{end}.pdf",
+      "title": "UTM Performance Analysis - {start} to {end}",
+      "buttonLabel": "Export to PDF"
+    }
   },
   "sessionJourneys": {
     "title": "Session Journeys",

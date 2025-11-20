@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Globe, Activity, Users, Eye, TrendingUp, Ban, CheckCircle } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
-import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { useTranslations } from 'next-intl';
@@ -184,12 +183,6 @@ export default function TrackedWebsitesPage() {
             {t('subtitle')}
           </p>
         </div>
-        <ExportToPDFButton
-          element="[data-export-content]"
-          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
-          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
-          size="sm"
-        />
       </div>
 
       {/* Filters */}

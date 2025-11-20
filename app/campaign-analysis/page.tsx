@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
+import {ExportToPDFButton} from '@/components/export-to-pdf-button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
 
@@ -148,14 +149,23 @@ export default function CampaignAnalysisPage() {
     : displayedPlatforms.filter(p => p.toLowerCase() === selectedPlatform.toLowerCase());
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+  <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-4 sm:mb-6">
+    <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
         <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
       </div>
-
-      {/* Campaign Selector */}
+          
+        <ExportToPDFButton
+          element="[data-export-content]"
+          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
+          size="sm"
+        />
+      </div>
+    
+     {/* Campaign Selector */}
       <div className="mb-4 sm:mb-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{t('selectCampaign')}</label>
         <select
@@ -291,7 +301,7 @@ export default function CampaignAnalysisPage() {
 
       {/* Data Display */}
       {!loading && !error && data && (
-        <>
+        <div data-export-content>
           {/* Metric Cards - 6 columns */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
             <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
@@ -556,7 +566,7 @@ export default function CampaignAnalysisPage() {
               <p className="text-xs sm:text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Footer */}

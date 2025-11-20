@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
+import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
 
@@ -109,9 +110,17 @@ export default function ReturningAnalysisPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
+        </div>
+        <ExportToPDFButton
+          element="[data-export-content]"
+          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
+          size="sm"
+        />
       </div>
 
       {/* Filters */}
@@ -175,7 +184,7 @@ export default function ReturningAnalysisPage() {
 
       {/* Data Display */}
       {!loading && !error && data && (
-        <>
+        <div data-export-content>
           {/* Insights Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 sm:p-6 rounded-lg border border-blue-200">
@@ -411,7 +420,7 @@ export default function ReturningAnalysisPage() {
               <p className="text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Footer */}

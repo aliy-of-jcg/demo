@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar, Route, Search } from 'lucide-react';
+import { Calendar, Search } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
+import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import Link from 'next/link';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useTranslations } from 'next-intl';
 
@@ -162,12 +162,13 @@ export default function PageFlowAnalysisPage() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
           </div>
-          <Link href="/session-journeys">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm">
-              <Route className="w-4 h-4" />
-              {t('viewSessionJourneys')}
-            </button>
-          </Link>
+          <ExportToPDFButton
+            element="[data-export-content]"
+            filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+            title={t('export.title', { start: dateRange.start, end: dateRange.end })}
+            label={t('export.buttonLabel')}
+            size="sm"
+          />
         </div>
       </div>
 
@@ -232,7 +233,7 @@ export default function PageFlowAnalysisPage() {
 
       {/* Data Display */}
       {!loading && !error && data && (
-        <>
+        <div data-export-content>
           {/* 4 Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 sm:p-6 rounded-lg border border-blue-200">
@@ -499,7 +500,7 @@ export default function PageFlowAnalysisPage() {
               <p className="text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Footer */}

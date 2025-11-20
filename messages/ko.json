@@ -606,6 +606,10 @@
       "loadFailed": "데이터 로드 실패",
       "fetchFailed": "데이터 가져오기 실패"
     },
+    "export": {
+      "filename": "캠페인-분석-{start}-{end}.pdf",
+      "title": "캠페인 분석 - {start} ~ {end}"
+    },
     "loading": "로딩 중..."
   },
   "environmentAnalysis": {
@@ -703,7 +707,11 @@
       "loadFailed": "데이터 로드 실패",
       "fetchFailed": "데이터 가져오기 실패"
     },
-    "loading": "로딩 중..."
+    "loading": "로딩 중...",
+    "export": {
+      "filename": "시간-기반-분석-{start}-{end}.pdf",
+      "title": "시간 기반 분석 - {start} ~ {end}"
+    }
   },
   "returningAnalysis": {
     "title": "재방문자 분석",
@@ -756,7 +764,11 @@
       "loadFailed": "데이터 로드 실패",
       "fetchFailed": "데이터 가져오기 실패"
     },
-    "loading": "로딩 중..."
+    "loading": "로딩 중...",
+    "export": {
+      "filename": "재방문자-분석-{start}-{end}.pdf",
+      "title": "재방문자 분석 - {start} ~ {end}"
+    }
   },
   "pageFlowAnalysis": {
     "title": "UTM 성과 분석",
@@ -815,7 +827,12 @@
       "loadFailed": "데이터 로드 실패",
       "fetchFailed": "데이터 가져오기 실패"
     },
-    "loading": "로딩 중..."
+    "loading": "로딩 중...",
+    "export": {
+      "filename": "페이지-흐름-분석-{start}-{end}.pdf",
+      "title": "UTM 성과 분석 - {start} ~ {end}",
+      "buttonLabel": "PDF 내보내기"
+    }
   },
   "sessionJourneys": {
     "title": "세션 여정",
