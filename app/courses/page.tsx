@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useTranslations } from 'next-intl';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 interface Course {
   id: number;
@@ -36,6 +37,9 @@ const statusColors: Record<string, string> = {
 };
 
 export default function CoursesPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const t = useTranslations('courses');
   
   const statusLabels: Record<string, string> = {
@@ -48,6 +52,18 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Initialize from URL params (only on first render)
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [page, setPage] = useState(() => {
+    const urlPage = searchParams.get('page');
+    return urlPage ? parseInt(urlPage) : 1;
+  });
+  const [limit, setLimit] = useState(() => {
+    const urlLimit = searchParams.get('limit');
+    return urlLimit && [10, 20, 50].includes(parseInt(urlLimit)) ? parseInt(urlLimit) : 10;
+  });
+  const [total, setTotal] = useState(0);
   const [searchInput, setSearchInput] = useState(''); // Immediate input value
   const debouncedSearch = useDebounce(searchInput, 500); // Debounced search value
   const [statusFilter, setStatusFilter] = useState(''); // Status filter
@@ -88,14 +104,49 @@ export default function CoursesPage() {
     };
   }, [showModal]);
 
+  // Mark as initialized after first render
+  useEffect(() => {
+    setIsInitialized(true);
+  }, []);
+
+  // Update URL when page or limit changes (but not on initial render)
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
+    
+    router.replace(`/courses?${params.toString()}`, { scroll: false });
+  }, [page, limit, isInitialized, router]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  // Reset to page 1 when status filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter]);
+
+  // Reset to page 1 when limit changes
+  useEffect(() => {
+    setPage(1);
+  }, [limit]);
+
   useEffect(() => {
     fetchCourses();
-  }, [debouncedSearch, statusFilter]);
+  }, [page, limit, debouncedSearch, statusFilter]);
 
   const fetchCourses = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ search: debouncedSearch });
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        search: debouncedSearch
+      });
       if (statusFilter) {
         params.append('status', statusFilter);
       }
@@ -105,6 +156,7 @@ export default function CoursesPage() {
       if (data.success) {
         setCourses(data.courses);
         setSummary(data.summary);
+        setTotal(data.pagination?.total || 0);
       }
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -509,6 +561,41 @@ export default function CoursesPage() {
           )}
         </div>
       </div>
+
+      {/* Pagination */}
+      {total > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 sm:px-6 py-4 mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs sm:text-sm">
+            <span className="text-gray-700">Total {total} courses</span>
+            <select
+              value={limit}
+              onChange={(e) => setLimit(parseInt(e.target.value))}
+              className="px-2 py-1 border border-gray-300 rounded text-sm"
+            >
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+            <span className="text-gray-700">per page</span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            {Array.from({ length: Math.ceil(total / limit) }, (_, i) => i + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                onClick={() => setPage(pageNum)}
+                className={`px-3 py-1 rounded text-sm ${
+                  page === pageNum
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (

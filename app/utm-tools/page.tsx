@@ -602,7 +602,7 @@ export default function UTMListPage() {
               >
                 <option value="10">10</option>
                 <option value="20">20</option>
-                <option value="40">40</option>
+                <option value="50">50</option>
               </select>
               <span className="text-gray-700">{t('pagination.perPage')}</span>
             </div>

@@ -51,26 +51,38 @@ export async function GET(request: NextRequest) {
     
     const pool = getPool();
     
+    // Build WHERE conditions for filtering
+    let whereConditions = 'WHERE courses.status != \'hidden\''; // Exclude hidden courses by default
+    const queryParams: any[] = [];
+    const countParams: any[] = [];
+
+    // Filter by status if provided
+    if (status) {
+      whereConditions = 'WHERE courses.status = ?';
+      queryParams.push(status);
+      countParams.push(status);
+    }
+
+    if (search) {
+      whereConditions += ' AND (courses.name LIKE ? OR courses.code LIKE ?)';
+      queryParams.push(`%${search}%`, `%${search}%`);
+      countParams.push(`%${search}%`, `%${search}%`);
+    }
+
+    // Get total count for pagination
+    const countQuery = `SELECT COUNT(*) as total FROM courses ${whereConditions}`;
+    const [countResult] = await pool.execute(countQuery, countParams) as [Array<{ total: number }>, any];
+    const total = countResult[0].total;
+
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
+
     let courses: Course[] = [];
     
     try {
-      let query = 'SELECT * FROM courses WHERE status != \'hidden\''; // Exclude hidden courses by default
-      const params: any[] = [];
-
-      // Filter by status if provided
-      if (status) {
-        query = 'SELECT * FROM courses WHERE status = ?';
-        params.push(status);
-      }
-
-      if (search) {
-        query += ' AND (name LIKE ? OR code LIKE ?)';
-        params.push(`%${search}%`, `%${search}%`);
-      }
-
-      query += ' ORDER BY name ASC';
-
-      [courses] = await pool.execute(query, params) as [Course[], any];
+      // Get paginated courses
+      const query = `SELECT * FROM courses ${whereConditions} ORDER BY courses.name ASC LIMIT ${limit} OFFSET ${offset}`;
+      [courses] = await pool.execute(query, queryParams) as [Course[], any];
     } catch (dbError: any) {
       // Check if table doesn't exist
       if (dbError.code === 'ER_NO_SUCH_TABLE' && dbError.sqlMessage?.includes('courses')) {
@@ -84,38 +96,58 @@ export async function GET(request: NextRequest) {
             total_campaigns: 0,
             total_visits: 0
           },
+          pagination: {
+            page: 1,
+            limit: 10,
+            total: 0,
+            totalPages: 0
+          },
           message: 'No courses data available yet. Database tables will be created automatically.'
         });
       }
       throw dbError;
     }
 
-    // Get summary stats
+    // Get summary stats from ALL matching courses (respecting filters)
     const summaryQuery = `
       SELECT 
         COUNT(*) as total_courses,
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_courses
+        COUNT(CASE WHEN courses.status = 'active' THEN 1 END) as active_courses
       FROM courses
+      ${whereConditions}
     `;
     
-    const [summaryResult] = await pool.execute(summaryQuery) as [SummaryData[], any];
+    const [summaryResult] = await pool.execute(summaryQuery, countParams) as [SummaryData[], any];
     const summary = summaryResult[0];
 
-    // Get total active campaigns per course from MySQL
-    const campaignsQuery = `
-      SELECT 
-        course_id,
-        COUNT(*) as active_campaigns
-      FROM campaigns
-      WHERE status = 'active'
-      GROUP BY course_id
-    `;
+    // Get ALL matching course IDs (not just paginated) for summary calculation
+    const [allMatchingCourses] = await pool.execute(
+      `SELECT id FROM courses ${whereConditions}`,
+      countParams
+    ) as [Array<{ id: number }>, any];
+    const allMatchingCourseIds = allMatchingCourses.map(c => c.id);
+
+    // Get total active campaigns per course from MySQL (only for matching courses)
+    let campaignsMap = new Map<number, number>();
+    let totalCampaigns = 0;
     
-    const [campaignsResult] = await pool.execute(campaignsQuery) as [CampaignData[], any];
-    const campaignsMap = new Map<number, number>();
-    campaignsResult.forEach((row) => {
-      campaignsMap.set(row.course_id, row.active_campaigns);
-    });
+    if (allMatchingCourseIds.length > 0) {
+      const placeholders = allMatchingCourseIds.map(() => '?').join(',');
+      const campaignsQuery = `
+        SELECT 
+          course_id,
+          COUNT(*) as active_campaigns
+        FROM campaigns
+        WHERE status = 'active' AND course_id IN (${placeholders})
+        GROUP BY course_id
+      `;
+      
+      const [campaignsResult] = await pool.execute(campaignsQuery, allMatchingCourseIds) as [CampaignData[], any];
+      campaignsResult.forEach((row) => {
+        campaignsMap.set(row.course_id, row.active_campaigns);
+        totalCampaigns += row.active_campaigns;
+      });
+    }
 
     // Get total visits per course from ClickHouse
     // First, get all tracking codes and their associated course_ids from utm_codes
@@ -298,25 +330,11 @@ export async function GET(request: NextRequest) {
       // Continue with 0 visits if ClickHouse fails
     }
 
-    // Get total unique visitors for summary (GA standard - Users metric)
-    // This counts ALL visitors including those from deleted/hidden courses (historical data)
-    const totalVisitsQuery = `
-      SELECT COUNT(DISTINCT user_id) as total
-      FROM analytics.visit_logs
-      WHERE tracking_code != ''
-    `;
-    
+    // Calculate total visits for ALL matching courses (not just paginated)
     let totalVisits = 0;
-    try {
-      const totalVisitsResult = await clickhouse.query({
-        query: totalVisitsQuery,
-        format: 'JSONEachRow'
-      });
-      const totalVisitsData = await totalVisitsResult.json() as TotalVisitsData[];
-      totalVisits = totalVisitsData[0]?.total || 0;
-    } catch (chError) {
-      console.warn('⚠️ ClickHouse total visits query failed:', chError);
-    }
+    allMatchingCourseIds.forEach(courseId => {
+      totalVisits += visitsMap.get(courseId) || 0;
+    });
 
     // Enhance courses with real analytics
     const enhancedCourses: EnhancedCourse[] = courses.map(course => ({
@@ -324,9 +342,6 @@ export async function GET(request: NextRequest) {
       active_campaigns: campaignsMap.get(course.id) || 0,
       total_visits: visitsMap.get(course.id) || 0
     }));
-
-    // Calculate total active campaigns (sum of all campaigns across all courses)
-    const totalCampaigns = Array.from(campaignsMap.values()).reduce((sum, count) => sum + count, 0);
 
     return NextResponse.json({
       success: true,
@@ -336,6 +351,12 @@ export async function GET(request: NextRequest) {
         active_courses: summary.active_courses,
         total_campaigns: totalCampaigns,
         total_visits: totalVisits
+      },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -349,6 +370,12 @@ export async function GET(request: NextRequest) {
           active_courses: 0,
           total_campaigns: 0,
           total_visits: 0
+        },
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0
         },
         message: 'Unable to fetch courses data. Please try again later.'
       },
