@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, BarChart3, Megaphone, ChevronDown, ChevronUp, FileText, Target, X, Bug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "./user-menu";
+import { LanguageSwitcher } from "./language-switcher";
 import { useState, useEffect } from "react";
 
 const navigation = [
@@ -283,6 +284,10 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
 
    
       </nav>
+      {/* Language Switcher */}
+      <div className="px-3 sm:px-4 py-3 border-t border-gray-800">
+        <LanguageSwitcher variant="dark" />
+      </div>
       <div className="p-3 sm:p-4 border-t border-gray-800">
         <p className="text-xs text-gray-400 text-center sm:text-left">
           Analytics & Tracking System

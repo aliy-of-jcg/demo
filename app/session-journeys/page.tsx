@@ -14,6 +14,7 @@ import {
   LogIn,
   LogOut
 } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 interface Page {
   page_url: string;
@@ -48,6 +49,7 @@ interface Session {
 }
 
 export default function SessionJourneysPage() {
+  const t = useTranslations('sessionJourneys');
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState(() => {
@@ -117,13 +119,13 @@ export default function SessionJourneysPage() {
         {/* Header */}        <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Route className="w-10 h-10 text-blue-600" />
-            <h1 className="text-4xl font-bold text-gray-900">Session Journeys</h1>
+            <h1 className="text-4xl font-bold text-gray-900">{t('title')}</h1>
             <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
-              KST (UTC+9)
+              {t('timezone')}
             </span>
           </div>
           <p className="text-gray-600">
-            Complete page-by-page journey for each user session
+            {t('subtitle')}
           </p>
         </div>
 
@@ -132,7 +134,7 @@ export default function SessionJourneysPage() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date
+                {t('filters.startDate')}
               </label>
               <input
                 type="date"
@@ -143,7 +145,7 @@ export default function SessionJourneysPage() {
             </div>
             <div className="flex-1 min-w-[200px]">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date
+                {t('filters.endDate')}
               </label>
               <input
                 type="date"
@@ -158,7 +160,7 @@ export default function SessionJourneysPage() {
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Loading...' : 'Refresh'}
+              {loading ? t('filters.loading') : t('filters.refresh')}
             </button>
           </div>
         </div>
@@ -170,7 +172,7 @@ export default function SessionJourneysPage() {
               <Users className="w-8 h-8 text-blue-600" />
               <div className="text-3xl font-bold text-gray-900">{sessions.length}</div>
             </div>
-            <div className="text-sm text-gray-600">Total Sessions</div>
+            <div className="text-sm text-gray-600">{t('stats.totalSessions')}</div>
           </div>
           
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -180,7 +182,7 @@ export default function SessionJourneysPage() {
                 {sessions.reduce((sum, s) => sum + s.pages.length, 0)}
               </div>
             </div>
-            <div className="text-sm text-gray-600">Total Pageviews</div>
+            <div className="text-sm text-gray-600">{t('stats.totalPageviews')}</div>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -192,7 +194,7 @@ export default function SessionJourneysPage() {
                   : '0s'}
               </div>
             </div>
-            <div className="text-sm text-gray-600">Avg Session Duration</div>
+            <div className="text-sm text-gray-600">{t('stats.avgSessionDuration')}</div>
           </div>
         </div>
 
@@ -204,7 +206,7 @@ export default function SessionJourneysPage() {
         ) : sessions.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-200">
             <Globe className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No sessions found for the selected date range.</p>
+            <p className="text-gray-600">{t('empty.noSessions')}</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -217,7 +219,7 @@ export default function SessionJourneysPage() {
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 border-b border-gray-200">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
-                      <div className="text-xs text-gray-500 mb-1">Session Start (KST)</div>
+                      <div className="text-xs text-gray-500 mb-1">{t('session.sessionStart')}</div>
                       <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                         <Clock className="w-4 h-4 text-gray-400" />
                         {formatDateTime(session.session_start)}
@@ -225,14 +227,14 @@ export default function SessionJourneysPage() {
                     </div>
                     <div>
                       <div className="text-xs text-gray-500 mb-1 flex items-center gap-2">
-                        Duration
+                        {t('session.duration')}
                         {session.has_exit_event ? (
                           <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                            Completed
+                            {t('session.completed')}
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                            Active
+                            {t('session.active')}
                           </span>
                         )}
                       </div>
@@ -241,14 +243,14 @@ export default function SessionJourneysPage() {
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500 mb-1">Device</div>
+                      <div className="text-xs text-gray-500 mb-1">{t('session.device')}</div>
                       <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                         <Monitor className="w-4 h-4 text-gray-400" />
                         {session.device_type} • {session.browser} • {session.os}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-500 mb-1">Source</div>
+                      <div className="text-xs text-gray-500 mb-1">{t('session.source')}</div>
                       <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                         <Globe className="w-4 h-4 text-gray-400" />
                         {session.utm_source}
@@ -263,7 +265,7 @@ export default function SessionJourneysPage() {
                   <div className="flex items-center gap-2 mb-4">
                     <MapPin className="w-5 h-5 text-blue-600" />
                     <h3 className="font-semibold text-gray-900">
-                      Page Journey ({session.pages.length} {session.pages.length === 1 ? 'page' : 'pages'})
+                      {t('session.pageJourney')} ({session.pages.length} {session.pages.length === 1 ? t('session.page') : t('session.pages')})
                     </h3>
                   </div>
 
@@ -300,7 +302,7 @@ export default function SessionJourneysPage() {
                                   {page.is_landing_page === 1 && (
                                     <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full flex items-center gap-1">
                                       <LogIn className="w-3 h-3" />
-                                      Landing
+                                      {t('session.landing')}
                                     </span>
                                   )}
                                 </div>
@@ -308,7 +310,7 @@ export default function SessionJourneysPage() {
                               </div>
                               <div className="text-right flex-shrink-0">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {formatTime(page.timestamp)} <span className="text-xs text-gray-500">KST</span>
+                                  {formatTime(page.timestamp)} <span className="text-xs text-gray-500">{t('timezone').split(' ')[0]}</span>
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {page.time_on_page > 0 ? `${page.time_on_page}s` : '-'}
@@ -340,25 +342,25 @@ export default function SessionJourneysPage() {
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h4 className="font-medium text-red-900">Session Ended</h4>
+                                <h4 className="font-medium text-red-900">{t('session.sessionEnded')}</h4>
                                 <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
-                                  Completed
+                                  {t('session.completed')}
                                 </span>
                               </div>
                               <p className="text-xs text-red-700">
                                 {session.pages.length === 1 ? (
-                                  <>User left after viewing: {getPageName(session.exit_page_url || session.pages[0].page_url)}</>
+                                  <>{t('session.userLeftAfterViewing')} {getPageName(session.exit_page_url || session.pages[0].page_url)}</>
                                 ) : (
-                                  <>Last page viewed: {getPageName(session.exit_page_url || session.pages[session.pages.length - 1].page_url)}</>
+                                  <>{t('session.lastPageViewed')} {getPageName(session.exit_page_url || session.pages[session.pages.length - 1].page_url)}</>
                                 )}
                               </p>
                             </div>
                             <div className="text-right flex-shrink-0">
                               <div className="text-sm font-medium text-red-900">
-                                {formatTime(session.session_end)} <span className="text-xs text-red-700">KST</span>
+                                {formatTime(session.session_end)} <span className="text-xs text-red-700">{t('timezone').split(' ')[0]}</span>
                               </div>
                               <div className="text-xs text-red-700">
-                                {formatDuration(session.duration)} total
+                                {formatDuration(session.duration)} {t('session.total')}
                               </div>
                             </div>
                           </div>

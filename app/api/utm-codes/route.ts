@@ -50,15 +50,29 @@ export async function GET(request: NextRequest) {
 
     const utmCodes = utmCodesResult as any[];
 
-    // Get tracking codes for ClickHouse query
-    const trackingCodes = utmCodes.map(utm => utm.tracking_code);
+    // Get ALL matching UTM codes (not just paginated) for summary calculation
+    const [allMatchingUTMsResult] = await pool.query(
+      `SELECT 
+        utm_codes.*,
+        campaigns.name as campaign_name,
+        courses.name as course_name
+       FROM utm_codes
+       LEFT JOIN campaigns ON utm_codes.campaign_id = campaigns.id
+       LEFT JOIN courses ON campaigns.course_id = courses.id
+       ${whereConditions}
+       ORDER BY utm_codes.created_at DESC`,
+      queryParams
+    );
 
-    // Fetch click data from ClickHouse
+    const allMatchingUTMs = allMatchingUTMsResult as any[];
+    const allTrackingCodes = allMatchingUTMs.map(utm => utm.tracking_code);
+
+    // Fetch click data from ClickHouse for ALL matching UTMs (not just paginated)
     let clickDataMap: { [key: string]: number } = {};
     
-    if (trackingCodes.length > 0) {
+    if (allTrackingCodes.length > 0) {
       try {
-        const escapedCodes = trackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        const escapedCodes = allTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
         
         const clickQuery = `
           SELECT 
@@ -84,7 +98,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Enhance UTM codes with click data and construct full URLs
+    // Enhance paginated UTM codes with click data and construct full URLs
     const enhancedUTMs = utmCodes.map(utm => {
       const clicks = clickDataMap[utm.tracking_code] || 0;
       
@@ -123,10 +137,13 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Calculate summary statistics
-    const activeUTMs = enhancedUTMs.filter(utm => utm.status === 'active').length;
-    const inactiveUTMs = enhancedUTMs.filter(utm => utm.status === 'inactive').length;
-    const totalClicks = enhancedUTMs.reduce((sum, utm) => sum + utm.clicks, 0);
+    // Calculate summary statistics from ALL matching UTMs (not just paginated)
+    const activeUTMs = allMatchingUTMs.filter(utm => (utm.status || 'active') === 'active').length;
+    const inactiveUTMs = allMatchingUTMs.filter(utm => (utm.status || 'active') === 'inactive').length;
+    const totalClicks = allMatchingUTMs.reduce((sum, utm) => {
+      const clicks = clickDataMap[utm.tracking_code] || 0;
+      return sum + clicks;
+    }, 0);
 
     return NextResponse.json({
       success: true,

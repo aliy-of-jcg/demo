@@ -5,6 +5,7 @@ import { Calendar, Users, TrendingUp, DollarSign, Target } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useTranslations } from 'next-intl';
 
 interface PerformanceData {
   metrics: {
@@ -28,6 +29,8 @@ interface PerformanceData {
 }
 
 export default function PerformanceAnalysisPage() {
+  const t = useTranslations('performance');
+  
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -67,13 +70,13 @@ export default function PerformanceAnalysisPage() {
       const result = await response.json();
       
         if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch data');
+          throw new Error(result.error || t('errors.fetchFailed'));
         }
         
         setData(result);
       } catch (err) {
         console.error('Error fetching performance data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
+        setError(err instanceof Error ? err.message : t('errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -140,13 +143,13 @@ export default function PerformanceAnalysisPage() {
       {/* Header */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Performance Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Overall marketing campaign performance analysis</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
         <ExportToPDFButton
           element="[data-export-content]"
-          filename={`performance-dashboard-${dateRange.start}-to-${dateRange.end}.pdf`}
-          title={`Performance Dashboard - ${dateRange.start} to ${dateRange.end}`}
+          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
           size="sm"
         />
       </div>
@@ -178,19 +181,19 @@ export default function PerformanceAnalysisPage() {
               onClick={() => setQuickRange(7)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 7 days
+              {t('dateRange.last7Days')}
             </button>
             <button
               onClick={() => setQuickRange(30)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 30 days
+              {t('dateRange.last30Days')}
             </button>
             <button
               onClick={() => setQuickRange(90)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 3 months
+              {t('dateRange.last3Months')}
             </button>
           </div>
         </div>
@@ -207,7 +210,7 @@ export default function PerformanceAnalysisPage() {
       {error && !loading && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <p className="text-red-800">Error: {error}</p>
-          <p className="text-red-600 text-sm mt-1">Please try again or check your data connection.</p>
+          <p className="text-red-600 text-sm mt-1">{t('errors.tryAgain')}</p>
         </div>
       )}
 
@@ -222,10 +225,10 @@ export default function PerformanceAnalysisPage() {
                 <div className="p-1.5 sm:p-2 bg-purple-100 rounded-lg flex-shrink-0">
                   <Users className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
                 </div>
-                <span className="text-xs sm:text-sm text-gray-600">Total Visitors</span>
+                <span className="text-xs sm:text-sm text-gray-600">{t('metrics.totalVisitors')}</span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900">{data.metrics.totalVisitors.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">Total unique visitors</p>
+              <p className="text-xs text-gray-500 mt-1">{t('metrics.totalVisitorsDesc')}</p>
             </div>
 
             {/* Conversions */}
@@ -234,10 +237,10 @@ export default function PerformanceAnalysisPage() {
                 <div className="p-1.5 sm:p-2 bg-green-100 rounded-lg flex-shrink-0">
                   <Target className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                 </div>
-                <span className="text-xs sm:text-sm text-gray-600">Conversions</span>
+                <span className="text-xs sm:text-sm text-gray-600">{t('metrics.conversions')}</span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900">{data.metrics.conversions.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">Total conversions</p>
+              <p className="text-xs text-gray-500 mt-1">{t('metrics.conversionsDesc')}</p>
             </div>
 
             {/* Conversion Rate */}
@@ -246,10 +249,10 @@ export default function PerformanceAnalysisPage() {
                 <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg flex-shrink-0">
                   <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
-                <span className="text-xs sm:text-sm text-gray-600">Conversion Rate</span>
+                <span className="text-xs sm:text-sm text-gray-600">{t('metrics.conversionRate')}</span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900">{data.metrics.conversionRate}%</p>
-              <p className="text-xs text-gray-500 mt-1">Average conversion rate</p>
+              <p className="text-xs text-gray-500 mt-1">{t('metrics.conversionRateDesc')}</p>
             </div>
 
             {/* Revenue */}
@@ -258,12 +261,12 @@ export default function PerformanceAnalysisPage() {
                 <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg flex-shrink-0">
                   <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
                 </div>
-                <span className="text-xs sm:text-sm text-gray-600">Revenue</span>
+                <span className="text-xs sm:text-sm text-gray-600">{t('metrics.revenue')}</span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                 ₩{data.metrics.revenue > 0 ? (data.metrics.revenue / 10000).toFixed(0) + 'M' : '0'}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Total revenue</p>
+              <p className="text-xs text-gray-500 mt-1">{t('metrics.revenueDesc')}</p>
             </div>
       </div>
 
@@ -272,8 +275,8 @@ export default function PerformanceAnalysisPage() {
             {/* Visitor Trend Chart */}
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-900">Visitor Trend by Date</h2>
-                <span className="text-xs text-gray-500">Period comparison</span>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('charts.visitorTrend.title')}</h2>
+                <span className="text-xs text-gray-500">{t('charts.visitorTrend.subtitle')}</span>
               </div>
               <div className="h-48 sm:h-56 lg:h-64">{lineChartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -305,7 +308,7 @@ export default function PerformanceAnalysisPage() {
                         dataKey="current" 
                         stroke="#3B82F6" 
                         strokeWidth={2}
-                        name="Current Period"
+                        name={t('charts.visitorTrend.currentPeriod')}
                         dot={{ fill: '#3B82F6', r: 3 }}
                         activeDot={{ r: 5 }}
                       />
@@ -314,7 +317,7 @@ export default function PerformanceAnalysisPage() {
                         dataKey="previous" 
                         stroke="#10B981" 
                         strokeWidth={2}
-                        name="Previous Period"
+                        name={t('charts.visitorTrend.previousPeriod')}
                         dot={{ fill: '#10B981', r: 3 }}
                         activeDot={{ r: 5 }}
                         strokeDasharray="5 5"
@@ -325,7 +328,7 @@ export default function PerformanceAnalysisPage() {
                   <div className="flex items-center justify-center h-full text-gray-400">
                 <div className="text-center">
                       <TrendingUp className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-xs sm:text-sm">No trend data available</p>
+                      <p className="text-xs sm:text-sm">{t('charts.visitorTrend.noData')}</p>
                 </div>
               </div>
             )}
@@ -335,8 +338,8 @@ export default function PerformanceAnalysisPage() {
             {/* Donut Chart - Channel Distribution */}
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-900">Visitors by Channel</h2>
-                <span className="text-xs text-gray-500">Current period breakdown</span>
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('charts.channelDistribution.title')}</h2>
+                <span className="text-xs text-gray-500">{t('charts.channelDistribution.subtitle')}</span>
               </div>
               <div className="min-h-[250px] sm:min-h-[280px]">
                 {pieChartData.length > 0 ? (
@@ -371,7 +374,7 @@ export default function PerformanceAnalysisPage() {
                       </ResponsiveContainer>
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <p className="text-xl sm:text-2xl font-bold text-gray-900">{totalVisitors}</p>
-                        <p className="text-xs text-gray-500">Total</p>
+                        <p className="text-xs text-gray-500">{t('charts.channelDistribution.total')}</p>
                       </div>
                     </div>
                     
@@ -391,7 +394,7 @@ export default function PerformanceAnalysisPage() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-400">
-                    <p className="text-xs sm:text-sm">No channel data available</p>
+                    <p className="text-xs sm:text-sm">{t('charts.channelDistribution.noData')}</p>
                   </div>
                 )}
                 </div>
@@ -401,7 +404,7 @@ export default function PerformanceAnalysisPage() {
           {/* Channel Performance Table */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-4 sm:p-6 border-b border-gray-200">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900">Channel Performance Ranking</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('table.title')}</h2>
             </div>
             
             {/* Desktop Table View */}
@@ -410,22 +413,22 @@ export default function PerformanceAnalysisPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Channel
+                      {t('table.headers.channel')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Visitors
+                      {t('table.headers.visitors')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Conversions
+                      {t('table.headers.conversions')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Conversion Rate
+                      {t('table.headers.conversionRate')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Revenue
+                      {t('table.headers.revenue')}
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      CPA
+                      {t('table.headers.cpa')}
                     </th>
                   </tr>
                 </thead>
@@ -459,7 +462,7 @@ export default function PerformanceAnalysisPage() {
                   ) : (
                     <tr>
                       <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                        No channel data available for this period
+                        {t('table.noData')}
                       </td>
                     </tr>
                   )}
@@ -481,19 +484,19 @@ export default function PerformanceAnalysisPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <span className="text-gray-500 text-xs">Visitors</span>
+                        <span className="text-gray-500 text-xs">{t('mobile.visitors')}</span>
                         <p className="font-medium text-gray-900">{item.visitors.toLocaleString()}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500 text-xs">Conversions</span>
+                        <span className="text-gray-500 text-xs">{t('mobile.conversions')}</span>
                         <p className="font-medium text-gray-900">{item.conversions}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500 text-xs">Revenue</span>
+                        <span className="text-gray-500 text-xs">{t('mobile.revenue')}</span>
                         <p className="font-medium text-gray-900">₩{(item.revenue / 10000).toFixed(2)}M</p>
                       </div>
                       <div>
-                        <span className="text-gray-500 text-xs">CPA</span>
+                        <span className="text-gray-500 text-xs">{t('mobile.cpa')}</span>
                         <p className="font-medium text-gray-900">
                           ₩{item.cpa > 0 ? (item.cpa / 10000).toFixed(0) + '만' : '-'}
                         </p>
@@ -503,7 +506,7 @@ export default function PerformanceAnalysisPage() {
                 ))
               ) : (
                 <div className="p-8 text-center text-gray-500">
-                  No channel data available for this period
+                  {t('table.noData')}
                 </div>
               )}
             </div>

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { copyToClipboard } from '@/lib/clipboard';
+import { useTranslations } from 'next-intl';
 
 interface UTMCode {
   id: number;
@@ -35,6 +36,7 @@ interface Summary {
 }
 
 export default function UTMListPage() {
+  const t = useTranslations('utmTools.list');
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 500); // Debounce search input
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -70,7 +72,7 @@ export default function UTMListPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to fetch UTM codes');
+        throw new Error(data.error || t('error.tryAgain'));
       }
 
       setSummary(data.summary);
@@ -79,8 +81,8 @@ export default function UTMListPage() {
       setTotalPages(data.pagination.totalPages);
     } catch (error: any) {
       console.error('Error fetching UTM codes:', error);
-      setError(error.message || 'Failed to load UTM codes');
-      toast.error('Failed to load UTM codes');
+      setError(error.message || t('error.tryAgain'));
+      toast.error(t('error.tryAgain'));
     } finally {
       setLoading(false);
     }
@@ -120,9 +122,9 @@ export default function UTMListPage() {
     if (success) {
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
-      toast.success('URL copied to clipboard!');
+      toast.success(t('copy.success'));
     } else {
-      toast.error('Failed to copy URL');
+      toast.error(t('copy.error'));
     }
   };
 
@@ -148,19 +150,19 @@ export default function UTMListPage() {
 
   const handleDelete = async (id: number, name: string) => {
     const result = await Swal.fire({
-      title: 'Delete UTM Code?',
-      text: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      title: t('delete.title'),
+      text: t('delete.text', { name }),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel'
+      confirmButtonText: t('delete.confirm'),
+      cancelButtonText: t('delete.cancel')
     });
 
     if (!result.isConfirmed) return;
 
-    toast.promise(
+      toast.promise(
       (async () => {
         // Hard delete - actually remove from database
         const response = await fetch(`/api/utm-codes/${id}`, {
@@ -170,16 +172,16 @@ export default function UTMListPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to delete UTM code');
+          throw new Error(data.error || t('delete.error', { error: 'Failed to delete UTM code' }));
         }
 
         await fetchUTMCodes();
         return data;
       })(),
       {
-        loading: 'Deleting UTM code...',
-        success: 'UTM code deleted successfully!',
-        error: (err) => `Error: ${err.message}`,
+        loading: t('delete.deleting'),
+        success: t('delete.success'),
+        error: (err) => t('delete.error', { error: err.message }),
       }
     );
   };
@@ -189,22 +191,22 @@ export default function UTMListPage() {
     const action = newStatus === 'active' ? 'activate' : 'deactivate';
 
     const result = await Swal.fire({
-      title: `${action.charAt(0).toUpperCase() + action.slice(1)} UTM Link?`,
+      title: newStatus === 'active' ? t('toggle.activateTitle') : t('toggle.deactivateTitle'),
       html: `
-        <p>Are you sure you want to ${action} "${name}"?</p>
-        ${newStatus === 'inactive' ? '<p class="text-sm text-orange-600 mt-2">⚠️ The link will show an "expired" message to visitors.</p>' : '<p class="text-sm text-green-600 mt-2">✓ The link will redirect visitors normally.</p>'}
+        <p>${newStatus === 'active' ? t('toggle.activateText', { name }) : t('toggle.deactivateText', { name })}</p>
+        ${newStatus === 'inactive' ? `<p class="text-sm text-orange-600 mt-2">${t('toggle.inactiveWarning')}</p>` : `<p class="text-sm text-green-600 mt-2">${t('toggle.activeInfo')}</p>`}
       `,
       icon: newStatus === 'inactive' ? 'warning' : 'info',
       showCancelButton: true,
       confirmButtonColor: newStatus === 'inactive' ? '#f59e0b' : '#10b981',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: `Yes, ${action} it`,
-      cancelButtonText: 'Cancel'
+      confirmButtonText: newStatus === 'active' ? t('toggle.confirmActivate') : t('toggle.confirmDeactivate'),
+      cancelButtonText: t('toggle.cancel')
     });
 
     if (!result.isConfirmed) return;
 
-    toast.promise(
+      toast.promise(
       (async () => {
         const response = await fetch(`/api/utm-codes/${id}`, {
           method: 'PUT',
@@ -215,16 +217,16 @@ export default function UTMListPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to update UTM status');
+          throw new Error(data.error || t('toggle.error', { error: 'Failed to update UTM status' }));
         }
 
         await fetchUTMCodes();
         return data;
       })(),
       {
-        loading: `${action.charAt(0).toUpperCase() + action.slice(1)}ing UTM link...`,
-        success: `UTM link ${action}d successfully!`,
-        error: (err) => `Error: ${err.message}`,
+        loading: newStatus === 'active' ? t('toggle.activating') : t('toggle.deactivating'),
+        success: newStatus === 'active' ? t('toggle.activated') : t('toggle.deactivated'),
+        error: (err) => t('toggle.error', { error: err.message }),
       }
     );
   };
@@ -239,7 +241,7 @@ export default function UTMListPage() {
       <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-sm sm:text-base text-gray-600">Loading UTM codes...</p>
+          <p className="text-sm sm:text-base text-gray-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -249,13 +251,13 @@ export default function UTMListPage() {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 sm:p-6 text-center">
-          <p className="text-red-800 font-medium mb-2 text-sm sm:text-base">Error Loading UTM Codes</p>
+          <p className="text-red-800 font-medium mb-2 text-sm sm:text-base">{t('error.title')}</p>
           <p className="text-red-600 text-xs sm:text-sm mb-4">{error}</p>
           <button
             onClick={fetchUTMCodes}
             className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
           >
-            Try Again
+            {t('error.tryAgain')}
           </button>
         </div>
       </div>
@@ -267,8 +269,8 @@ export default function UTMListPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">UTM Management</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage and track UTM codes for campaign attribution</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button
@@ -284,14 +286,14 @@ export default function UTMListPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             )}
-            <span className="hidden sm:inline">Refresh</span>
+            <span className="hidden sm:inline">{t('refresh')}</span>
           </button>
           <Link 
             href="/utm-tools/generator"
             className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
-            <span>Create UTM</span>
+            <span>{t('createUtm')}</span>
           </Link>
         </div>
       </div>
@@ -300,46 +302,46 @@ export default function UTMListPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs sm:text-sm text-gray-600">Total UTMs</p>
+            <p className="text-xs sm:text-sm text-gray-600">{t('summary.totalUtms')}</p>
             <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
             </div>
           </div>
           <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{summary.total_utms}</p>
-          <p className="text-xs sm:text-sm text-green-600 mt-1">All tracking codes</p>
+          <p className="text-xs sm:text-sm text-green-600 mt-1">{t('summary.allTrackingCodes')}</p>
         </div>
 
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs sm:text-sm text-gray-600">Active UTMs</p>
+            <p className="text-xs sm:text-sm text-gray-600">{t('summary.activeUtms')}</p>
             <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
             </div>
           </div>
           <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{summary.active_utms}</p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">Currently in use</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">{t('summary.currentlyInUse')}</p>
         </div>
 
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs sm:text-sm text-gray-600">Inactive</p>
+            <p className="text-xs sm:text-sm text-gray-600">{t('summary.inactiveUtms')}</p>
             <div className="w-6 h-6 sm:w-8 sm:h-8 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-600" />
             </div>
           </div>
           <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{summary.inactive_utms}</p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">Not being used</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">{t('summary.notBeingUsed')}</p>
         </div>
 
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs sm:text-sm text-gray-600">Total Clicks</p>
+            <p className="text-xs sm:text-sm text-gray-600">{t('summary.totalClicks')}</p>
             <div className="w-6 h-6 sm:w-8 sm:h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
             </div>
           </div>
           <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">{summary.total_clicks.toLocaleString()}</p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">Across all UTMs</p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">{t('summary.acrossAllUtms')}</p>
         </div>
       </div>
 
@@ -349,7 +351,7 @@ export default function UTMListPage() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by UTM name, campaign, or source..."
+            placeholder={t('search.placeholder')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -364,28 +366,28 @@ export default function UTMListPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UTM Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medium</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Landing URL</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clicks</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.utmName')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.campaign')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.source')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.medium')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.landingUrl')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.created')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.clicks')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.status')}</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.actions')}</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {utmCodes.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-6 py-12 text-center">
-                    <p className="text-gray-500">No UTM codes found</p>
+                    <p className="text-gray-500">{t('table.noData')}</p>
                     {searchInput && (
                       <button
                         onClick={() => setSearchInput('')}
                         className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
                       >
-                        Clear search
+                        {t('table.clearSearch')}
                       </button>
                     )}
                   </td>
@@ -417,7 +419,7 @@ export default function UTMListPage() {
                         <button
                           onClick={() => handleCopy(getShortUrl(utm.tracking_code), utm.id)}
                           className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
-                          title="Copy Short URL"
+                          title={t('actions.copyShortUrl')}
                         >
                           {copiedId === utm.id ? (
                             <span className="text-green-600 text-xs">✓</span>
@@ -430,7 +432,7 @@ export default function UTMListPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0"
-                          title="Open Tracking URL"
+                          title={t('actions.openTrackingUrl')}
                         >
                           <ExternalLink className="w-4 h-4" />
                         </a>
@@ -448,7 +450,7 @@ export default function UTMListPage() {
                       <button
                         onClick={() => handleToggleStatus(utm.id, utm.status, utm.name)}
                         className={`px-2 py-1 rounded-full text-xs font-medium transition-all hover:ring-2 hover:ring-offset-1 ${statusColors[utm.status]} ${utm.status === 'active' ? 'hover:ring-blue-400' : 'hover:ring-yellow-400'} cursor-pointer`}
-                        title={`Click to ${utm.status === 'active' ? 'deactivate' : 'activate'}`}
+                        title={utm.status === 'active' ? t('actions.clickToDeactivate') : t('actions.clickToActivate')}
                       >
                         {utm.status}
                       </button>
@@ -458,14 +460,14 @@ export default function UTMListPage() {
                         <Link
                           href={`/utm-tools/generator?edit=${utm.id}`}
                           className="text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Edit"
+                          title={t('actions.edit')}
                         >
                           <Edit className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => handleDelete(utm.id, utm.name)}
                           className="text-gray-400 hover:text-red-600 transition-colors"
-                          title="Delete"
+                          title={t('actions.delete')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -482,13 +484,13 @@ export default function UTMListPage() {
         <div className="lg:hidden divide-y divide-gray-200">
           {utmCodes.length === 0 ? (
             <div className="p-8 text-center">
-              <p className="text-gray-500 text-sm">No UTM codes found</p>
+              <p className="text-gray-500 text-sm">{t('table.noData')}</p>
               {searchInput && (
                 <button
                   onClick={() => setSearchInput('')}
                   className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
                 >
-                  Clear search
+                  {t('table.clearSearch')}
                 </button>
               )}
             </div>
@@ -512,7 +514,7 @@ export default function UTMListPage() {
                 {/* Campaign & Course */}
                 {utm.campaign_name && (
                   <div className="mb-2">
-                    <p className="text-xs text-gray-500">Campaign</p>
+                    <p className="text-xs text-gray-500">{t('mobile.campaign')}</p>
                     <p className="text-sm font-medium text-gray-900">{utm.campaign_name}</p>
                     {utm.course_name && (
                       <p className="text-xs text-gray-500 mt-1">{utm.course_name}</p>
@@ -523,18 +525,18 @@ export default function UTMListPage() {
                 {/* Source & Medium */}
                 <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
                   <div>
-                    <span className="text-gray-500 text-xs">Source</span>
+                    <span className="text-gray-500 text-xs">{t('table.source')}</span>
                     <p className="font-medium text-gray-900 capitalize">{utm.utm_source || '-'}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500 text-xs">Medium</span>
+                    <span className="text-gray-500 text-xs">{t('table.medium')}</span>
                     <p className="font-medium text-gray-900 capitalize">{utm.utm_medium || '-'}</p>
                   </div>
                 </div>
 
                 {/* Tracking URL */}
                 <div className="mb-3 p-2 bg-gray-50 rounded border border-gray-200">
-                  <p className="text-xs text-gray-500 mb-1">Tracking URL</p>
+                  <p className="text-xs text-gray-500 mb-1">{t('mobile.trackingUrl')}</p>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-700 font-mono truncate flex-1">
                       {getShortUrl(utm.tracking_code)}
@@ -564,7 +566,7 @@ export default function UTMListPage() {
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                   <div className="flex items-center gap-4 text-xs text-gray-500">
                     <span>{formatDate(utm.created_at)}</span>
-                    <span className="font-medium text-gray-900">{utm.clicks.toLocaleString()} clicks</span>
+                    <span className="font-medium text-gray-900">{utm.clicks.toLocaleString()} {t('mobile.clicks')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Link
@@ -592,7 +594,7 @@ export default function UTMListPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
-              <span className="text-gray-700">Total {total} UTM codes</span>
+              <span className="text-gray-700">{t('pagination.total', { total })}</span>
               <select
                 value={limit}
                 onChange={(e) => handleLimitChange(parseInt(e.target.value))}
@@ -602,7 +604,7 @@ export default function UTMListPage() {
                 <option value="20">20</option>
                 <option value="40">40</option>
               </select>
-              <span className="text-gray-700">per page</span>
+              <span className="text-gray-700">{t('pagination.perPage')}</span>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap justify-center">

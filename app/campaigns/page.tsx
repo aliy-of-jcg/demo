@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { copyToClipboard } from '@/lib/clipboard';
+import { useTranslations } from 'next-intl';
 
 interface Campaign {
   id: number;
@@ -35,6 +36,8 @@ interface Summary {
   active_campaigns: number;
   total_budget: number;
   avg_conversion_rate: number;
+  total_clicks?: number;
+  total_visitors?: number;
 }
 
 const sourceColors: Record<string, string> = {
@@ -53,17 +56,22 @@ const statusColors: Record<string, string> = {
   hidden: 'bg-gray-300 text-gray-500'
 };
 
-const statusLabels: Record<string, string> = {
-  active: 'Active',
-  waiting: 'Waiting',
-  ended: 'Ended',
-  paused: 'Paused',
-  hidden: 'Hidden'
-};
-
 export default function CampaignsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const t = useTranslations('campaigns');
+  
+  // Get locale from pathname or default to 'en'
+  const locale = pathname?.split('/')[1] || 'en';
+  
+  const statusLabels: Record<string, string> = {
+    active: t('status.active'),
+    waiting: t('status.waiting'),
+    ended: t('status.ended'),
+    paused: t('status.paused'),
+    hidden: t('status.hidden')
+  };
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,11 +189,11 @@ export default function CampaignsPage() {
         setSummary(data.summary);
         setTotal(data.pagination.total);
       } else {
-        throw new Error(data.error || 'Failed to fetch campaigns');
+        throw new Error(data.error || t('toast.loadFailed'));
       }
     } catch (error: any) {
       console.error('Error fetching campaigns:', error);
-      toast.error(error.message || 'Failed to load campaigns');
+      toast.error(error.message || t('toast.loadFailed'));
       setCampaigns([]);
       setSummary(null);
       setTotal(0);
@@ -218,14 +226,14 @@ export default function CampaignsPage() {
 
   const handleDelete = async (id: number) => {
     const result = await Swal.fire({
-      title: 'Delete Campaign?',
-      text: 'Are you sure you want to delete this campaign?',
+      title: t('delete.title'),
+      text: t('delete.text'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#6b7280',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, Delete it!',
-      cancelButtonText: 'Cancel'
+      confirmButtonText: t('delete.confirm'),
+      cancelButtonText: t('delete.cancel')
     });
 
     if (!result.isConfirmed) return;
@@ -246,9 +254,9 @@ export default function CampaignsPage() {
         return data;
       })(),
       {
-        loading: 'Deleting campaign...',
-        success: 'Campaign deleted successfully!',
-        error: (err) => `Error: ${err.message}`,
+        loading: t('delete.deleting'),
+        success: t('delete.success'),
+        error: (err) => `${t('delete.error')}: ${err.message}`,
       }
     );
   };
@@ -265,10 +273,10 @@ export default function CampaignsPage() {
     const success = await copyToClipboard(shortUrl);
     if (success) {
       setCopiedTrackingCode(trackingCode);
-      toast.success('Tracking link copied to clipboard!');
+      toast.success(t('toast.trackingLinkCopied'));
       setTimeout(() => setCopiedTrackingCode(null), 2000);
     } else {
-      toast.error('Failed to copy tracking link');
+      toast.error(t('toast.copyFailed'));
     }
   };
   
@@ -284,14 +292,14 @@ export default function CampaignsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Campaign Management</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage ongoing campaigns and track performance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
         <Link 
           href="/campaigns/new"
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
         >
-          <span>+ Create New Campaign</span>
+          <span>+ {t('createNew')}</span>
         </Link>
       </div>
 
@@ -301,10 +309,10 @@ export default function CampaignsPage() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Campaigns</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{t('summary.totalCampaigns')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.total_campaigns}</p>
                 <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                  <span className="text-blue-600 font-medium">{summary.active_campaigns}</span> Active
+                  <span className="text-blue-600 font-medium">{summary.active_campaigns}</span> {t('summary.active')}
                 </p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -316,12 +324,12 @@ export default function CampaignsPage() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Monthly Budget</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{t('summary.monthlyBudget')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.total_budget.toLocaleString()}₩</p>
                 <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                   <div className="bg-blue-600 h-2 rounded-full" style={{ width: '66.5%' }}></div>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-600 mt-1">Progress: 66.5%</p>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">{t('summary.progress')}: 66.5%</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
@@ -332,7 +340,7 @@ export default function CampaignsPage() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Avg Conversion Rate</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{t('summary.avgConversionRate')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.avg_conversion_rate}%</p>
                 <p className="text-xs sm:text-sm text-green-600 mt-1">+0.5%p</p>
               </div>
@@ -345,12 +353,12 @@ export default function CampaignsPage() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Clicks</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{t('summary.totalClicks')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                  {campaigns.reduce((sum, c) => sum + (c.clicks || 0), 0).toLocaleString()}
+                  {(summary.total_clicks || 0).toLocaleString()}
                 </p>
                 <p className="text-xs sm:text-sm text-green-600 mt-1">
-                  {campaigns.reduce((sum, c) => sum + (c.visitors || 0), 0).toLocaleString()} visitors
+                  {(summary.total_visitors || 0).toLocaleString()} {t('summary.visitors')}
                 </p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -365,12 +373,12 @@ export default function CampaignsPage() {
       <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Search</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('filters.search')}</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by campaign or course name"
+                placeholder={t('filters.searchPlaceholder')}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -379,13 +387,13 @@ export default function CampaignsPage() {
           </div>
 
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Course</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('filters.course')}</label>
             <select
               value={filters.course_id}
               onChange={(e) => setFilters({ ...filters, course_id: e.target.value })}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Courses</option>
+              <option value="">{t('filters.allCourses')}</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
                   {course.name}
@@ -395,13 +403,13 @@ export default function CampaignsPage() {
           </div>
 
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Media</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('filters.media')}</label>
             <select
               value={filters.source}
               onChange={(e) => setFilters({ ...filters, source: e.target.value })}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All</option>
+              <option value="">{t('filters.all')}</option>
               <option value="naver">Naver</option>
               <option value="kakao">Kakao</option>
               <option value="google">Google</option>
@@ -411,17 +419,17 @@ export default function CampaignsPage() {
           </div>
 
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('filters.status')}</label>
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="waiting">Waiting</option>
-              <option value="paused">Paused</option>
-              <option value="ended">Ended</option>
+              <option value="">{t('filters.all')}</option>
+              <option value="active">{t('status.active')}</option>
+              <option value="waiting">{t('status.waiting')}</option>
+              <option value="paused">{t('status.paused')}</option>
+              <option value="ended">{t('status.ended')}</option>
             </select>
           </div>
         </div>
@@ -441,30 +449,30 @@ export default function CampaignsPage() {
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-1">
-                    Campaign Name
+                    {t('table.campaignName')}
                     {sortBy === 'name' && (
                       sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
                     )}
                   </div>
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Course
+                  {t('table.course')}
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Media
+                  {t('table.media')}
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ad Type
+                  {t('table.adType')}
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('table.status')}
                 </th>
                 <th 
                   className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('start_date')}
                 >
                   <div className="flex items-center gap-1">
-                    Period
+                    {t('table.period')}
                     {sortBy === 'start_date' && (
                       sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
                     )}
@@ -475,20 +483,20 @@ export default function CampaignsPage() {
                   onClick={() => handleSort('budget')}
                 >
                   <div className="flex items-center gap-1">
-                    Budget
+                    {t('table.budget')}
                     {sortBy === 'budget' && (
                       sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
                     )}
                   </div>
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Performance
+                  {t('table.performance')}
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Link
+                  {t('table.link')}
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Action
+                  {t('table.action')}
                 </th>
               </tr>
             </thead>
@@ -504,7 +512,7 @@ export default function CampaignsPage() {
               ) : campaigns.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
-                    No campaigns found
+                    {t('empty.noCampaigns')}
                   </td>
                 </tr>
               ) : (
@@ -566,16 +574,16 @@ export default function CampaignsPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3">
-                      <div className="text-xs">
+                        <div className="text-xs">
                         <div className="text-gray-900">
                           {(campaign.clicks ?? 0) > 0 ? (
-                            <>{(campaign.clicks ?? 0).toLocaleString()} clicks</>
+                            <>{(campaign.clicks ?? 0).toLocaleString()} {t('table.clicks')}</>
                           ) : (
-                            <span className="text-gray-400">No data</span>
+                            <span className="text-gray-400">{t('table.noData')}</span>
                           )}
                         </div>
                         <div className="text-gray-500 text-xs">
-                          {(campaign.visitors ?? 0).toLocaleString()} visitors
+                          {(campaign.visitors ?? 0).toLocaleString()} {t('summary.visitors')}
                         </div>
                       </div>
                     </td>
@@ -591,7 +599,7 @@ export default function CampaignsPage() {
                               }
                             }}
                             className="p-1 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
-                            title="Copy tracking link"
+                            title={t('table.copyTrackingLink')}
                           >
                             {copiedTrackingCode === campaign.tracking_codes[0] ? (
                               <Check className="w-4 h-4 text-green-600" />
@@ -604,7 +612,7 @@ export default function CampaignsPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
-                            title="Open tracking link in new tab"
+                            title={t('table.openTrackingLink')}
                           >
                             <ExternalLink className="w-4 h-4" />
                           </a>
@@ -613,7 +621,7 @@ export default function CampaignsPage() {
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400">No links</span>
+                        <span className="text-xs text-gray-400">{t('table.noLinks')}</span>
                       )}
                     </td>
                     <td className="px-3 py-3">
@@ -621,7 +629,7 @@ export default function CampaignsPage() {
                         <Link
                           href={`/campaigns/${campaign.id}`}
                           className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
-                          title="View campaign details"
+                          title={t('table.viewDetails')}
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
@@ -638,7 +646,7 @@ export default function CampaignsPage() {
                               setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id);
                             }}
                             className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded hover:bg-gray-100"
-                            title="More actions"
+                            title={t('table.moreActions')}
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
@@ -666,7 +674,7 @@ export default function CampaignsPage() {
                                     className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
                                   >
                                     <Edit className="w-4 h-4" />
-                                    Edit
+                                    {t('actions.edit')}
                                   </button>
                                   <button
                                     type="button"
@@ -678,7 +686,7 @@ export default function CampaignsPage() {
                                     className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
                                   >
                                     <Copy className="w-4 h-4" />
-                                    Duplicate
+                                    {t('actions.duplicate')}
                                   </button>
                                   <button
                                     type="button"
@@ -690,7 +698,7 @@ export default function CampaignsPage() {
                                     className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
                                   >
                                     <Trash2 className="w-4 h-4" />
-                                    Delete
+                                    {t('actions.delete')}
                                   </button>
                                 </div>
                               </div>
@@ -717,7 +725,7 @@ export default function CampaignsPage() {
             </div>
           ) : campaigns.length === 0 ? (
             <div className="px-4 py-12 text-center text-gray-500">
-              No campaigns found
+              {t('empty.noCampaigns')}
             </div>
           ) : (
             campaigns.map((campaign) => (
@@ -752,7 +760,7 @@ export default function CampaignsPage() {
                                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
                               >
                                 <Edit className="w-4 h-4" />
-                                Edit
+                                {t('actions.edit')}
                               </button>
                               <button
                                 onClick={(e) => {
@@ -763,7 +771,7 @@ export default function CampaignsPage() {
                                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
                               >
                                 <Copy className="w-4 h-4" />
-                                Duplicate
+                                {t('actions.duplicate')}
                               </button>
                               <button
                                 onClick={(e) => {
@@ -774,7 +782,7 @@ export default function CampaignsPage() {
                                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
                               >
                                 <Trash2 className="w-4 h-4" />
-                                Delete
+                                {t('actions.delete')}
                               </button>
                             </div>
                           </>
@@ -784,7 +792,7 @@ export default function CampaignsPage() {
 
                 <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                   <div>
-                    <span className="text-gray-500 text-xs">Media:</span>
+                    <span className="text-gray-500 text-xs">{t('mobile.media')}</span>
                     <div className="mt-1">
                       {campaign.platforms && campaign.platforms.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
@@ -806,7 +814,7 @@ export default function CampaignsPage() {
                   </div>
 
                   <div>
-                    <span className="text-gray-500 text-xs">Status:</span>
+                    <span className="text-gray-500 text-xs">{t('mobile.status')}</span>
                     <div className="mt-1">
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[campaign.status] || 'bg-gray-100 text-gray-800'}`}>
                         {statusLabels[campaign.status] || campaign.status}
@@ -816,27 +824,27 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="text-xs text-gray-600 mb-2">
-                  <span className="font-medium">Period:</span> {new Date(campaign.start_date).toLocaleDateString()} ~ {new Date(campaign.end_date).toLocaleDateString()}
+                  <span className="font-medium">{t('mobile.period')}</span> {new Date(campaign.start_date).toLocaleDateString()} ~ {new Date(campaign.end_date).toLocaleDateString()}
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-3 border-t border-gray-100">
                   <div>
-                    <span className="text-gray-500">Budget:</span>
+                    <span className="text-gray-500">{t('mobile.budget')}</span>
                     <span className="font-medium text-gray-900 ml-1">₩{campaign.budget.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Clicks:</span>
+                    <span className="text-gray-500">{t('mobile.clicks')}</span>
                     <span className="font-medium text-blue-600 ml-1">{(campaign.clicks ?? 0).toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Visitors:</span>
+                    <span className="text-gray-500">{t('mobile.visitors')}</span>
                     <span className="font-medium text-purple-600 ml-1">{(campaign.visitors ?? 0).toLocaleString()}</span>
                   </div>
                 </div>
 
                 {(campaign.tracking_codes && campaign.tracking_codes.length > 0) || campaign.tracking_code ? (
                   <div className="mt-3 pt-3 border-t border-gray-100">
-                    <span className="text-xs text-gray-500 block mb-2">Tracking Links:</span>
+                    <span className="text-xs text-gray-500 block mb-2">{t('mobile.trackingLinks')}</span>
                     {campaign.tracking_codes && campaign.tracking_codes.length > 0 ? (
                       <div className="flex flex-col gap-1.5">
                         {campaign.tracking_codes.slice(0, 2).map((code, idx) => (
@@ -861,7 +869,7 @@ export default function CampaignsPage() {
                             href={`/campaigns/${campaign.id}`}
                             className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                           >
-                            +{campaign.tracking_codes.length - 2} more
+                            +{campaign.tracking_codes.length - 2} {t('mobile.more')}
                           </Link>
                         )}
                       </div>
@@ -892,7 +900,7 @@ export default function CampaignsPage() {
               {/* Pagination */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 sm:px-6 py-4 mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs sm:text-sm">
-            <span className="text-gray-700">Total {total} campaigns</span>
+            <span className="text-gray-700">{t('pagination.total', { count: total })}</span>
             <select
               value={limit}
               onChange={(e) => setLimit(parseInt(e.target.value))}
@@ -902,7 +910,7 @@ export default function CampaignsPage() {
               <option value="20">20</option>
               <option value="50">50</option>
             </select>
-            <span className="text-gray-700">per page</span>
+            <span className="text-gray-700">{t('pagination.perPage')}</span>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-center">

@@ -1,4 +1,13 @@
+import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
+import { locales } from './i18n';
+
+// Create the i18n middleware
+const intlMiddleware = createMiddleware({
+  locales,
+  defaultLocale: 'en',
+  localePrefix: 'always' // Always show locale in URL
+});
 
 export function middleware(request: NextRequest) {
   // Only apply CORS to /api/track and /api/track-internal routes
@@ -33,10 +42,12 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  return NextResponse.next();
+  // Apply i18n middleware for all other routes
+  return intlMiddleware(request);
 }
 
 export const config = {
-  matcher: '/api/track/:path*',
+  // Match all pathnames except for API routes, static files, etc.
+  matcher: ['/', '/(ko|en)/:path*', '/api/track/:path*', '/auth'],
 };
 

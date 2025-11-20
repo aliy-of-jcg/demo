@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
+import { useTranslations } from 'next-intl';
 
 interface Course {
   id: number;
@@ -34,15 +35,16 @@ const statusColors: Record<string, string> = {
   hidden: 'bg-gray-300 text-gray-500'
 };
 
-const statusLabels: Record<string, string> = {
-  active: 'Active',
-  waiting: 'Waiting',
-  paused: 'Paused',
-  ended: 'Ended',
-  hidden: 'Hidden'
-};
-
 export default function CoursesPage() {
+  const t = useTranslations('courses');
+  
+  const statusLabels: Record<string, string> = {
+    active: t('status.active'),
+    waiting: t('status.waiting'),
+    paused: t('status.paused'),
+    ended: t('status.ended'),
+    hidden: t('status.hidden')
+  };
   const [courses, setCourses] = useState<Course[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,8 +146,9 @@ export default function CoursesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const action = editingCourse ? 'Updating' : 'Creating';
-    const actionPast = editingCourse ? 'updated' : 'created';
+    const actionKey = editingCourse ? 'updating' : 'creating';
+    const actionPastKey = editingCourse ? 'updated' : 'created';
+    const errorKey = editingCourse ? 'updateFailed' : 'createFailed';
 
     toast.promise(
       (async () => {
@@ -166,7 +169,7 @@ export default function CoursesPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || `Failed to ${action.toLowerCase()} course`);
+          throw new Error(data.error || t(`actions.${errorKey}`));
         }
 
         await fetchCourses();
@@ -174,23 +177,23 @@ export default function CoursesPage() {
         return data;
       })(),
       {
-        loading: `${action} course...`,
-        success: `Course ${actionPast} successfully!`,
-        error: (err) => `Error: ${err.message}`,
+        loading: t(`actions.${actionKey}`),
+        success: t('actions.success', { action: t(`actions.${actionPastKey}`) }),
+        error: (err) => `${t('actions.error')}: ${err.message}`,
       }
     );
   };
 
   const handleDelete = async (id: number) => {
     const result = await Swal.fire({
-      title: 'Delete Course?',
-      text: 'Are you sure you want to delete this course?',
+      title: t('delete.title'),
+      text: t('delete.text'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#6b7280',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel'
+      confirmButtonText: t('delete.confirm'),
+      cancelButtonText: t('delete.cancel')
     });
 
     if (!result.isConfirmed) return;
@@ -204,16 +207,24 @@ export default function CoursesPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to delete course');
+          // Check if error is about campaigns attached to course
+          const campaignErrorMatch = data.error?.match(/Cannot delete course with (\d+) active campaign/);
+          if (campaignErrorMatch) {
+            const campaignCount = parseInt(campaignErrorMatch[1]);
+            // For English, use plural form; Korean doesn't need plural
+            const plural = campaignCount > 1 ? t('delete.hasCampaignsPlural') : t('delete.hasCampaignsSingular');
+            throw new Error(t('delete.hasCampaigns', { count: campaignCount, plural }));
+          }
+          throw new Error(data.error || t('actions.deleteFailed'));
         }
 
         await fetchCourses();
         return data;
       })(),
       {
-        loading: 'Deleting course...',
-        success: 'Course deleted successfully!',
-        error: (err) => `Error: ${err.message}`,
+        loading: t('actions.deleting'),
+        success: t('actions.success', { action: t('actions.deleted') }),
+        error: (err) => `${t('actions.error')}: ${err.message}`,
       }
     );
   };
@@ -223,14 +234,14 @@ export default function CoursesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Course Management</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage courses and course information in use</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
         >
-          <span>+ Add Course</span>
+          <span>+ {t('addCourse')}</span>
         </button>
       </div>
 
@@ -240,7 +251,7 @@ export default function CoursesPage() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Courses</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{t('summary.totalCourses')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.total_courses}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -252,7 +263,7 @@ export default function CoursesPage() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Active Courses</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{t('summary.activeCourses')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.active_courses}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -264,7 +275,7 @@ export default function CoursesPage() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Active Campaigns</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{t('summary.activeCampaigns')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.total_campaigns}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -276,7 +287,7 @@ export default function CoursesPage() {
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Visits</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1">{t('summary.totalVisits')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900">{summary.total_visits}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -294,7 +305,7 @@ export default function CoursesPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by course name or code..."
+              placeholder={t('filters.searchPlaceholder')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -307,11 +318,11 @@ export default function CoursesPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="waiting">Waiting</option>
-              <option value="paused">Paused</option>
-              <option value="ended">Ended</option>
+              <option value="">{t('filters.allStatus')}</option>
+              <option value="active">{t('status.active')}</option>
+              <option value="waiting">{t('status.waiting')}</option>
+              <option value="paused">{t('status.paused')}</option>
+              <option value="ended">{t('status.ended')}</option>
             </select>
           </div>
         </div>
@@ -320,8 +331,8 @@ export default function CoursesPage() {
       {/* Courses Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-3 sm:p-4 border-b border-gray-200">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900">Course List</h3>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1">Search by course name or code...</p>
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900">{t('table.title')}</h3>
+          <p className="text-xs sm:text-sm text-gray-600 mt-1">{t('table.searchHint')}</p>
         </div>
 
         {/* Desktop Table - Hidden on mobile/tablet */}
@@ -330,28 +341,28 @@ export default function CoursesPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Course Name
+                  {t('table.courseName')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  {t('table.category')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
+                  {t('table.duration')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
+                  {t('table.price')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Active Campaigns
+                  {t('table.activeCampaigns')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Visits
+                  {t('table.totalVisits')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('table.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Action
+                  {t('table.action')}
                 </th>
               </tr>
             </thead>
@@ -367,7 +378,7 @@ export default function CoursesPage() {
               ) : courses.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                    No courses found
+                    {t('table.noCourses')}
                   </td>
                 </tr>
               ) : (
@@ -432,7 +443,7 @@ export default function CoursesPage() {
             </div>
           ) : courses.length === 0 ? (
             <div className="px-4 py-12 text-center text-gray-500">
-              No courses found
+              {t('table.noCourses')}
             </div>
           ) : (
             courses.map((course) => (
@@ -451,21 +462,21 @@ export default function CoursesPage() {
 
                 <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                   <div>
-                    <span className="text-xs text-gray-500">Category:</span>
+                    <span className="text-xs text-gray-500">{t('mobile.category')}</span>
                     <p className="text-sm text-gray-900 mt-0.5">{course.category || '-'}</p>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500">Duration:</span>
+                    <span className="text-xs text-gray-500">{t('mobile.duration')}</span>
                     <p className="text-sm text-gray-900 mt-0.5">{course.duration || '-'}</p>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500">Price:</span>
+                    <span className="text-xs text-gray-500">{t('mobile.price')}</span>
                     <p className="text-sm text-gray-900 mt-0.5">
                       {course.price ? `${course.price.toLocaleString()}원` : '-'}
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500">Campaigns:</span>
+                    <span className="text-xs text-gray-500">{t('mobile.campaigns')}</span>
                     <p className="text-sm text-blue-600 font-medium mt-0.5">
                       {course.active_campaigns ?? 0}
                     </p>
@@ -474,7 +485,7 @@ export default function CoursesPage() {
 
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                   <div className="text-xs text-gray-600">
-                    <span className="font-medium">Total Visits:</span> {course.total_visits?.toLocaleString() ?? 0}
+                    <span className="font-medium">{t('mobile.totalVisits')}</span> {course.total_visits?.toLocaleString() ?? 0}
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -504,13 +515,13 @@ export default function CoursesPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div ref={modalRef} className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
-              {editingCourse ? 'Edit Course' : 'Add Course'}
+              {editingCourse ? t('modal.editTitle') : t('modal.addTitle')}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  Course Name <span className="text-red-500">*</span>
+                  {t('modal.fields.courseName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -523,7 +534,7 @@ export default function CoursesPage() {
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  Course Code <span className="text-red-500">*</span>
+                  {t('modal.fields.courseCode')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -536,7 +547,7 @@ export default function CoursesPage() {
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  Category
+                  {t('modal.fields.category')}
                 </label>
                 <input
                   type="text"
@@ -548,20 +559,20 @@ export default function CoursesPage() {
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  Duration
+                  {t('modal.fields.duration')}
                 </label>
                 <input
                   type="text"
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  placeholder="e.g: 3 months"
+                  placeholder={t('modal.placeholders.duration')}
                   className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  Price
+                  {t('modal.fields.price')}
                 </label>
                 <input
                   type="number"
@@ -573,17 +584,17 @@ export default function CoursesPage() {
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  Status
+                  {t('modal.fields.status')}
                 </label>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="active">Active</option>
-                  <option value="waiting">Waiting</option>
-                  <option value="paused">Paused</option>
-                  <option value="ended">Ended</option>
+                  <option value="active">{t('status.active')}</option>
+                  <option value="waiting">{t('status.waiting')}</option>
+                  <option value="paused">{t('status.paused')}</option>
+                  <option value="ended">{t('status.ended')}</option>
                 </select>
               </div>
 
@@ -593,13 +604,13 @@ export default function CoursesPage() {
                   onClick={handleCloseModal}
                   className="px-3 sm:px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  {t('modal.actions.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-3 sm:px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  {editingCourse ? 'Update' : 'Add'}
+                  {editingCourse ? t('modal.actions.update') : t('modal.actions.add')}
                 </button>
               </div>
             </form>

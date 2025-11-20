@@ -9,11 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Shield, Eye, EyeOff, User, Mail, Lock, CheckCircle2, Building2, Phone, Loader2 } from "lucide-react";
 import type { UserType } from "@/lib/types";
 import { ForgotPasswordForm } from "@/components/forgot-password-form";
+import { useTranslations } from 'next-intl';
 
 type AuthMode = "login" | "signup" | "forgot-password";
 
 export function AuthForm() {
   const router = useRouter();
+  const t = useTranslations('auth');
+  const tLogin = useTranslations('auth.login');
+  const tSignup = useTranslations('auth.signup');
+  const tErrors = useTranslations('auth.errors');
+  
   const [mode, setMode] = useState<AuthMode>("login");
   const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,30 +40,30 @@ export function AuthForm() {
 
     // Basic validation
     if (mode === "signup" && !formData.company_name.trim()) {
-      newErrors.company_name = "Company name is required";
+      newErrors.company_name = tErrors('companyNameRequired');
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = tErrors('emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format";
+      newErrors.email = tErrors('emailInvalid');
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = tErrors('passwordRequired');
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = tErrors('passwordTooShort');
     }
 
     if (mode === "signup") {
       if (!formData.contact_number.trim()) {
-        newErrors.contact_number = "Contact number is required";
+        newErrors.contact_number = tErrors('contactNumberRequired');
       }
       if (!selectedUserType) {
-        newErrors.user_type = "Please select a user type";
+        newErrors.user_type = tErrors('userTypeRequired');
       }
       if (formData.password !== formData.confirmPassword) {
-        newErrors.confirmPassword = "Passwords do not match";
+        newErrors.confirmPassword = tErrors('passwordsNoMatch');
       }
     }
 
@@ -100,7 +106,7 @@ export function AuthForm() {
         setErrors({ form: data.message });
       }
     } catch (error) {
-      setErrors({ form: "Login failed. Please try again." });
+      setErrors({ form: tErrors('loginFailed') });
     }
   };
 
@@ -128,7 +134,7 @@ export function AuthForm() {
         setErrors({ form: data.message });
       }
     } catch (error) {
-      setErrors({ form: "Signup failed. Please try again." });
+      setErrors({ form: tErrors('signupFailed') });
     }
   };
 
@@ -167,6 +173,8 @@ export function AuthForm() {
     return <ForgotPasswordForm onBack={() => setMode("login")} />;
   }
 
+  const isLogin = mode === "login";
+
   return (
     <Card className="w-full max-w-md backdrop-blur-lg bg-white/95 shadow-2xl border-white/20">
       <CardHeader className="space-y-1 text-center">
@@ -174,12 +182,10 @@ export function AuthForm() {
           <Shield className="h-8 w-8 text-white" />
         </div>
         <CardTitle className="text-3xl font-bold">
-          {mode === "login" ? "Welcome Back" : "Create Account"}
+          {isLogin ? tLogin('title') : tSignup('title')}
         </CardTitle>
         <CardDescription className="text-base">
-          {mode === "login"
-            ? "Enter your credentials to access the panel"
-            : "Sign up to get started with your analytics"}
+          {isLogin ? tLogin('subtitle') : tSignup('subtitle')}
         </CardDescription>
       </CardHeader>
 
@@ -195,7 +201,7 @@ export function AuthForm() {
           {/* User Type Selection - Only for Signup */}
           {mode === "signup" && (
             <div className="space-y-3">
-              <Label>Select User Type</Label>
+              <Label>{tSignup('userTypeLabel')}</Label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
@@ -212,7 +218,7 @@ export function AuthForm() {
                     </div>
                   )}
                   <Shield className="h-6 w-6 text-indigo-600" />
-                  <span className="text-xs font-semibold">Admin</span>
+                  <span className="text-xs font-semibold">{tSignup('admin')}</span>
                 </button>
 
                 <button
@@ -230,7 +236,7 @@ export function AuthForm() {
                     </div>
                   )}
                   <Eye className="h-6 w-6 text-purple-600" />
-                  <span className="text-xs font-semibold">Observer</span>
+                  <span className="text-xs font-semibold">{tSignup('observer')}</span>
                 </button>
 
                 <button
@@ -248,14 +254,14 @@ export function AuthForm() {
                     </div>
                   )}
                   <User className="h-6 w-6 text-green-600" />
-                  <span className="text-xs font-semibold">Regular</span>
+                  <span className="text-xs font-semibold">{tSignup('regular')}</span>
                 </button>
               </div>
               {errors.user_type && (
                 <p className="text-sm text-red-600">{errors.user_type}</p>
               )}
               <p className="text-xs text-gray-500">
-                Regular users have observer features. Owner type is set manually.
+                {tSignup('userTypeNote')}
               </p>
             </div>
           )}
@@ -263,13 +269,13 @@ export function AuthForm() {
           {/* Company Name - Only for Signup */}
           {mode === "signup" && (
             <div className="space-y-2">
-              <Label htmlFor="company_name">Company Name</Label>
+              <Label htmlFor="company_name">{tSignup('companyName')}</Label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <Input
                   id="company_name"
                   type="text"
-                  placeholder="Acme Inc."
+                  placeholder={tSignup('companyNamePlaceholder')}
                   value={formData.company_name}
                   onChange={(e) => handleInputChange("company_name", e.target.value)}
                   className={`pl-10 ${errors.company_name ? "border-red-500" : ""}`}
@@ -283,13 +289,13 @@ export function AuthForm() {
 
           {/* Email Field */}
           <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email">{isLogin ? tLogin('email') : tSignup('email')}</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder={isLogin ? tLogin('emailPlaceholder') : tSignup('emailPlaceholder')}
                 value={formData.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
@@ -303,13 +309,13 @@ export function AuthForm() {
           {/* Contact Number - Only for Signup */}
           {mode === "signup" && (
             <div className="space-y-2">
-              <Label htmlFor="contact_number">Contact Number</Label>
+              <Label htmlFor="contact_number">{tSignup('contactNumber')}</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <Input
                   id="contact_number"
                   type="tel"
-                  placeholder="+1 (555) 123-4567"
+                  placeholder={tSignup('contactNumberPlaceholder')}
                   value={formData.contact_number}
                   onChange={(e) => handleInputChange("contact_number", e.target.value)}
                   className={`pl-10 ${errors.contact_number ? "border-red-500" : ""}`}
@@ -323,13 +329,13 @@ export function AuthForm() {
 
           {/* Password Field */}
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{isLogin ? tLogin('password') : tSignup('password')}</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder={isLogin ? tLogin('passwordPlaceholder') : tSignup('passwordPlaceholder')}
                 value={formData.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
                 className={`pl-10 pr-10 ${errors.password ? "border-red-500" : ""}`}
@@ -354,13 +360,13 @@ export function AuthForm() {
           {/* Confirm Password - Only for Signup */}
           {mode === "signup" && (
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{tSignup('confirmPassword')}</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder={tSignup('confirmPasswordPlaceholder')}
                   value={formData.confirmPassword}
                   onChange={(e) =>
                     handleInputChange("confirmPassword", e.target.value)
@@ -397,10 +403,10 @@ export function AuthForm() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {mode === "login" ? "Signing In..." : "Creating Account..."}
+                {isLogin ? tLogin('signingIn') : tSignup('creatingAccount')}
               </>
             ) : (
-              mode === "login" ? "Sign In" : "Create Account"
+              isLogin ? tLogin('signIn') : tSignup('createAccount')
             )}
           </Button>
         </form>
@@ -413,31 +419,31 @@ export function AuthForm() {
             onClick={() => setMode("forgot-password")}
             className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
           >
-            Forgot password?
+            {tLogin('forgotPassword')}
           </button>
         )}
 
         <div className="text-sm text-center text-gray-600">
           {mode === "login" ? (
             <>
-              Don't have an account?{" "}
+              {tLogin('noAccount')}{" "}
               <button
                 type="button"
                 onClick={toggleMode}
                 className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
               >
-                Sign up
+                {tLogin('signUpLink')}
               </button>
             </>
           ) : mode === "signup" ? (
             <>
-              Already have an account?{" "}
+              {tSignup('haveAccount')}{" "}
               <button
                 type="button"
                 onClick={toggleMode}
                 className="font-semibold text-indigo-600 hover:text-indigo-700 hover:underline"
               >
-                Sign in
+                {tSignup('signInLink')}
               </button>
             </>
           ) : null}

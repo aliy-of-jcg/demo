@@ -5,6 +5,7 @@ import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useTranslations } from 'next-intl';
 
 interface Campaign {
   campaign_id: number;
@@ -41,6 +42,7 @@ interface ApiResponse {
 }
 
 export default function ChannelPerformancePage() {
+  const t = useTranslations('channelPerformance');
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -134,13 +136,13 @@ export default function ChannelPerformancePage() {
       {/* Header */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Channel Performance</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Detailed analysis of campaign performance by media channel</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
         <ExportToPDFButton
           element="[data-export-content]"
-          filename={`channel-performance-${dateRange.start}-to-${dateRange.end}.pdf`}
-          title={`Channel Performance - ${dateRange.start} to ${dateRange.end}`}
+          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
           size="sm"
         />
       </div>
@@ -172,19 +174,19 @@ export default function ChannelPerformancePage() {
               onClick={() => setQuickRange(7)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 7 Days
+              {t('dateRange.last7Days')}
             </button>
             <button
               onClick={() => setQuickRange(30)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 30 Days
+              {t('dateRange.last30Days')}
             </button>
             <button
               onClick={() => setQuickRange(90)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 3 Months
+              {t('dateRange.last3Months')}
             </button>
           </div>
         </div>
@@ -200,8 +202,8 @@ export default function ChannelPerformancePage() {
       {/* Error State */}
       {error && !loading && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-800">Error: {error}</p>
-          <p className="text-red-600 text-sm mt-1">Please try again or check your data connection.</p>
+          <p className="text-red-800">{t('errors.loadFailed')}: {error}</p>
+          <p className="text-red-600 text-sm mt-1">{t('errors.tryAgain')}</p>
         </div>
       )}
 
@@ -211,8 +213,8 @@ export default function ChannelPerformancePage() {
           {/* Chart Section - Channel Comparison */}
           {data.chartData && data.chartData.length > 0 && (
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">Channel Performance Comparison</h2>
-              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Compare visits, conversions, and ad cost across channels</p>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">{t('chart.title')}</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">{t('chart.subtitle')}</p>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={data.chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -221,15 +223,15 @@ export default function ChannelPerformancePage() {
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} />
                   <Tooltip 
                     formatter={(value: any, name: string) => {
-                      if (name === 'adCost') return [formatCurrency(value), 'Ad Cost'];
-                      return [value, name];
+                      if (name === 'adCost') return [formatCurrency(value), t('chart.adCost')];
+                      return [value, name === 'visits' ? t('chart.visits') : name === 'conversions' ? t('chart.conversions') : name];
                     }}
                     contentStyle={{ fontSize: '12px' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Bar yAxisId="left" dataKey="visits" fill="#3b82f6" name="Visits" />
-                  <Bar yAxisId="left" dataKey="conversions" fill="#f59e0b" name="Conversions" />
-                  <Bar yAxisId="right" dataKey="adCost" fill="#10b981" name="Ad Cost (₩)" />
+                  <Bar yAxisId="left" dataKey="visits" fill="#3b82f6" name={t('chart.visits')} />
+                  <Bar yAxisId="left" dataKey="conversions" fill="#f59e0b" name={t('chart.conversions')} />
+                  <Bar yAxisId="right" dataKey="adCost" fill="#10b981" name={t('chart.adCost')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -238,8 +240,8 @@ export default function ChannelPerformancePage() {
           {/* Empty State */}
           {data.channels.length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
-              <p className="text-gray-500">No channel data available for this period</p>
-              <p className="text-xs sm:text-sm text-gray-400 mt-1">Create campaigns to see channel performance</p>
+              <p className="text-gray-500">{t('empty.noData')}</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
             </div>
           )}
 
@@ -258,24 +260,24 @@ export default function ChannelPerformancePage() {
                           {channelData.channel}
                         </h2>
                         <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                          {visibleCampaigns.length} campaign{visibleCampaigns.length !== 1 ? 's' : ''}
+                          {visibleCampaigns.length} {visibleCampaigns.length !== 1 ? t('table.campaigns') : t('table.campaign')}
                         </p>
                       </div>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 text-left lg:text-right">
                         <div>
-                          <p className="text-xs text-gray-600">Total Visits</p>
+                          <p className="text-xs text-gray-600">{t('metrics.totalVisits')}</p>
                           <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{channelData.total_visits.toLocaleString()}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600">Total Conversions</p>
+                          <p className="text-xs text-gray-600">{t('metrics.totalConversions')}</p>
                           <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{channelData.total_conversions}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600">Total Ad Cost</p>
+                          <p className="text-xs text-gray-600">{t('metrics.totalAdCost')}</p>
                           <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{formatCurrency(channelData.total_ad_cost)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-600">Avg CTR</p>
+                          <p className="text-xs text-gray-600">{t('metrics.avgCTR')}</p>
                           <p className={`text-base sm:text-lg lg:text-xl font-bold ${colors.text}`}>{channelData.avg_ctr}%</p>
                         </div>
                       </div>
@@ -289,28 +291,28 @@ export default function ChannelPerformancePage() {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Campaign
+                            {t('table.campaign')}
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ad Type
+                            {t('table.adType')}
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Visits
+                            {t('table.visits')}
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Conversions
+                            {t('table.conversions')}
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Conv. Rate
+                            {t('table.convRate')}
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ad Cost
+                            {t('table.adCost')}
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            CTR
+                            {t('table.ctr')}
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
+                            {t('table.status')}
                           </th>
                         </tr>
                       </thead>
@@ -356,7 +358,7 @@ export default function ChannelPerformancePage() {
                       <tfoot className="bg-gray-100 font-semibold">
                         <tr>
                           <td colSpan={2} className="px-6 py-4 text-sm text-gray-900">
-                            Channel Total
+                            {t('table.channelTotal')}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900">
                             {channelData.total_visits.toLocaleString()}
@@ -400,25 +402,25 @@ export default function ChannelPerformancePage() {
                               {campaign.status}
                             </span>
                           </div>
-                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
-                              <span className="text-gray-500 text-xs">Visits</span>
+                              <span className="text-gray-500 text-xs">{t('mobile.visits')}</span>
                               <p className="font-medium text-gray-900">{campaign.visits.toLocaleString()}</p>
                             </div>
                             <div>
-                              <span className="text-gray-500 text-xs">Conversions</span>
+                              <span className="text-gray-500 text-xs">{t('mobile.conversions')}</span>
                               <p className="font-medium text-gray-900">{campaign.conversions}</p>
                             </div>
                             <div>
-                              <span className="text-gray-500 text-xs">Conv. Rate</span>
+                              <span className="text-gray-500 text-xs">{t('mobile.convRate')}</span>
                               <p className="font-medium text-green-600">{campaign.conversion_rate}%</p>
                             </div>
                             <div>
-                              <span className="text-gray-500 text-xs">CTR</span>
+                              <span className="text-gray-500 text-xs">{t('mobile.ctr')}</span>
                               <p className="font-medium text-blue-600">{campaign.ctr}%</p>
                             </div>
                             <div>
-                              <span className="text-gray-500 text-xs">Ad Cost</span>
+                              <span className="text-gray-500 text-xs">{t('mobile.adCost')}</span>
                               <p className="font-medium text-gray-900">{formatCurrency(campaign.ad_cost)}</p>
                             </div>
                           </div>
@@ -428,18 +430,18 @@ export default function ChannelPerformancePage() {
                     
                     {/* Mobile Totals Card */}
                     <div className="bg-gray-100 p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-3">Channel Total</h3>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('table.channelTotal')}</h3>
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div>
-                          <span className="text-gray-600 text-xs">Visits</span>
+                          <span className="text-gray-600 text-xs">{t('mobile.visits')}</span>
                           <p className="font-semibold text-gray-900">{channelData.total_visits.toLocaleString()}</p>
                         </div>
                         <div>
-                          <span className="text-gray-600 text-xs">Conversions</span>
+                          <span className="text-gray-600 text-xs">{t('mobile.conversions')}</span>
                           <p className="font-semibold text-gray-900">{channelData.total_conversions}</p>
                         </div>
                         <div>
-                          <span className="text-gray-600 text-xs">Conv. Rate</span>
+                          <span className="text-gray-600 text-xs">{t('mobile.convRate')}</span>
                           <p className="font-semibold text-green-600">
                             {channelData.total_visits > 0 
                               ? ((channelData.total_conversions / channelData.total_visits) * 100).toFixed(2)
@@ -447,11 +449,11 @@ export default function ChannelPerformancePage() {
                           </p>
                         </div>
                         <div>
-                          <span className="text-gray-600 text-xs">CTR</span>
+                          <span className="text-gray-600 text-xs">{t('mobile.ctr')}</span>
                           <p className="font-semibold text-blue-600">{channelData.avg_ctr}%</p>
                         </div>
                         <div>
-                          <span className="text-gray-600 text-xs">Ad Cost</span>
+                          <span className="text-gray-600 text-xs">{t('mobile.adCost')}</span>
                           <p className="font-semibold text-gray-900">{formatCurrency(channelData.total_ad_cost)}</p>
                         </div>
                       </div>

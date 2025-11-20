@@ -7,8 +7,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/lib/clipboard';
+import { useTranslations } from 'next-intl';
 
 export default function UTMGeneratorPage() {
+  const t = useTranslations('utmTools.generator');
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('edit');
@@ -76,7 +78,7 @@ export default function UTMGeneratorPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to fetch UTM code');
+        throw new Error(data.error || t('error.loadFailed'));
       }
 
       setFormData({
@@ -91,7 +93,7 @@ export default function UTMGeneratorPage() {
       setTrackingCode(data.utm_code.tracking_code || null);
     } catch (error: any) {
       console.error('Error fetching UTM code:', error);
-      toast.error(error.message || 'Failed to load UTM code');
+      toast.error(error.message || t('error.loadFailed'));
       router.push('/utm-tools');
     } finally {
       setLoading(false);
@@ -99,29 +101,29 @@ export default function UTMGeneratorPage() {
   };
 
   const sourceOptions = [
-    { value: '', label: 'Select source' },
-    { value: 'google', label: 'Google' },
-    { value: 'naver', label: 'Naver' },
-    { value: 'kakao', label: 'Kakao' },
-    { value: 'youtube', label: 'Youtube' },
-    { value: 'facebook', label: 'Facebook' },
-    { value: 'instagram', label: 'Instagram' },
-    { value: 'saramin', label: 'Saramin' },
-    { value: 'email', label: 'Email' },
-    { value: 'other', label: 'Other' }
+    { value: '', label: t('form.selectSource') },
+    { value: 'google', label: t('sourceOptions.google') },
+    { value: 'naver', label: t('sourceOptions.naver') },
+    { value: 'kakao', label: t('sourceOptions.kakao') },
+    { value: 'youtube', label: t('sourceOptions.youtube') },
+    { value: 'facebook', label: t('sourceOptions.facebook') },
+    { value: 'instagram', label: t('sourceOptions.instagram') },
+    { value: 'saramin', label: t('sourceOptions.saramin') },
+    { value: 'email', label: t('sourceOptions.email') },
+    { value: 'other', label: t('sourceOptions.other') }
   ];
 
   const mediumOptions = [
-    { value: '', label: 'Select medium' },
-    { value: 'search', label: 'Search' },
-    { value: 'display', label: 'Display' },
-    { value: 'video', label: 'Video' },
-    { value: 'social', label: 'Social' },
-    { value: 'email', label: 'Email' },
-    { value: 'banner', label: 'Banner' },
-    { value: 'sns', label: 'SNS' },
-    { value: 'referral', label: 'Referral' },
-    { value: 'organic', label: 'Organic' }
+    { value: '', label: t('form.selectMedium') },
+    { value: 'search', label: t('mediumOptions.search') },
+    { value: 'display', label: t('mediumOptions.display') },
+    { value: 'video', label: t('mediumOptions.video') },
+    { value: 'social', label: t('mediumOptions.social') },
+    { value: 'email', label: t('mediumOptions.email') },
+    { value: 'banner', label: t('mediumOptions.banner') },
+    { value: 'sns', label: t('mediumOptions.sns') },
+    { value: 'referral', label: t('mediumOptions.referral') },
+    { value: 'organic', label: t('mediumOptions.organic') }
   ];
 
   const termOptions = [
@@ -176,6 +178,7 @@ export default function UTMGeneratorPage() {
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      toast.success(t('copy.trackingLinkCopied'));
     }
   };
 
@@ -198,18 +201,18 @@ export default function UTMGeneratorPage() {
   const handleSave = async () => {
     // Validation
     if (!formData.campaign_id) {
-      toast.error('Please select a campaign first');
+      toast.error(t('validation.selectCampaign'));
       return;
     }
 
     if (!formData.landing_url) {
-      toast.error('Target landing URL is required');
+      toast.error(t('validation.landingUrlRequired'));
       return;
     }
 
     // These should be auto-filled, but double-check
     if (!formData.name || !formData.utm_source || !formData.utm_medium) {
-      toast.error('Please ensure a campaign is selected');
+      toast.error(t('validation.ensureCampaign'));
       return;
     }
 
@@ -230,7 +233,7 @@ export default function UTMGeneratorPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || `Failed to ${isEditMode ? 'update' : 'create'} UTM code`);
+        throw new Error(data.error || (isEditMode ? t('error.updateFailed') : t('error.createFailed')));
       }
 
       // For new creations, store the tracking code
@@ -238,7 +241,7 @@ export default function UTMGeneratorPage() {
         setTrackingCode(data.utm_code.tracking_code);
       }
 
-      toast.success(`UTM code ${isEditMode ? 'updated' : 'created'} successfully!`);
+      toast.success(isEditMode ? t('success.updated') : t('success.created'));
       
       // Redirect after a short delay to show the success message
       setTimeout(() => {
@@ -246,7 +249,7 @@ export default function UTMGeneratorPage() {
       }, 1000);
     } catch (error: any) {
       console.error('Error saving UTM code:', error);
-      toast.error(error.message || `Failed to ${isEditMode ? 'update' : 'create'} UTM code`);
+      toast.error(error.message || (isEditMode ? t('error.updateFailed') : t('error.createFailed')));
     } finally {
       setSaving(false);
     }
@@ -257,7 +260,7 @@ export default function UTMGeneratorPage() {
       <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-sm sm:text-base text-gray-600">Loading UTM code...</p>
+          <p className="text-sm sm:text-base text-gray-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -272,13 +275,13 @@ export default function UTMGeneratorPage() {
           className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-3 sm:mb-4 text-sm sm:text-base"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to UTM List</span>
+          <span>{t('backToList')}</span>
         </Link>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-          {isEditMode ? 'Edit UTM Code' : 'UTM Code Generator'}
+          {isEditMode ? t('editTitle') : t('title')}
         </h1>
         <p className="text-sm sm:text-base text-gray-600 mt-1">
-          {isEditMode ? 'Update tracking URL with UTM parameters' : 'Create tracking URLs with UTM parameters for campaign attribution'}
+          {isEditMode ? t('editSubtitle') : t('subtitle')}
         </p>
       </div>
 
@@ -286,20 +289,20 @@ export default function UTMGeneratorPage() {
         {/* Form Section */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">UTM Parameters</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">{t('utmParameters')}</h2>
             
             <div className="space-y-4 sm:space-y-6">
               {/* Link to Campaign (First - Required) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Link to Campaign <span className="text-red-500">*</span>
+                  {t('form.linkToCampaign')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.campaign_id}
                   onChange={(e) => handleChange('campaign_id', e.target.value)}
                   className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">-- Select Campaign --</option>
+                  <option value="">{t('form.selectCampaign')}</option>
                   {campaigns.map((campaign) => (
                     <option key={campaign.id} value={campaign.id}>
                       {campaign.name}
@@ -307,14 +310,14 @@ export default function UTMGeneratorPage() {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Select a campaign - UTM parameters will be auto-filled
+                  {t('form.campaignHint')}
                 </p>
               </div>
 
               {/* UTM Name - Auto-filled from campaign */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  UTM Name <span className="text-red-500">*</span>
+                  {t('form.utmName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -322,71 +325,61 @@ export default function UTMGeneratorPage() {
                   readOnly
                   className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-50"
                 />
-                <p className="text-xs text-gray-500 mt-1">Auto-filled from selected campaign</p>
+                <p className="text-xs text-gray-500 mt-1">{t('form.utmNameHint')}</p>
               </div>
 
               {/* Landing URL */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Target Landing URL <span className="text-red-500">*</span>
+                  {t('form.targetLandingUrl')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="url"
                   value={formData.landing_url}
                   onChange={(e) => handleChange('landing_url', e.target.value)}
-                  placeholder="https://www.example.com/page"
+                  placeholder={t('form.landingUrlPlaceholder')}
                   className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <p className="text-xs text-gray-500 mt-1">The destination URL where users will land</p>
+                <p className="text-xs text-gray-500 mt-1">{t('form.landingUrlHint')}</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {/* UTM Source - Left side */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    UTM Source <span className="text-red-500">*</span>
+                    {t('form.utmSource')} <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.utm_source}
                     onChange={(e) => handleChange('utm_source', e.target.value)}
                     className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select source</option>
-                    <option value="google">Google</option>
-                    <option value="naver">Naver</option>
-                    <option value="kakao">Kakao</option>
-                    <option value="youtube">Youtube</option>
-                    <option value="facebook">Facebook</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="saramin">Saramin</option>
-                    <option value="email">Email</option>
-                    <option value="other">Other</option>
+                    {sourceOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">Platform where the ad will run (e.g., Google, Naver, Kakao)</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('form.sourceHint')}</p>
                 </div>
 
                 {/* UTM Medium - Right side */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    UTM Medium <span className="text-red-500">*</span>
+                    {t('form.utmMedium')} <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.utm_medium}
                     onChange={(e) => handleChange('utm_medium', e.target.value)}
                     className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    <option value="">Select medium</option>
-                    <option value="search">Search</option>
-                    <option value="display">Display</option>
-                    <option value="video">Video</option>
-                    <option value="social">Social</option>
-                    <option value="email">Email</option>
-                    <option value="banner">Banner</option>
-                    <option value="sns">SNS</option>
-                    <option value="referral">Referral</option>
-                    <option value="organic">Organic</option>
+                    {mediumOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">Ad format type (e.g., Search, Banner, Video, SNS)</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('form.mediumHint')}</p>
                 </div>
               </div>
 
@@ -394,30 +387,30 @@ export default function UTMGeneratorPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    UTM Term
+                    {t('form.utmTerm')}
                   </label>
                   <input
                     type="text"
                     value={formData.utm_term}
                     onChange={(e) => handleChange('utm_term', e.target.value)}
-                    placeholder="e.g., running+shoes"
+                    placeholder={t('form.termPlaceholder')}
                     className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Identify paid search keywords (optional)</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('form.termHint')}</p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    UTM Content
+                    {t('form.utmContent')}
                   </label>
                   <input
                     type="text"
                     value={formData.utm_content}
                     onChange={(e) => handleChange('utm_content', e.target.value)}
-                    placeholder="e.g., banner_top, sidebar_ad"
+                    placeholder={t('form.contentPlaceholder')}
                     className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Differentiate similar content or links (optional)</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('form.contentHint')}</p>
                 </div>
               </div>
 
@@ -429,7 +422,7 @@ export default function UTMGeneratorPage() {
                   className="w-full sm:w-auto px-6 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  <span>Reset</span>
+                  <span>{t('actions.reset')}</span>
                 </button>
                 <button
                   onClick={handleSave}
@@ -439,10 +432,10 @@ export default function UTMGeneratorPage() {
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{isEditMode ? 'Updating...' : 'Creating...'}</span>
+                      <span>{isEditMode ? t('actions.updating') : t('actions.creating')}</span>
                     </>
                   ) : (
-                    <span>{isEditMode ? 'Update UTM Code' : 'Create UTM Code'}</span>
+                    <span>{isEditMode ? t('actions.update') : t('actions.create')}</span>
                   )}
                 </button>
               </div>
@@ -453,19 +446,19 @@ export default function UTMGeneratorPage() {
         {/* Preview Section */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-8">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Generated URL</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('generatedUrl')}</h2>
             
             {/* Tracking Code Display (for edit mode) */}
             {trackingCode && (
               <div className="mb-3 sm:mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs font-medium text-blue-900 mb-1">Tracking Code</p>
+                <p className="text-xs font-medium text-blue-900 mb-1">{t('preview.trackingCode')}</p>
                 <div className="flex items-center gap-2">
                   <code className="text-xs sm:text-sm text-blue-700 font-mono break-all">/t/{trackingCode}</code>
                   <button
                     onClick={async () => {
                       const success = await copyToClipboard(`${window.location.origin}/t/${trackingCode}`);
                       if (success) {
-                        toast.success('Tracking link copied!');
+                        toast.success(t('copy.trackingLinkCopied'));
                       }
                     }}
                     className="text-blue-600 hover:text-blue-800 flex-shrink-0"
@@ -477,7 +470,7 @@ export default function UTMGeneratorPage() {
             )}
             
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-              <p className="text-xs text-gray-600 mb-2 font-medium">Full Tracking URL:</p>
+              <p className="text-xs text-gray-600 mb-2 font-medium">{t('preview.fullTrackingUrl')}</p>
               <div className="bg-white border border-gray-200 rounded p-2 sm:p-3 break-all text-xs sm:text-sm text-gray-700 max-h-32 sm:max-h-40 overflow-y-auto">
                 {generatedUrl}
               </div>
@@ -490,23 +483,23 @@ export default function UTMGeneratorPage() {
               {copied ? (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Copied!</span>
+                  <span>{t('preview.copied')}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>Copy URL</span>
+                  <span>{t('preview.copyUrl')}</span>
                 </>
               )}
             </button>
 
             {/* UTM Parameters Preview */}
             <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200">
-              <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3">UTM Parameters:</h3>
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-900 mb-3">{t('preview.utmParameters')}</h3>
               <div className="space-y-2">
                 {formData.campaign_id && (
                   <div className="flex justify-between text-xs gap-2">
-                    <span className="text-gray-600">Campaign:</span>
+                    <span className="text-gray-600">{t('preview.campaign')}</span>
                     <span className="text-gray-900 font-medium truncate ml-2">
                       {campaigns.find(c => c.id.toString() === formData.campaign_id)?.name || '-'}
                     </span>
@@ -514,12 +507,12 @@ export default function UTMGeneratorPage() {
                 )}
                 {formData.name && (
                   <div className="flex justify-between text-xs gap-2">
-                    <span className="text-gray-600">Name:</span>
+                    <span className="text-gray-600">{t('preview.name')}</span>
                     <span className="text-gray-900 font-medium truncate ml-2">{formData.name}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">UTM Campaign:</span>
+                  <span className="text-gray-600">{t('preview.utmCampaign')}</span>
                   <span className="text-gray-900 font-medium truncate">
                     {formData.campaign_id 
                       ? campaigns.find(c => c.id.toString() === formData.campaign_id)?.name || '-'
@@ -527,19 +520,19 @@ export default function UTMGeneratorPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">UTM Source:</span>
+                  <span className="text-gray-600">{t('preview.utmSource')}</span>
                   <span className="text-gray-900 font-medium">{formData.utm_source || '-'}</span>
                 </div>
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">UTM Medium:</span>
+                  <span className="text-gray-600">{t('preview.utmMedium')}</span>
                   <span className="text-gray-900 font-medium">{formData.utm_medium || '-'}</span>
                 </div>
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">UTM Term:</span>
+                  <span className="text-gray-600">{t('preview.utmTerm')}</span>
                   <span className="text-gray-900 font-medium">{formData.utm_term || '-'}</span>
                 </div>
                 <div className="flex justify-between text-xs gap-2">
-                  <span className="text-gray-600">UTM Content:</span>
+                  <span className="text-gray-600">{t('preview.utmContent')}</span>
                   <span className="text-gray-900 font-medium truncate">{formData.utm_content || '-'}</span>
                 </div>
               </div>
@@ -548,10 +541,7 @@ export default function UTMGeneratorPage() {
             {/* Help Text */}
             <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 rounded-lg">
               <p className="text-xs text-blue-800">
-                <strong>Tip:</strong> Fill in all required fields (*) to generate a complete tracking URL. 
-                {isEditMode 
-                  ? ' Click "Update UTM Code" to save your changes.' 
-                  : ' Click "Create UTM Code" to save and generate a tracking link.'}
+                <strong>Tip:</strong> {t('preview.tip', { action: isEditMode ? t('preview.tipEdit') : t('preview.tipCreate') })}
               </p>
             </div>
           </div>

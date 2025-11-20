@@ -6,6 +6,7 @@ import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
+import { useTranslations } from 'next-intl';
 
 interface WebsiteData {
   domain: string;
@@ -42,6 +43,7 @@ interface ApiResponse {
 }
 
 export default function TrackedWebsitesPage() {
+  const t = useTranslations('trackedWebsites');
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -59,20 +61,17 @@ export default function TrackedWebsitesPage() {
 
   // Toggle website status
   const handleToggleStatus = async (domain: string, currentStatus: boolean) => {
-    const action = currentStatus ? 'disable' : 'enable';
-    const actionText = currentStatus ? 'Disable' : 'Enable';
-    
     const result = await Swal.fire({
-      title: `${actionText} Tracking?`,
+      title: currentStatus ? t('toggle.title') : t('toggle.titleEnable'),
       text: currentStatus
-        ? `Are you sure you want to disable tracking for ${domain}? New tracking requests from this domain will be blocked, but historical data will remain intact.`
-        : `Enable tracking for ${domain}? This domain will be able to send tracking data again.`,
+        ? t('toggle.textDisable', { domain })
+        : t('toggle.textEnable', { domain }),
       icon: currentStatus ? 'warning' : 'question',
       showCancelButton: true,
       confirmButtonColor: currentStatus ? '#ef4444' : '#10b981',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: `Yes, ${actionText} it!`,
-      cancelButtonText: 'Cancel'
+      confirmButtonText: currentStatus ? t('toggle.confirm') : t('toggle.confirmEnable'),
+      cancelButtonText: t('toggle.cancel')
     });
 
     if (!result.isConfirmed) return;
@@ -99,11 +98,11 @@ export default function TrackedWebsitesPage() {
     toast.promise(
       promise,
       {
-        loading: `${actionText}ing tracking...`,
+        loading: currentStatus ? t('toggle.disabling') : t('toggle.enabling'),
         success: currentStatus 
-          ? `Tracking disabled for ${domain}`
-          : `Tracking enabled for ${domain}`,
-        error: (err) => `Failed to ${action}: ${err.message}`,
+          ? t('toggle.disabled', { domain })
+          : t('toggle.enabled', { domain }),
+        error: (err) => t('toggle.failed', { error: err.message }),
       }
     );
 
@@ -180,15 +179,15 @@ export default function TrackedWebsitesPage() {
       {/* Header */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tracked Websites</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            Websites using CosMos AI tracking script
+            {t('subtitle')}
           </p>
         </div>
         <ExportToPDFButton
           element="[data-export-content]"
-          filename={`tracked-websites-${dateRange.start}-to-${dateRange.end}.pdf`}
-          title={`Tracked Websites - ${dateRange.start} to ${dateRange.end}`}
+          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
           size="sm"
         />
       </div>
@@ -220,19 +219,19 @@ export default function TrackedWebsitesPage() {
               onClick={() => setQuickRange(30)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 30 Days
+              {t('dateRange.last30Days')}
             </button>
             <button
               onClick={() => setQuickRange(90)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 3 Months
+              {t('dateRange.last3Months')}
             </button>
             <button
               onClick={() => setQuickRange(180)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 6 Months
+              {t('dateRange.last6Months')}
             </button>
           </div>
         </div>
@@ -248,8 +247,8 @@ export default function TrackedWebsitesPage() {
       {/* Error State */}
       {error && !loading && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-800">Error: {error}</p>
-          <p className="text-red-600 text-sm mt-1">Please try again or check your data connection.</p>
+          <p className="text-red-800">{t('errors.loadFailed')}: {error}</p>
+          <p className="text-red-600 text-sm mt-1">{t('errors.tryAgain')}</p>
         </div>
       )}
 
@@ -261,7 +260,7 @@ export default function TrackedWebsitesPage() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Total Websites</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.totalWebsites')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_websites}
                   </p>
@@ -273,7 +272,7 @@ export default function TrackedWebsitesPage() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-green-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Active (7d)</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.active7d')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">
                     {data.summary.active_websites}
                   </p>
@@ -285,7 +284,7 @@ export default function TrackedWebsitesPage() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Total Sessions</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.totalSessions')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_sessions.toLocaleString()}
                   </p>
@@ -297,7 +296,7 @@ export default function TrackedWebsitesPage() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Unique Visitors</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.uniqueVisitors')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_visitors.toLocaleString()}
                   </p>
@@ -309,7 +308,7 @@ export default function TrackedWebsitesPage() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Pageviews</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.pageviews')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_pageviews.toLocaleString()}
                   </p>
@@ -321,7 +320,7 @@ export default function TrackedWebsitesPage() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Conversions</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.conversions')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_conversions.toLocaleString()}
                   </p>
@@ -342,7 +341,7 @@ export default function TrackedWebsitesPage() {
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                All Websites ({data.websites.length})
+                {t('filters.allWebsites')} ({data.websites.length})
               </button>
               <button
                 onClick={() => setFilterStatus('active')}
@@ -352,7 +351,7 @@ export default function TrackedWebsitesPage() {
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                Active ({data.summary.active_websites})
+                {t('filters.active')} ({data.summary.active_websites})
               </button>
               <button
                 onClick={() => setFilterStatus('inactive')}
@@ -362,7 +361,7 @@ export default function TrackedWebsitesPage() {
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                Inactive ({data.summary.inactive_websites})
+                {t('filters.inactive')} ({data.summary.inactive_websites})
               </button>
               <button
                 onClick={() => setFilterStatus('disabled')}
@@ -372,7 +371,7 @@ export default function TrackedWebsitesPage() {
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                Disabled ({data.summary.disabled_websites})
+                {t('filters.disabled')} ({data.summary.disabled_websites})
               </button>
             </div>
           </div>
@@ -381,11 +380,11 @@ export default function TrackedWebsitesPage() {
           {filteredWebsites.length === 0 && (
             <div className="bg-white rounded-b-lg shadow-sm border border-t-0 border-gray-200 p-8 sm:p-12 text-center">
               <Globe className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">No websites found</p>
+              <p className="text-gray-500">{t('empty.noWebsites')}</p>
               <p className="text-xs sm:text-sm text-gray-400 mt-1">
                 {filterStatus !== 'all' 
-                  ? `No ${filterStatus} websites in this period`
-                  : 'Add the tracking script to websites to see them here'}
+                  ? t('empty.hintFiltered', { status: t(`status.${filterStatus}`) })
+                  : t('empty.hint')}
               </p>
             </div>
           )}
@@ -398,31 +397,31 @@ export default function TrackedWebsitesPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Website
+                        {t('table.website')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
+                        {t('table.status')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Sessions
+                        {t('table.sessions')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Visitors
+                        {t('table.visitors')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pageviews
+                        {t('table.pageviews')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Conversions
+                        {t('table.conversions')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        First Seen
+                        {t('table.firstSeen')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Last Seen
+                        {t('table.lastSeen')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
+                        {t('table.actions')}
                       </th>
                     </tr>
                   </thead>
@@ -441,16 +440,16 @@ export default function TrackedWebsitesPage() {
                           {website.status === 'Disabled' ? (
                             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                               <Ban className="w-3 h-3 mr-1" />
-                              Disabled
+                              {t('status.disabled')}
                             </span>
                           ) : website.status === 'Active' ? (
                             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                               <Activity className="w-3 h-3 mr-1" />
-                              Active
+                              {t('status.active')}
                             </span>
                           ) : (
                             <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                              Inactive
+                              {t('status.inactive')}
                             </span>
                           )}
                         </td>
@@ -485,17 +484,17 @@ export default function TrackedWebsitesPage() {
                             {togglingDomain === website.domain ? (
                               <>
                                 <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                ...
+                                {t('table.processing')}
                               </>
                             ) : website.is_enabled ? (
                               <>
                                 <Ban className="w-3 h-3" />
-                                Disable
+                                {t('table.disable')}
                               </>
                             ) : (
                               <>
                                 <CheckCircle className="w-3 h-3" />
-                                Enable
+                                {t('table.enable')}
                               </>
                             )}
                           </button>
@@ -530,34 +529,34 @@ export default function TrackedWebsitesPage() {
                     {website.status === 'Disabled' ? (
                       <span className="px-2 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 ml-2 flex-shrink-0">
                         <Ban className="w-3 h-3 mr-1" />
-                        Disabled
+                        {t('status.disabled')}
                       </span>
                     ) : website.status === 'Active' ? (
                       <span className="px-2 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 ml-2 flex-shrink-0">
                         <Activity className="w-3 h-3 mr-1" />
-                        Active
+                        {t('status.active')}
                       </span>
                     ) : (
                       <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 ml-2 flex-shrink-0">
-                        Inactive
+                        {t('status.inactive')}
                       </span>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                     <div>
-                      <span className="text-gray-500 text-xs">Sessions</span>
+                      <span className="text-gray-500 text-xs">{t('table.sessions')}</span>
                       <p className="font-medium text-gray-900">{website.total_sessions.toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 text-xs">Visitors</span>
+                      <span className="text-gray-500 text-xs">{t('table.visitors')}</span>
                       <p className="font-medium text-gray-900">{website.unique_visitors.toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 text-xs">Pageviews</span>
+                      <span className="text-gray-500 text-xs">{t('table.pageviews')}</span>
                       <p className="font-medium text-gray-900">{website.total_pageviews.toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 text-xs">Conversions</span>
+                      <span className="text-gray-500 text-xs">{t('table.conversions')}</span>
                       <p className="font-medium text-orange-600">{website.total_conversions}</p>
                     </div>
                   </div>
@@ -573,17 +572,17 @@ export default function TrackedWebsitesPage() {
                     {togglingDomain === website.domain ? (
                       <>
                         <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        Processing...
+                        {t('table.processing')}
                       </>
                     ) : website.is_enabled ? (
                       <>
                         <Ban className="w-3 h-3" />
-                        Disable Tracking
+                        {t('table.disableTracking')}
                       </>
                     ) : (
                       <>
                         <CheckCircle className="w-3 h-3" />
-                        Enable Tracking
+                        {t('table.enableTracking')}
                       </>
                     )}
                   </button>

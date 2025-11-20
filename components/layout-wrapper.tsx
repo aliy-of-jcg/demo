@@ -3,14 +3,18 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Loader2, Menu } from "lucide-react";
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isAuthPage = pathname?.startsWith("/auth");
-  const isResetPasswordPage = pathname?.startsWith("/reset-password");
-  const isLinkExpiredPage = pathname?.startsWith("/link-expired");
+  
+  // Extract locale from pathname (e.g., /en/auth -> en, /ko/campaigns -> ko)
+  const locale = pathname?.split('/')[1] || 'en';
+  const isAuthPage = pathname?.includes("/auth");
+  const isResetPasswordPage = pathname?.includes("/reset-password");
+  const isLinkExpiredPage = pathname?.includes("/link-expired");
   const isPublicPage = isAuthPage || isResetPasswordPage || isLinkExpiredPage;
   const [isAuthenticating, setIsAuthenticating] = useState(!isPublicPage);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -29,8 +33,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         const token = localStorage.getItem("auth_token");
         
         if (!token) {
-          // Use replace to avoid adding to history
-          window.location.replace("/auth");
+          // Use replace to avoid adding to history - use locale-aware path
+          window.location.replace(`/${locale}/auth`);
           return;
         }
 
@@ -45,8 +49,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         if (!result.valid) {
           localStorage.removeItem("auth_token");
           localStorage.removeItem("user");
-          // Use replace to avoid back button issues
-          window.location.replace("/auth");
+          // Use replace to avoid back button issues - use locale-aware path
+          window.location.replace(`/${locale}/auth`);
         } else {
           if (result.user) {
             localStorage.setItem("user", JSON.stringify(result.user));
@@ -58,7 +62,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         console.error("Auth check failed:", error);
         localStorage.removeItem("auth_token");
         localStorage.removeItem("user");
-        window.location.replace("/auth");
+        window.location.replace(`/${locale}/auth`);
       }
     };
 
@@ -68,7 +72,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     }, 100);
 
     return () => clearTimeout(timeout);
-  }, [isPublicPage]);
+  }, [isPublicPage, locale]);
 
   // Close mobile sidebar when route changes
   useEffect(() => {
@@ -77,7 +81,15 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
   // Public pages (auth, reset password, and link expired): no sidebar, full screen
   if (isPublicPage) {
-    return <>{children}</>;
+    return (
+      <>
+        {/* Language Switcher - Fixed top right for public pages */}
+        <div className="fixed top-4 right-4 z-50">
+          <LanguageSwitcher />
+        </div>
+        {children}
+      </>
+    );
   }
 
   // Show loading screen while authenticating (prevents sidebar flash)

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { PageFooter } from '@/components/page-footer';
 import { copyToClipboard } from '@/lib/clipboard';
+import { useTranslations } from 'next-intl';
 
 interface Course {
   id: number;
@@ -18,6 +19,7 @@ export default function NewCampaignPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const duplicateId = searchParams.get('duplicate');
+  const t = useTranslations('campaigns.create');
   
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
@@ -95,11 +97,11 @@ export default function NewCampaignPage() {
           utm_content: campaign.utm_content || '',
           landing_url: campaign.landing_url || ''
         });
-        toast.success('Campaign data loaded for duplication');
+        toast.success(t('actions.dataLoaded'));
       }
     } catch (error) {
       console.error('Error fetching campaign for duplication:', error);
-      toast.error('Failed to load campaign data');
+      toast.error(t('actions.loadFailed'));
     } finally {
       setLoadingDuplicate(false);
     }
@@ -167,48 +169,48 @@ export default function NewCampaignPage() {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name) {
-      newErrors.name = 'Campaign name is required';
+      newErrors.name = t('errors.nameRequired');
     } else if (!/^[a-zA-Z0-9_]+$/.test(formData.name)) {
-      newErrors.name = 'Only letters, numbers, and underscores are allowed';
+      newErrors.name = t('errors.nameInvalid');
     }
 
     // UTM name is optional - will be auto-generated if not provided
     if (formData.utm_name && !/^[a-zA-Z0-9_]+$/.test(formData.utm_name)) {
-      newErrors.utm_name = 'Only letters, numbers, and underscores are allowed';
+      newErrors.utm_name = t('errors.utmNameInvalid');
     }
 
     if (!formData.course_id) {
-      newErrors.course_id = 'Please select a course';
+      newErrors.course_id = t('errors.courseRequired');
     }
 
     if (formData.source === 'select') {
-      newErrors.source = 'Please select a UTM source';
+      newErrors.source = t('errors.sourceRequired');
     }
 
     if (formData.medium === 'select') {
-      newErrors.medium = 'Please select a UTM medium';
+      newErrors.medium = t('errors.mediumRequired');
     }
 
     if (!formData.start_date) {
-      newErrors.start_date = 'Please select a start date';
+      newErrors.start_date = t('errors.startDateRequired');
     }
 
     if (!formData.end_date) {
-      newErrors.end_date = 'Please select an end date';
+      newErrors.end_date = t('errors.endDateRequired');
     }
 
     if (formData.start_date && formData.end_date && formData.start_date > formData.end_date) {
-      newErrors.end_date = 'End date must be after start date';
+      newErrors.end_date = t('errors.endDateInvalid');
     }
 
     if (!formData.budget) {
-      newErrors.budget = 'Please enter total budget';
+      newErrors.budget = t('errors.budgetRequired');
     } else if (parseInt(formData.budget) <= 0) {
-      newErrors.budget = 'Budget must be greater than 0';
+      newErrors.budget = t('errors.budgetInvalid');
     }
 
     if (!formData.landing_url) {
-      newErrors.landing_url = 'Target landing URL is required';
+      newErrors.landing_url = t('errors.landingUrlRequired');
     }
 
     setErrors(newErrors);
@@ -223,7 +225,7 @@ export default function NewCampaignPage() {
         });
         fieldRefs[firstErrorField].current?.focus();
       }
-      toast.error('Please fill in all required fields correctly');
+      toast.error(t('errors.fillAllFields'));
     }
     
     return Object.keys(newErrors).length === 0;
@@ -251,7 +253,7 @@ export default function NewCampaignPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to create campaign');
+          throw new Error(data.error || t('actions.createFailed'));
         }
 
         // Show tracking link if generated
@@ -263,12 +265,12 @@ export default function NewCampaignPage() {
           const success = await copyToClipboard(shortUrl);
           if (success) {
             toast.success(
-              `Tracking link copied: ${shortUrl}`,
+              t('actions.trackingLinkCopied', { url: shortUrl }),
               { duration: 5000 }
             );
           } else {
             toast.success(
-              `Tracking link created: ${shortUrl}`,
+              t('actions.trackingLinkCreated', { url: shortUrl }),
               { duration: 5000 }
             );
           }
@@ -279,9 +281,9 @@ export default function NewCampaignPage() {
         return data;
       })(),
       {
-        loading: 'Creating campaign...',
-        success: 'Campaign created successfully!',
-        error: (err) => `Error: ${err.message}`,
+        loading: t('actions.creating'),
+        success: t('actions.success'),
+        error: (err) => `${t('actions.error')}: ${err.message}`,
         finally: () => setLoading(false)
       }
     );
@@ -294,7 +296,7 @@ export default function NewCampaignPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading campaign data for duplication...</p>
+          <p className="mt-4 text-gray-600">{t('loadingDuplicate')}</p>
         </div>
       </div>
     );
@@ -306,13 +308,13 @@ export default function NewCampaignPage() {
       <div className="mb-4 sm:mb-6">
         <Link href="/campaigns" className="flex items-center text-gray-600 hover:text-gray-900 mb-2 text-sm sm:text-base">
           <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span>Back to List</span>
+          <span>{t('backToList')}</span>
         </Link>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-          {duplicateId ? 'Duplicate Campaign' : 'Create New Campaign'}
+          {duplicateId ? t('duplicateTitle') : t('title')}
         </h1>
         <p className="text-sm sm:text-base text-gray-600 mt-1">
-          {duplicateId ? 'Review and update the campaign details below' : 'Please register a new campaign'}
+          {duplicateId ? t('duplicateSubtitle') : t('subtitle')}
         </p>
       </div>
 
@@ -324,46 +326,46 @@ export default function NewCampaignPage() {
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                Basic Information
+                {t('sections.basicInfo')}
               </h2>
-              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">Enter the basic information for the campaign</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">{t('sections.basicInfoDesc')}</p>
 
               <div className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Campaign Name <span className="text-red-500">*</span>
+                    {t('fields.campaignName')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     ref={fieldRefs.name}
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g: 2501_ai_education"
+                    placeholder={t('placeholders.campaignName')}
                     className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
                   {errors.name && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.name}</p>}
-                  <p className="text-xs text-gray-500 mt-1">Only letters, numbers, and underscores allowed</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('hints.campaignNameChars')}</p>
                 </div>
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    UTM Tracking Link Name
+                    {t('fields.utmTrackingLinkName')}
                   </label>
                   <input
                     type="text"
                     value={formData.utm_name}
                     onChange={(e) => setFormData({ ...formData, utm_name: e.target.value })}
-                    placeholder="e.g: 2501_ai_education_naver_search"
+                    placeholder={t('placeholders.utmTrackingLinkName')}
                     className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.utm_name ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
                   {errors.utm_name && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.utm_name}</p>}
-                  <p className="text-xs text-gray-500 mt-1">Unique identifier for the tracking link (will be auto-generated if left empty)</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('hints.utmNameAuto')}</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                      Course <span className="text-red-500">*</span>
+                      {t('fields.course')} <span className="text-red-500">*</span>
                     </label>
                     <select
                       ref={fieldRefs.course_id}
@@ -371,7 +373,7 @@ export default function NewCampaignPage() {
                       onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
                       className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.course_id ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     >
-                      <option value="">Select</option>
+                      <option value="">{t('placeholders.select')}</option>
                       {courses.map(course => (
                         <option key={course.id} value={course.id}>
                           {course.name}
@@ -383,27 +385,27 @@ export default function NewCampaignPage() {
 
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                      Status <span className="text-red-500">*</span>
+                      {t('fields.status')} <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                       className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="waiting">Waiting</option>
-                      <option value="active">Active</option>
-                      <option value="paused">Paused</option>
-                      <option value="ended">Ended</option>
+                      <option value="waiting">{t('status.waiting')}</option>
+                      <option value="active">{t('status.active')}</option>
+                      <option value="paused">{t('status.paused')}</option>
+                      <option value="ended">{t('status.ended')}</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('fields.description')}</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Enter a brief description of the campaign"
+                    placeholder={t('placeholders.description')}
                     rows={3}
                     className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -415,14 +417,14 @@ export default function NewCampaignPage() {
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                Period & Budget
+                {t('sections.periodBudget')}
               </h2>
-              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">Set the campaign period and budget</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">{t('sections.periodBudgetDesc')}</p>
 
               <div className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Campaign Period <span className="text-red-500">*</span>
+                    {t('fields.campaignPeriod')} <span className="text-red-500">*</span>
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <input
@@ -448,14 +450,14 @@ export default function NewCampaignPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                      Total Budget <span className="text-red-500">*</span>
+                      {t('fields.totalBudget')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       ref={fieldRefs.budget}
                       type="number"
                       value={formData.budget}
                       onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                      placeholder="5000000"
+                      placeholder={t('placeholders.totalBudget')}
                       className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.budget ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     />
                     <p className="text-xs text-gray-500 mt-1">₩</p>
@@ -464,11 +466,11 @@ export default function NewCampaignPage() {
 
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                      Daily Budget (Optional)
+                      {t('fields.dailyBudget')}
                     </label>
                     <input
                       type="text"
-                      value={formData.daily_budget ? `${parseInt(formData.daily_budget).toLocaleString()}` : 'Auto-calculated'}
+                      value={formData.daily_budget ? `${parseInt(formData.daily_budget).toLocaleString()}` : t('hints.dailyBudgetAuto')}
                       readOnly
                       className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50"
                     />
@@ -477,7 +479,7 @@ export default function NewCampaignPage() {
                 </div>
 
                 {campaignPeriod > 0 && (
-                  <p className="text-xs sm:text-sm text-blue-600">Total Budget ÷ Campaign Days</p>
+                  <p className="text-xs sm:text-sm text-blue-600">{t('hints.budgetCalculation')}</p>
                 )}
               </div>
             </div>
@@ -486,31 +488,31 @@ export default function NewCampaignPage() {
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                UTM Parameters
+                {t('sections.utmParams')}
               </h2>
-              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">Configure UTM tracking parameters for this campaign</p>
+              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">{t('sections.utmParamsDesc')}</p>
 
               <div className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Target Landing URL <span className="text-red-500">*</span>
+                    {t('fields.targetLandingUrl')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     ref={fieldRefs.landing_url}
                     type="url"
                     value={formData.landing_url}
                     onChange={(e) => setFormData({ ...formData, landing_url: e.target.value })}
-                    placeholder="https://www.example.com/page"
+                    placeholder={t('placeholders.landingUrl')}
                     className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.landing_url ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
                   {errors.landing_url && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.landing_url}</p>}
-                  <p className="text-xs text-gray-500 mt-1">The destination URL where users will land</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('hints.landingUrlDesc')}</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                      UTM Source <span className="text-red-500">*</span>
+                      {t('fields.utmSource')} <span className="text-red-500">*</span>
                     </label>
                     <select
                       ref={fieldRefs.source}
@@ -518,24 +520,24 @@ export default function NewCampaignPage() {
                       onChange={(e) => setFormData({ ...formData, source: e.target.value })}
                       className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.source ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     >
-                      <option value="select">Select source</option>
-                      <option value="google">Google</option>
-                      <option value="naver">Naver</option>
-                      <option value="kakao">Kakao</option>
-                      <option value="youtube">Youtube</option>
-                      <option value="facebook">Facebook</option>
-                      <option value="instagram">Instagram</option>
-                      <option value="saramin">Saramin</option>
-                      <option value="email">Email</option>
-                      <option value="other">Other</option>
+                      <option value="select">{t('placeholders.selectSource')}</option>
+                      <option value="google">{t('sources.google')}</option>
+                      <option value="naver">{t('sources.naver')}</option>
+                      <option value="kakao">{t('sources.kakao')}</option>
+                      <option value="youtube">{t('sources.youtube')}</option>
+                      <option value="facebook">{t('sources.facebook')}</option>
+                      <option value="instagram">{t('sources.instagram')}</option>
+                      <option value="saramin">{t('sources.saramin')}</option>
+                      <option value="email">{t('sources.email')}</option>
+                      <option value="other">{t('sources.other')}</option>
                     </select>
                     {errors.source && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.source}</p>}
-                    <p className="text-xs text-gray-500 mt-1">Platform where the ad will run (e.g., Google, Naver, Kakao)</p>
+                    <p className="text-xs text-gray-500 mt-1">{t('hints.utmSourceDesc')}</p>
                   </div>
 
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                      UTM Medium <span className="text-red-500">*</span>
+                      {t('fields.utmMedium')} <span className="text-red-500">*</span>
                     </label>
                     <select
                       ref={fieldRefs.medium}
@@ -543,45 +545,45 @@ export default function NewCampaignPage() {
                       onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
                       className={`w-full px-3 sm:px-4 py-2 text-sm border ${errors.medium ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                     >
-                      <option value="select">Select medium</option>
-                      <option value="search">Search</option>
-                      <option value="display">Display</option>
-                      <option value="video">Video</option>
-                      <option value="social">Social</option>
-                      <option value="email">Email</option>
-                      <option value="banner">Banner</option>
-                      <option value="sns">SNS</option>
-                      <option value="referral">Referral</option>
-                      <option value="organic">Organic</option>
+                      <option value="select">{t('placeholders.selectMedium')}</option>
+                      <option value="search">{t('mediums.search')}</option>
+                      <option value="display">{t('mediums.display')}</option>
+                      <option value="video">{t('mediums.video')}</option>
+                      <option value="social">{t('mediums.social')}</option>
+                      <option value="email">{t('mediums.email')}</option>
+                      <option value="banner">{t('mediums.banner')}</option>
+                      <option value="sns">{t('mediums.sns')}</option>
+                      <option value="referral">{t('mediums.referral')}</option>
+                      <option value="organic">{t('mediums.organic')}</option>
                     </select>
                     {errors.medium && <p className="text-red-500 text-xs sm:text-sm mt-1">{errors.medium}</p>}
-                    <p className="text-xs text-gray-500 mt-1">Ad format type (e.g., Search, Banner, Video, SNS)</p>
+                    <p className="text-xs text-gray-500 mt-1">{t('hints.utmMediumDesc')}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Term</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('fields.utmTerm')}</label>
                     <input
                       type="text"
                       value={formData.utm_term}
                       onChange={(e) => setFormData({ ...formData, utm_term: e.target.value })}
-                      placeholder="e.g., running+shoes"
+                      placeholder={t('placeholders.utmTerm')}
                       className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Identify paid search keywords (optional)</p>
+                    <p className="text-xs text-gray-500 mt-1">{t('hints.utmTermDesc')}</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">UTM Content</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">{t('fields.utmContent')}</label>
                     <input
                       type="text"
                       value={formData.utm_content}
                       onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
-                      placeholder="e.g., banner_top, sidebar_ad"
+                      placeholder={t('placeholders.utmContent')}
                       className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Differentiate similar content or links (optional)</p>
+                    <p className="text-xs text-gray-500 mt-1">{t('hints.utmContentDesc')}</p>
                   </div>
                 </div>
               </div>
@@ -593,14 +595,14 @@ export default function NewCampaignPage() {
                 href="/campaigns"
                 className="w-full sm:w-auto px-5 sm:px-6 py-2 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-center"
               >
-                Cancel
+                {t('actions.cancel')}
               </Link>
               <button
                 type="submit"
                 disabled={loading}
                 className="w-full sm:w-auto px-5 sm:px-6 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Saving...' : 'Save'}
+                {loading ? t('actions.saving') : t('actions.save')}
               </button>
             </div>
           </div>
@@ -608,60 +610,60 @@ export default function NewCampaignPage() {
           {/* Right side - Campaign Summary */}
           <div className="lg:col-span-1 order-first lg:order-last">
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 lg:sticky lg:top-8">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Campaign Summary</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">{t('summary.title')}</h2>
               
               <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Media</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.media')}</p>
                   <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
-                    {formData.source !== 'select' ? formData.source.charAt(0).toUpperCase() + formData.source.slice(1) : '-'}
+                    {formData.source !== 'select' ? t(`sources.${formData.source}`) : '-'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Course</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.course')}</p>
                   <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {selectedCourse ? selectedCourse.name : '-'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Ad Type</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.adType')}</p>
                   <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
-                    {formData.medium !== 'select' ? formData.medium.charAt(0).toUpperCase() + formData.medium.slice(1) : '-'}
+                    {formData.medium !== 'select' ? t(`mediums.${formData.medium}`) : '-'}
                   </p>
                 </div>
 
                 <div className="border-t border-gray-200 pt-3 sm:pt-4">
-                  <p className="text-xs sm:text-sm text-gray-600">Start Date</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.startDate')}</p>
                   <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.start_date ? new Date(formData.start_date).toLocaleDateString('en-CA').replace(/-/g, '.') : '-'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">End Date</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.endDate')}</p>
                   <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.end_date ? new Date(formData.end_date).toLocaleDateString('en-CA').replace(/-/g, '.') : '-'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Campaign Period</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.campaignPeriod')}</p>
                   <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
-                    {campaignPeriod > 0 ? `${campaignPeriod} days` : '-'}
+                    {campaignPeriod > 0 ? `${campaignPeriod} ${t('summary.days')}` : '-'}
                   </p>
                 </div>
 
                 <div className="border-t border-gray-200 pt-3 sm:pt-4">
-                  <p className="text-xs sm:text-sm text-gray-600">Total Budget</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.totalBudget')}</p>
                   <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.budget ? `${parseInt(formData.budget).toLocaleString()}₩` : '0₩'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Daily Budget</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('summary.dailyBudget')}</p>
                   <p className="text-sm sm:text-base font-medium text-gray-900 mt-1">
                     {formData.daily_budget ? `${parseInt(formData.daily_budget).toLocaleString()}₩` : '0₩'}
                   </p>
@@ -696,14 +698,14 @@ export default function NewCampaignPage() {
                   }}
                   className="w-full px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  {t('actions.cancel')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Saving...' : 'Save'}
+                  {loading ? t('actions.saving') : t('actions.save')}
                 </button>
               </div>
             </div>

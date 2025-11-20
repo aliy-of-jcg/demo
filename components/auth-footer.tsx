@@ -2,8 +2,11 @@
 
 import { Mail, Phone, Globe, Heart } from "lucide-react";
 import { copyToClipboard } from "@/lib/clipboard";
+import { useTranslations } from 'next-intl';
 
 export function AuthFooter() {
+  const t = useTranslations('auth.footer');
+
   return (
     <footer className="relative z-10 border-t border-white/10 bg-black/20 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 py-8">
@@ -11,17 +14,17 @@ export function AuthFooter() {
           {/* App Info */}
           <div className="text-center md:text-left">
             <h3 className="mb-2 text-lg font-bold text-white">
-              CosMos AI
+              {t('appName')}
             </h3>
             <p className="text-sm text-gray-300">
-              Advanced tracking and analytics platform for modern businesses
+              {t('appDescription')}
             </p>
           </div>
 
           {/* Contact Info */}
           <div className="text-center">
             <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-300">
-              Contact Us
+              {t('contactUs')}
             </h4>
             <div className="space-y-2">
               <div className="flex items-center justify-center gap-2 text-sm text-gray-200">
@@ -30,7 +33,7 @@ export function AuthFooter() {
                   onClick={async () => {
                     const success = await copyToClipboard("01012345678");
                     if (success) {
-                      alert("Phone number copied to clipboard!");
+                      alert(t('phoneCopied'));
                     }
                   }}
                   className="transition-colors hover:text-white hover:cursor-pointer"
@@ -60,13 +63,13 @@ export function AuthFooter() {
           {/* Copyright */}
           <div className="text-center md:text-right">
             <div className="mb-2 flex items-center justify-center gap-2 md:justify-end">
-              <span className="text-sm text-gray-300">Made with</span>
+              <span className="text-sm text-gray-300">{t('madeWith')}</span>
               <Heart className="h-4 w-4 fill-red-500 text-red-500" />
-              <span className="text-sm text-gray-300">by</span>
+              <span className="text-sm text-gray-300">{t('by')}</span>
             </div>
-            <p className="text-lg font-bold text-white">JCG .Inc</p>
+            <p className="text-lg font-bold text-white">{t('companyName')}</p>
             <p className="mt-1 text-xs text-gray-400">
-              © {new Date().getFullYear()} All rights reserved
+              © {new Date().getFullYear()} {t('allRightsReserved')}
             </p>
           </div>
         </div>
@@ -76,19 +79,19 @@ export function AuthFooter() {
           <div className="flex flex-col items-center justify-between gap-4 text-xs text-gray-400 md:flex-row">
             <div className="flex flex-wrap justify-center gap-4">
               <button className="transition-colors hover:text-white">
-                Privacy Policy
+                {t('privacyPolicy')}
               </button>
               <span>•</span>
               <button className="transition-colors hover:text-white">
-                Terms of Service
+                {t('termsOfService')}
               </button>
               <span>•</span>
               <button className="transition-colors hover:text-white">
-                Cookie Policy
+                {t('cookiePolicy')}
               </button>
             </div>
             <div className="text-center md:text-right">
-              Version 1.0.0
+              {t('version')}
             </div>
           </div>
         </div>
@@ -96,4 +99,3 @@ export function AuthFooter() {
     </footer>
   );
 }
-

@@ -168,64 +168,73 @@ export async function GET(request: NextRequest) {
     // Get analytics data from ClickHouse for these campaigns
     let analyticsMap = new Map();
     
+    // Initialize analytics maps outside the block so they're accessible for summary calculation
+    // These maps contain data for ALL tracking codes, not just the paginated campaigns
+    const trackingCodeClicks = new Map();
+    const trackingCodeVisitors = new Map();
+    const legacyCampaignVisitors = new Map();
+    
+    // Fetch analytics data from ClickHouse (for all tracking codes, not just paginated campaigns)
+    // This data will be used both for paginated campaigns and for summary calculation
+    try {
+      // Query 1: Get CLICKS from tracking_events (redirect clicks) - ALL tracking codes
+      const clicksQuery = await clickhouse.query({
+        query: `
+          SELECT 
+            tracking_code,
+            COUNT(*) as total_clicks
+          FROM analytics.tracking_events
+          WHERE tracking_code != ''
+          GROUP BY tracking_code
+        `,
+        format: 'JSONEachRow'
+      });
+      
+      const clicksResults = await clicksQuery.json() as any[];
+      clicksResults.forEach((result: any) => {
+        trackingCodeClicks.set(result.tracking_code, parseInt(result.total_clicks));
+      });
+      
+      // Query 2: Get UNIQUE VISITORS from visit_logs (UUID-based tracking)
+      // Include both tracking codes AND legacy data with empty tracking codes
+      const visitorsQuery = await clickhouse.query({
+        query: `
+          SELECT 
+            tracking_code,
+            utm_campaign,
+            COUNT(DISTINCT user_id) as unique_visitors
+          FROM analytics.visit_logs
+          WHERE utm_source != '' AND utm_source != '(direct)'
+          GROUP BY tracking_code, utm_campaign
+        `,
+        format: 'JSONEachRow'
+      });
+      
+      const visitorsResults = await visitorsQuery.json() as any[];
+      
+      visitorsResults.forEach((result: any) => {
+        const code = result.tracking_code?.trim() || result.tracking_code;
+        const visitors = parseInt(result.unique_visitors) || 0;
+        
+        if (code && code !== '') {
+          // Valid tracking code
+          trackingCodeVisitors.set(code, visitors);
+        } else if (result.utm_campaign) {
+          // Legacy data - match by campaign name
+          const campaignName = result.utm_campaign;
+          if (!legacyCampaignVisitors.has(campaignName)) {
+            legacyCampaignVisitors.set(campaignName, 0);
+          }
+          legacyCampaignVisitors.set(campaignName, legacyCampaignVisitors.get(campaignName) + visitors);
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching analytics data from ClickHouse:', error);
+      // Continue without analytics data
+    }
+    
     if (campaignIds.length > 0) {
       try {
-        // Query 1: Get CLICKS from tracking_events (redirect clicks)
-        const clicksQuery = await clickhouse.query({
-          query: `
-            SELECT 
-              tracking_code,
-              COUNT(*) as total_clicks
-            FROM analytics.tracking_events
-            WHERE tracking_code != ''
-            GROUP BY tracking_code
-          `,
-          format: 'JSONEachRow'
-        });
-        
-        const clicksResults = await clicksQuery.json() as any[];
-        const trackingCodeClicks = new Map();
-        clicksResults.forEach((result: any) => {
-          trackingCodeClicks.set(result.tracking_code, parseInt(result.total_clicks));
-        });
-        
-        // Query 2: Get UNIQUE VISITORS from visit_logs (UUID-based tracking)
-        // Include both tracking codes AND legacy data with empty tracking codes
-        // This matches channel-performance API approach
-        const visitorsQuery = await clickhouse.query({
-          query: `
-            SELECT 
-              tracking_code,
-              utm_campaign,
-              COUNT(DISTINCT user_id) as unique_visitors
-            FROM analytics.visit_logs
-            WHERE utm_source != '' AND utm_source != '(direct)'
-            GROUP BY tracking_code, utm_campaign
-          `,
-          format: 'JSONEachRow'
-        });
-        
-        const visitorsResults = await visitorsQuery.json() as any[];
-        const trackingCodeVisitors = new Map();
-        const legacyCampaignVisitors = new Map(); // For empty tracking codes matched by campaign name
-        
-        visitorsResults.forEach((result: any) => {
-          const code = result.tracking_code?.trim() || result.tracking_code;
-          const visitors = parseInt(result.unique_visitors) || 0;
-          
-          if (code && code !== '') {
-            // Valid tracking code
-            trackingCodeVisitors.set(code, visitors);
-          } else if (result.utm_campaign) {
-            // Legacy data - match by campaign name
-            const campaignName = result.utm_campaign;
-            if (!legacyCampaignVisitors.has(campaignName)) {
-              legacyCampaignVisitors.set(campaignName, 0);
-            }
-            legacyCampaignVisitors.set(campaignName, legacyCampaignVisitors.get(campaignName) + visitors);
-          }
-        });
-        
         // Aggregate analytics for ALL tracking codes per campaign
         (campaigns as any[]).forEach(campaign => {
           const trackingCodes = trackingCodesMap.get(campaign.id) || [];
@@ -376,27 +385,111 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate summary stats (exclude hidden campaigns - soft deleted)
+    // Apply same filters as the main query for consistency
     const summaryQuery = `
       SELECT 
         COUNT(*) as total_campaigns,
-        COUNT(CASE WHEN status = 'active' THEN 1 END) as active_campaigns,
-        COALESCE(SUM(budget), 0) as total_budget,
-        COALESCE(AVG(spent / NULLIF(budget, 0)) * 100, 0) as avg_spent_percentage
+        COUNT(CASE WHEN campaigns.status = 'active' THEN 1 END) as active_campaigns,
+        COALESCE(SUM(campaigns.budget), 0) as total_budget,
+        COALESCE(AVG(campaigns.spent / NULLIF(campaigns.budget, 0)) * 100, 0) as avg_spent_percentage
       FROM campaigns
-      WHERE status != 'hidden'
+      LEFT JOIN courses ON campaigns.course_id = courses.id
+      WHERE 1=1${whereConditions}
     `;
     
-    const [summaryResult] = await pool.execute(summaryQuery);
+    const [summaryResult] = await pool.execute(summaryQuery, countParams);
     const summary = (summaryResult as any)[0];
 
-    // Calculate total clicks, visitors, and spent from analytics
+    // Get ALL campaign IDs that match the filters (not just paginated ones)
+    // This is needed to calculate total clicks/visitors from all matching campaigns
+    const allMatchingCampaignsQuery = `
+      SELECT DISTINCT campaigns.id
+      FROM campaigns
+      LEFT JOIN courses ON campaigns.course_id = courses.id
+      WHERE 1=1${whereConditions}
+    `;
+    
+    const [allMatchingCampaigns] = await pool.execute(allMatchingCampaignsQuery, countParams);
+    const allMatchingCampaignIds = (allMatchingCampaigns as any[]).map(c => c.id);
+
+    // Calculate total clicks and visitors from ALL matching campaigns (not just paginated)
     let total_clicks = 0;
     let total_visitors = 0;
 
-    campaignsWithPlatforms.forEach(campaign => {
-      total_clicks += campaign.clicks || 0;
-      total_visitors += campaign.visitors || 0;
-    });
+    if (allMatchingCampaignIds.length > 0) {
+      try {
+        // Get all tracking codes for ALL matching campaigns
+        const allPlaceholders = allMatchingCampaignIds.map(() => '?').join(',');
+        const [allTrackingCodesForSummary] = await pool.execute(
+          `SELECT campaign_id, tracking_code 
+           FROM utm_codes
+           WHERE campaign_id IN (${allPlaceholders}) AND status != 'hidden'
+           ORDER BY campaign_id`,
+          allMatchingCampaignIds
+        );
+
+        // Group tracking codes by campaign_id
+        const allTrackingCodesMap = new Map();
+        (allTrackingCodesForSummary as any[]).forEach(tc => {
+          if (!allTrackingCodesMap.has(tc.campaign_id)) {
+            allTrackingCodesMap.set(tc.campaign_id, []);
+          }
+          allTrackingCodesMap.get(tc.campaign_id).push(tc.tracking_code);
+        });
+
+        // Get campaign names for legacy matching
+        const [allCampaignNames] = await pool.execute(
+          `SELECT id, name FROM campaigns WHERE id IN (${allPlaceholders})`,
+          allMatchingCampaignIds
+        );
+        const campaignNamesMap = new Map();
+        (allCampaignNames as any[]).forEach(c => {
+          campaignNamesMap.set(c.id, c.name);
+        });
+
+        // Use the same analytics data we already fetched (it's for all tracking codes)
+        // Aggregate clicks and visitors for ALL matching campaigns
+        allMatchingCampaignIds.forEach(campaignId => {
+          const trackingCodes = allTrackingCodesMap.get(campaignId) || [];
+          let campaignClicks = 0;
+          let campaignVisitors = 0;
+
+          trackingCodes.forEach((trackingCode: string) => {
+            const code = trackingCode?.trim() || trackingCode;
+            
+            if (trackingCodeClicks.has(code)) {
+              campaignClicks += trackingCodeClicks.get(code);
+            }
+            if (code !== trackingCode && trackingCodeClicks.has(trackingCode)) {
+              campaignClicks += trackingCodeClicks.get(trackingCode);
+            }
+            
+            if (trackingCodeVisitors.has(code)) {
+              campaignVisitors += trackingCodeVisitors.get(code);
+            }
+            if (code !== trackingCode && trackingCodeVisitors.has(trackingCode)) {
+              campaignVisitors += trackingCodeVisitors.get(trackingCode);
+            }
+          });
+
+          // Check for legacy data by campaign name
+          const campaignName = campaignNamesMap.get(campaignId);
+          if (campaignName && legacyCampaignVisitors.has(campaignName)) {
+            campaignVisitors += legacyCampaignVisitors.get(campaignName);
+          }
+
+          total_clicks += campaignClicks;
+          total_visitors += campaignVisitors;
+        });
+      } catch (error) {
+        console.error('Error calculating total clicks/visitors for summary:', error);
+        // Fallback: use paginated data if error occurs
+        campaignsWithPlatforms.forEach(campaign => {
+          total_clicks += campaign.clicks || 0;
+          total_visitors += campaign.visitors || 0;
+        });
+      }
+    }
 
     // Calculate total spent based on actual clicks (demo calculation)
     const DEMO_COST_PER_CLICK = 0.50;

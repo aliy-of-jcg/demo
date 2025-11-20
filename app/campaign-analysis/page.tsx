@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useTranslations } from 'next-intl';
 
 interface CampaignData {
   id: number;
@@ -45,6 +46,7 @@ interface Campaign {
 }
 
 export default function CampaignAnalysisPage() {
+  const t = useTranslations('campaignAnalysis');
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<string>('');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
@@ -149,19 +151,19 @@ export default function CampaignAnalysisPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Campaign Performance Analysis</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">Detailed performance metrics for individual campaigns</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
       </div>
 
       {/* Campaign Selector */}
       <div className="mb-4 sm:mb-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Select Campaign</label>
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{t('selectCampaign')}</label>
         <select
           value={selectedCampaign}
           onChange={(e) => setSelectedCampaign(e.target.value)}
           className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
-          {campaigns.length === 0 && <option value="">No campaigns available</option>}
+          {campaigns.length === 0 && <option value="">{t('noCampaigns')}</option>}
           {campaigns.map((campaign) => (
             <option key={campaign.id} value={campaign.id}>
               {campaign.name}
@@ -174,7 +176,7 @@ export default function CampaignAnalysisPage() {
           <div className="mt-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex-1">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900">{data.campaign.name}</h3>
-              <p className="text-xs sm:text-sm text-gray-600">{data.campaign.course_name || 'No course linked'}</p>
+              <p className="text-xs sm:text-sm text-gray-600">{data.campaign.course_name || t('noCourseLinked')}</p>
               <div className="flex gap-2 mt-2 flex-wrap">
                 {filteredPlatforms.map((platform, idx) => (
                   <span key={idx} className={`px-2 py-1 rounded text-xs font-medium ${getPlatformBadgeColor(platform)}`}>
@@ -184,9 +186,9 @@ export default function CampaignAnalysisPage() {
               </div>
             </div>
             <div className="text-left lg:text-right">
-              <p className="text-xs sm:text-sm text-gray-600">Budget</p>
+              <p className="text-xs sm:text-sm text-gray-600">{t('budget')}</p>
               <p className="text-lg sm:text-xl font-bold text-gray-900">₩{(data.campaign.budget / 10000).toFixed(0)}만</p>
-              <p className="text-xs text-gray-500">Spent: ₩{(data.campaign.spent / 10000).toFixed(0)}만</p>
+              <p className="text-xs text-gray-500">{t('spent')}: ₩{(data.campaign.spent / 10000).toFixed(0)}만</p>
             </div>
           </div>
         )}
@@ -205,7 +207,7 @@ export default function CampaignAnalysisPage() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Chart
+              {t('viewMode.chart')}
             </button>
             <button
               onClick={() => setViewMode('table')}
@@ -215,7 +217,7 @@ export default function CampaignAnalysisPage() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Table
+              {t('viewMode.table')}
             </button>
           </div>
 
@@ -227,7 +229,7 @@ export default function CampaignAnalysisPage() {
               onChange={(e) => setSelectedPlatform(e.target.value)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
             >
-              <option value="all">All Platforms</option>
+              <option value="all">{t('filters.allPlatforms')}</option>
               {displayedPlatforms.map((platform, idx) => (
                 <option key={idx} value={platform.toLowerCase()}>{platform}</option>
               ))}
@@ -254,19 +256,19 @@ export default function CampaignAnalysisPage() {
                 onClick={() => setQuickRange(7)}
                 className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
               >
-                Last 7 days
+                {t('filters.last7Days')}
               </button>
               <button
                 onClick={() => setQuickRange(30)}
                 className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
               >
-                Last 30 days
+                {t('filters.last30Days')}
               </button>
               <button
                 onClick={() => setQuickRange(90)}
                 className="hidden sm:inline-block px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
               >
-                Last 3 months
+                {t('filters.last3Months')}
               </button>
             </div>
           </div>
@@ -299,7 +301,7 @@ export default function CampaignAnalysisPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 </div>
-                <p className="text-xs text-gray-600">Visitors</p>
+                <p className="text-xs text-gray-600">{t('metrics.visitors')}</p>
               </div>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">{data.metrics.visitors.toLocaleString()}</p>
             </div>
@@ -311,7 +313,7 @@ export default function CampaignAnalysisPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-xs text-gray-600">Conversions</p>
+                <p className="text-xs text-gray-600">{t('metrics.conversions')}</p>
               </div>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">{data.metrics.conversions}</p>
             </div>
@@ -323,7 +325,7 @@ export default function CampaignAnalysisPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
-                <p className="text-xs text-gray-600">Conv. Rate</p>
+                <p className="text-xs text-gray-600">{t('metrics.convRate')}</p>
               </div>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">{data.metrics.conversionRate}%</p>
             </div>
@@ -335,7 +337,7 @@ export default function CampaignAnalysisPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-xs text-gray-600">Budget</p>
+                <p className="text-xs text-gray-600">{t('metrics.budget')}</p>
               </div>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">₩{(data.campaign.budget / 10000).toFixed(0)}만</p>
             </div>
@@ -347,7 +349,7 @@ export default function CampaignAnalysisPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
-                <p className="text-xs text-gray-600">Spend</p>
+                <p className="text-xs text-gray-600">{t('metrics.spend')}</p>
               </div>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">₩{(data.campaign.spent / 10000).toFixed(0)}만</p>
             </div>
@@ -359,7 +361,7 @@ export default function CampaignAnalysisPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
                   </svg>
                 </div>
-                <p className="text-xs text-gray-600">CTR</p>
+                <p className="text-xs text-gray-600">{t('metrics.ctr')}</p>
               </div>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">{data.metrics.ctr}%</p>
             </div>
@@ -481,7 +483,7 @@ export default function CampaignAnalysisPage() {
           {data.dailyData.length > 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
               <div className="p-3 sm:p-4 border-b border-gray-200">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-900">Daily Performance Data</h3>
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900">{t('table.title')}</h3>
               </div>
               
               {/* Desktop Table View */}
@@ -489,13 +491,13 @@ export default function CampaignAnalysisPage() {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visitors</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conversions</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conv. Rate</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CTR</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg. CPC</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.date')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.visitors')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.conversions')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.convRate')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.cost')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.ctr')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.avgCPC')}</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -524,23 +526,23 @@ export default function CampaignAnalysisPage() {
                   <div key={idx} className="p-4 hover:bg-gray-50">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-semibold text-gray-900">{row.date}</span>
-                      <span className="text-sm font-medium text-green-600">{row.conversions} conversions</span>
+                      <span className="text-sm font-medium text-green-600">{row.conversions} {t('table.conversionsLabel')}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <span className="text-gray-500 text-xs">Visitors</span>
+                        <span className="text-gray-500 text-xs">{t('mobile.visitors')}</span>
                         <p className="font-medium text-gray-900">{row.visitors.toLocaleString()}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500 text-xs">Conv. Rate</span>
+                        <span className="text-gray-500 text-xs">{t('mobile.convRate')}</span>
                         <p className="font-medium text-gray-900">{row.conversionRate}%</p>
                       </div>
                       <div>
-                        <span className="text-gray-500 text-xs">Cost</span>
+                        <span className="text-gray-500 text-xs">{t('mobile.cost')}</span>
                         <p className="font-medium text-gray-900">₩{(row.cost / 10000).toFixed(1)}만</p>
                       </div>
                       <div>
-                        <span className="text-gray-500 text-xs">Avg. CPC</span>
+                        <span className="text-gray-500 text-xs">{t('mobile.avgCPC')}</span>
                         <p className="font-medium text-gray-900">₩{row.visitors > 0 ? ((row.cost / row.visitors) / 10).toFixed(0) : 0}</p>
                       </div>
                     </div>
@@ -550,8 +552,8 @@ export default function CampaignAnalysisPage() {
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center mb-4 sm:mb-6">
-              <p className="text-gray-500">No performance data available for this campaign</p>
-              <p className="text-xs sm:text-sm text-gray-400 mt-1">Try selecting a different date range or campaign</p>
+              <p className="text-gray-500">{t('empty.noData')}</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
             </div>
           )}
         </>

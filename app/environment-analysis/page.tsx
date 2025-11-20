@@ -5,6 +5,7 @@ import { Calendar } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { useTranslations } from 'next-intl';
 
 interface EnvironmentItem {
   device?: string;
@@ -28,6 +29,7 @@ interface ApiResponse {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 export default function EnvironmentAnalysisPage() {
+  const t = useTranslations('environmentAnalysis');
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -87,13 +89,13 @@ export default function EnvironmentAnalysisPage() {
       {/* Header */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">User Environment Analysis</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Device, OS, and browser breakdown of your visitors</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
         <ExportToPDFButton
           element="[data-export-content]"
-          filename={`environment-analysis-${dateRange.start}-to-${dateRange.end}.pdf`}
-          title={`User Environment Analysis - ${dateRange.start} to ${dateRange.end}`}
+          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
           size="sm"
         />
       </div>
@@ -125,19 +127,19 @@ export default function EnvironmentAnalysisPage() {
               onClick={() => setQuickRange(7)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 7 days
+              {t('dateRange.last7Days')}
             </button>
             <button
               onClick={() => setQuickRange(30)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 30 days
+              {t('dateRange.last30Days')}
             </button>
             <button
               onClick={() => setQuickRange(90)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
-              Last 3 months
+              {t('dateRange.last3Months')}
             </button>
           </div>
         </div>
@@ -153,7 +155,7 @@ export default function EnvironmentAnalysisPage() {
       {/* Error State */}
       {error && !loading && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-800">Error: {error}</p>
+          <p className="text-red-800">{t('errors.loadFailed')}: {error}</p>
         </div>
       )}
 
@@ -164,7 +166,7 @@ export default function EnvironmentAnalysisPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs sm:text-sm text-gray-600">Total Visitors</p>
+                <p className="text-xs sm:text-sm text-gray-600">{t('summary.totalVisitors')}</p>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -178,12 +180,12 @@ export default function EnvironmentAnalysisPage() {
                   return totalVisitors.toLocaleString();
                 })()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Unique visitors</p>
+              <p className="text-xs text-gray-500 mt-1">{t('summary.uniqueVisitors')}</p>
             </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs sm:text-sm text-gray-600">Desktop Users</p>
+                <p className="text-xs sm:text-sm text-gray-600">{t('summary.desktopUsers')}</p>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -199,13 +201,13 @@ export default function EnvironmentAnalysisPage() {
                 })()}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {data.devices.find(d => d.device?.toLowerCase() === 'desktop')?.visitors.toLocaleString() || 0} visitors
+                {data.devices.find(d => d.device?.toLowerCase() === 'desktop')?.visitors.toLocaleString() || 0} {t('summary.visitors')}
               </p>
             </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs sm:text-sm text-gray-600">Mobile Users</p>
+                <p className="text-xs sm:text-sm text-gray-600">{t('summary.mobileUsers')}</p>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -221,13 +223,13 @@ export default function EnvironmentAnalysisPage() {
                 })()}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {data.devices.find(d => d.device?.toLowerCase() === 'mobile')?.visitors.toLocaleString() || 0} visitors
+                {data.devices.find(d => d.device?.toLowerCase() === 'mobile')?.visitors.toLocaleString() || 0} {t('summary.visitors')}
               </p>
             </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs sm:text-sm text-gray-600">Avg. Conv. Rate</p>
+                <p className="text-xs sm:text-sm text-gray-600">{t('summary.avgConvRate')}</p>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -244,14 +246,14 @@ export default function EnvironmentAnalysisPage() {
                   return avgRate + '%';
                 })()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Across all devices</p>
+              <p className="text-xs text-gray-500 mt-1">{t('summary.acrossAllDevices')}</p>
             </div>
           </div>
 
           {/* Device Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Device Type</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">{t('sections.deviceType')}</h2>
               {data.devices.length > 0 ? (
                 <div className="space-y-4">
                   <ResponsiveContainer width="100%" height={220}>
@@ -290,25 +292,25 @@ export default function EnvironmentAnalysisPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-12 text-sm">No device data available</p>
+                <p className="text-center text-gray-500 py-12 text-sm">{t('empty.noDeviceData')}</p>
               )}
             </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Device Statistics</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">{t('sections.deviceStatistics')}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Visitors</th>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Conv. Rate</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.device')}</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.visitors')}</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.convRate')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {data.devices.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="px-4 py-4 text-center text-gray-500 text-sm">No data</td>
+                        <td colSpan={3} className="px-4 py-4 text-center text-gray-500 text-sm">{t('empty.noDeviceData')}</td>
                       </tr>
                     ) : (
                       data.devices.map((item, idx) => (
@@ -328,7 +330,7 @@ export default function EnvironmentAnalysisPage() {
           {/* OS Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Operating System</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">{t('sections.operatingSystem')}</h2>
               {data.os.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={data.os}>
@@ -340,25 +342,25 @@ export default function EnvironmentAnalysisPage() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="text-center text-gray-500 py-12 text-sm">No OS data available</p>
+                <p className="text-center text-gray-500 py-12 text-sm">{t('empty.noOSData')}</p>
               )}
             </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">OS Statistics</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">{t('sections.osStatistics')}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">OS</th>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Visitors</th>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Conv. Rate</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.os')}</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.visitors')}</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.convRate')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {data.os.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="px-4 py-4 text-center text-gray-500 text-sm">No data</td>
+                        <td colSpan={3} className="px-4 py-4 text-center text-gray-500 text-sm">{t('empty.noOSData')}</td>
                       </tr>
                     ) : (
                       data.os.map((item, idx) => (
@@ -378,7 +380,7 @@ export default function EnvironmentAnalysisPage() {
           {/* Browser Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Browser</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">{t('sections.browser')}</h2>
               {data.browsers.length > 0 ? (
                 <div className="space-y-4">
                   <ResponsiveContainer width="100%" height={220}>
@@ -417,25 +419,25 @@ export default function EnvironmentAnalysisPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-12 text-sm">No browser data available</p>
+                <p className="text-center text-gray-500 py-12 text-sm">{t('empty.noBrowserData')}</p>
               )}
             </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Browser Statistics</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">{t('sections.browserStatistics')}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Browser</th>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Visitors</th>
-                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Conv. Rate</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.browser')}</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.visitors')}</th>
+                      <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('table.convRate')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {data.browsers.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="px-4 py-4 text-center text-gray-500 text-sm">No data</td>
+                        <td colSpan={3} className="px-4 py-4 text-center text-gray-500 text-sm">{t('empty.noBrowserData')}</td>
                       </tr>
                     ) : (
                       data.browsers.map((item, idx) => (
@@ -455,15 +457,15 @@ export default function EnvironmentAnalysisPage() {
           {/* Screen Resolution */}
           {data.resolutions.length > 0 && (
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Top Screen Resolutions</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">{t('sections.topResolutions')}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resolution</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Visitors</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pageviews</th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Share</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('table.resolution')}</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('table.visitors')}</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('table.pageviews')}</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('table.share')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -488,8 +490,8 @@ export default function EnvironmentAnalysisPage() {
           {/* Empty State */}
           {data.devices.length === 0 && data.os.length === 0 && data.browsers.length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
-              <p className="text-gray-500">No environment data available</p>
-              <p className="text-xs sm:text-sm text-gray-400 mt-1">Data will appear as visitors use your tracking links</p>
+              <p className="text-gray-500">{t('empty.noData')}</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
             </div>
           )}
         </div>

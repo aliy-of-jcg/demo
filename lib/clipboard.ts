@@ -14,21 +14,25 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     // Fallback for non-HTTPS or older browsers
     const textArea = document.createElement('textarea');
     textArea.value = text;
-    
+
     // Make it invisible and position off-screen
     textArea.style.position = 'fixed';
     textArea.style.left = '-999999px';
     textArea.style.top = '-999999px';
     textArea.style.opacity = '0';
-    
+
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    
+
     // Try to copy using execCommand
     const successful = document.execCommand('copy');
-    document.body.removeChild(textArea);
-    
+
+    // Be defensive: only remove if it's still attached
+    if (textArea.parentNode === document.body) {
+      document.body.removeChild(textArea);
+    }
+
     return successful;
   } catch (error) {
     console.error('Failed to copy to clipboard:', error);

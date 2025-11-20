@@ -1,0 +1,1111 @@
+{
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Enter your credentials to access the panel",
+      "email": "Email Address",
+      "emailPlaceholder": "admin@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••",
+      "signIn": "Sign In",
+      "signingIn": "Signing In...",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "signUpLink": "Sign up",
+      "loading": "Loading..."
+    },
+    "signup": {
+      "title": "Create Account",
+      "subtitle": "Sign up to get started with your analytics",
+      "userTypeLabel": "Select User Type",
+      "admin": "Admin",
+      "observer": "Observer",
+      "regular": "Regular",
+      "userTypeNote": "Regular users have observer features. Owner type is set manually.",
+      "companyName": "Company Name",
+      "companyNamePlaceholder": "Acme Inc.",
+      "email": "Email Address",
+      "emailPlaceholder": "admin@example.com",
+      "contactNumber": "Contact Number",
+      "contactNumberPlaceholder": "+1 (555) 123-4567",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "••••••••",
+      "createAccount": "Create Account",
+      "creatingAccount": "Creating Account...",
+      "haveAccount": "Already have an account?",
+      "signInLink": "Sign in"
+    },
+    "errors": {
+      "companyNameRequired": "Company name is required",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Invalid email format",
+      "passwordRequired": "Password is required",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "contactNumberRequired": "Contact number is required",
+      "userTypeRequired": "Please select a user type",
+      "passwordsNoMatch": "Passwords do not match",
+      "loginFailed": "Login failed. Please try again.",
+      "signupFailed": "Signup failed. Please try again."
+    },
+    "footer": {
+      "appName": "CosMos AI",
+      "appDescription": "Advanced tracking and analytics platform for modern businesses",
+      "contactUs": "Contact Us",
+      "madeWith": "Made with",
+      "by": "by",
+      "companyName": "JCG .Inc",
+      "allRightsReserved": "All rights reserved",
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "cookiePolicy": "Cookie Policy",
+      "version": "Version 1.0.0",
+      "phoneCopied": "Phone number copied to clipboard!"
+    }
+  },
+  "home": {
+    "hero": {
+      "badge": "Smart Marketing Analytics Platform",
+      "title": "Welcome to",
+      "brandName": "CosMos AI",
+      "description": "Empower your marketing campaigns with real-time tracking, intelligent analytics, and actionable insights. Track every click, understand every visitor.",
+      "loading": "Loading..."
+    },
+    "stats": {
+      "activeCampaigns": "Active Campaigns",
+      "totalClicks": "Total Clicks",
+      "uniqueVisitors": "Unique Visitors",
+      "totalBudget": "Total Budget"
+    },
+    "features": {
+      "title": "Powerful Features at Your Fingertips",
+      "subtitle": "Everything you need to track, analyze, and optimize your marketing campaigns",
+      "campaignManagement": {
+        "title": "Campaign Management",
+        "description": "Create, manage, and track marketing campaigns across multiple platforms"
+      },
+      "performanceDashboard": {
+        "title": "Performance Dashboard",
+        "description": "Real-time analytics and insights into your campaign performance"
+      },
+      "sessionJourneys": {
+        "title": "Session Journeys",
+        "description": "View complete page-by-page user journeys and navigation flows"
+      },
+      "channelPerformance": {
+        "title": "Channel Performance",
+        "description": "Analyze traffic sources and media platform effectiveness"
+      },
+      "campaignAnalysis": {
+        "title": "Campaign Analysis",
+        "description": "Deep dive into individual campaign metrics and performance"
+      },
+      "environmentAnalysis": {
+        "title": "Environment Analysis",
+        "description": "Understand user devices, browsers, and operating systems"
+      },
+      "timeAnalysis": {
+        "title": "Time-based Analysis",
+        "description": "Discover peak hours and day-of-week visitor patterns (KST)"
+      },
+      "returningAnalysis": {
+        "title": "Returning Visitor Analysis",
+        "description": "Track repeat visitors and analyze user retention patterns"
+      },
+      "utmList": {
+        "title": "UTM List",
+        "description": "Manage and view all UTM parameters and tracking codes"
+      },
+      "explore": "Explore"
+    },
+    "recentCampaigns": {
+      "title": "Recent Campaigns",
+      "viewAll": "View All",
+      "clicks": "Clicks",
+      "visitors": "Visitors",
+      "status": {
+        "active": "active",
+        "waiting": "waiting",
+        "ended": "ended",
+        "paused": "paused"
+      }
+    },
+    "cta": {
+      "title": "Ready to Get Started?",
+      "subtitle": "Create your first campaign and start tracking valuable insights today",
+      "createCampaign": "Create Campaign",
+      "viewAllCampaigns": "View All Campaigns"
+    }
+  },
+  "campaigns": {
+    "title": "Campaign Management",
+    "subtitle": "Manage ongoing campaigns and track performance",
+    "createNew": "Create New Campaign",
+    "summary": {
+      "totalCampaigns": "Total Campaigns",
+      "active": "Active",
+      "monthlyBudget": "Monthly Budget",
+      "progress": "Progress",
+      "avgConversionRate": "Avg Conversion Rate",
+      "totalClicks": "Total Clicks",
+      "visitors": "visitors"
+    },
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Search by campaign or course name",
+      "course": "Course",
+      "allCourses": "All Courses",
+      "media": "Media",
+      "all": "All",
+      "status": "Status"
+    },
+    "table": {
+      "campaignName": "Campaign Name",
+      "course": "Course",
+      "media": "Media",
+      "adType": "Ad Type",
+      "status": "Status",
+      "period": "Period",
+      "budget": "Budget",
+      "performance": "Performance",
+      "link": "Link",
+      "action": "Action",
+      "clicks": "clicks",
+      "noData": "No data",
+      "copyTrackingLink": "Copy tracking link",
+      "openTrackingLink": "Open tracking link in new tab",
+      "viewDetails": "View campaign details",
+      "moreActions": "More actions",
+      "noLinks": "No links"
+    },
+    "status": {
+      "active": "Active",
+      "waiting": "Waiting",
+      "ended": "Ended",
+      "paused": "Paused",
+      "hidden": "Hidden"
+    },
+    "actions": {
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete"
+    },
+    "delete": {
+      "title": "Delete Campaign?",
+      "text": "Are you sure you want to delete this campaign?",
+      "confirm": "Yes, Delete it!",
+      "cancel": "Cancel",
+      "deleting": "Deleting campaign...",
+      "success": "Campaign deleted successfully!",
+      "error": "Error"
+    },
+    "toast": {
+      "trackingLinkCopied": "Tracking link copied to clipboard!",
+      "copyFailed": "Failed to copy tracking link",
+      "loadFailed": "Failed to load campaigns"
+    },
+    "mobile": {
+      "media": "Media:",
+      "status": "Status:",
+      "period": "Period:",
+      "budget": "Budget:",
+      "clicks": "Clicks:",
+      "visitors": "Visitors:",
+      "trackingLinks": "Tracking Links:",
+      "more": "more"
+    },
+    "pagination": {
+      "total": "Total {count} campaigns",
+      "perPage": "per page"
+    },
+    "empty": {
+      "noCampaigns": "No campaigns found"
+    },
+    "loading": "Loading...",
+    "create": {
+      "title": "Create New Campaign",
+      "duplicateTitle": "Duplicate Campaign",
+      "subtitle": "Please register a new campaign",
+      "duplicateSubtitle": "Review and update the campaign details below",
+      "backToList": "Back to List",
+      "loadingDuplicate": "Loading campaign data for duplication...",
+      "sections": {
+        "basicInfo": "Basic Information",
+        "basicInfoDesc": "Enter the basic information for the campaign",
+        "periodBudget": "Period & Budget",
+        "periodBudgetDesc": "Set the campaign period and budget",
+        "utmParams": "UTM Parameters",
+        "utmParamsDesc": "Configure UTM tracking parameters for this campaign"
+      },
+      "fields": {
+        "campaignName": "Campaign Name",
+        "utmTrackingLinkName": "UTM Tracking Link Name",
+        "course": "Course",
+        "status": "Status",
+        "description": "Description",
+        "campaignPeriod": "Campaign Period",
+        "totalBudget": "Total Budget",
+        "dailyBudget": "Daily Budget (Optional)",
+        "targetLandingUrl": "Target Landing URL",
+        "utmSource": "UTM Source",
+        "utmMedium": "UTM Medium",
+        "utmTerm": "UTM Term",
+        "utmContent": "UTM Content"
+      },
+      "placeholders": {
+        "campaignName": "e.g: 2501_ai_education",
+        "utmTrackingLinkName": "e.g: 2501_ai_education_naver_search",
+        "select": "Select",
+        "description": "Enter a brief description of the campaign",
+        "totalBudget": "5000000",
+        "landingUrl": "https://www.example.com/page",
+        "selectSource": "Select source",
+        "selectMedium": "Select medium",
+        "utmTerm": "e.g., running+shoes",
+        "utmContent": "e.g., banner_top, sidebar_ad"
+      },
+      "hints": {
+        "campaignNameChars": "Only letters, numbers, and underscores allowed",
+        "utmNameAuto": "Unique identifier for the tracking link (will be auto-generated if left empty)",
+        "utmSourceDesc": "Platform where the ad will run (e.g., Google, Naver, Kakao)",
+        "utmMediumDesc": "Ad format type (e.g., Search, Banner, Video, SNS)",
+        "utmTermDesc": "Identify paid search keywords (optional)",
+        "utmContentDesc": "Differentiate similar content or links (optional)",
+        "landingUrlDesc": "The destination URL where users will land",
+        "dailyBudgetAuto": "Auto-calculated",
+        "budgetCalculation": "Total Budget ÷ Campaign Days"
+      },
+      "errors": {
+        "nameRequired": "Campaign name is required",
+        "nameInvalid": "Only letters, numbers, and underscores are allowed",
+        "utmNameInvalid": "Only letters, numbers, and underscores are allowed",
+        "courseRequired": "Please select a course",
+        "sourceRequired": "Please select a UTM source",
+        "mediumRequired": "Please select a UTM medium",
+        "startDateRequired": "Please select a start date",
+        "endDateRequired": "Please select an end date",
+        "endDateInvalid": "End date must be after start date",
+        "budgetRequired": "Please enter total budget",
+        "budgetInvalid": "Budget must be greater than 0",
+        "landingUrlRequired": "Target landing URL is required",
+        "fillAllFields": "Please fill in all required fields correctly"
+      },
+      "summary": {
+        "title": "Campaign Summary",
+        "media": "Media",
+        "course": "Course",
+        "adType": "Ad Type",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "campaignPeriod": "Campaign Period",
+        "totalBudget": "Total Budget",
+        "dailyBudget": "Daily Budget",
+        "days": "days"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "save": "Save",
+        "saving": "Saving...",
+        "creating": "Creating campaign...",
+        "success": "Campaign created successfully!",
+        "error": "Error",
+        "dataLoaded": "Campaign data loaded for duplication",
+        "loadFailed": "Failed to load campaign data",
+        "createFailed": "Failed to create campaign",
+        "trackingLinkCopied": "Tracking link copied: {url}",
+        "trackingLinkCreated": "Tracking link created: {url}"
+      },
+      "status": {
+        "waiting": "Waiting",
+        "active": "Active",
+        "paused": "Paused",
+        "ended": "Ended"
+      },
+      "sources": {
+        "google": "Google",
+        "naver": "Naver",
+        "kakao": "Kakao",
+        "youtube": "Youtube",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "saramin": "Saramin",
+        "email": "Email",
+        "other": "Other"
+      },
+      "mediums": {
+        "search": "Search",
+        "display": "Display",
+        "video": "Video",
+        "social": "Social",
+        "email": "Email",
+        "banner": "Banner",
+        "sns": "SNS",
+        "referral": "Referral",
+        "organic": "Organic"
+      }
+    }
+  },
+  "courses": {
+    "title": "Course Management",
+    "subtitle": "Manage courses and course information in use",
+    "addCourse": "Add Course",
+    "summary": {
+      "totalCourses": "Total Courses",
+      "activeCourses": "Active Courses",
+      "activeCampaigns": "Active Campaigns",
+      "totalVisits": "Total Visits"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by course name or code...",
+      "allStatus": "All Status"
+    },
+    "table": {
+      "title": "Course List",
+      "searchHint": "Search by course name or code...",
+      "courseName": "Course Name",
+      "category": "Category",
+      "duration": "Duration",
+      "price": "Price",
+      "activeCampaigns": "Active Campaigns",
+      "totalVisits": "Total Visits",
+      "status": "Status",
+      "action": "Action",
+      "noCourses": "No courses found",
+      "loading": "Loading..."
+    },
+    "mobile": {
+      "category": "Category:",
+      "duration": "Duration:",
+      "price": "Price:",
+      "campaigns": "Campaigns:",
+      "totalVisits": "Total Visits:"
+    },
+    "modal": {
+      "addTitle": "Add Course",
+      "editTitle": "Edit Course",
+      "fields": {
+        "courseName": "Course Name",
+        "courseCode": "Course Code",
+        "category": "Category",
+        "duration": "Duration",
+        "price": "Price",
+        "status": "Status"
+      },
+      "placeholders": {
+        "duration": "e.g: 3 months"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "add": "Add",
+        "update": "Update"
+      }
+    },
+    "status": {
+      "active": "Active",
+      "waiting": "Waiting",
+      "paused": "Paused",
+      "ended": "Ended",
+      "hidden": "Hidden"
+    },
+    "actions": {
+      "creating": "Creating course...",
+      "updating": "Updating course...",
+      "deleting": "Deleting course...",
+      "created": "created",
+      "updated": "updated",
+      "deleted": "deleted",
+      "success": "Course {action} successfully!",
+      "error": "Error",
+      "createFailed": "Failed to create course",
+      "updateFailed": "Failed to update course",
+      "deleteFailed": "Failed to delete course"
+    },
+    "delete": {
+      "title": "Delete Course?",
+      "text": "Are you sure you want to delete this course?",
+      "confirm": "Yes, delete it!",
+      "cancel": "Cancel",
+      "hasCampaigns": "Cannot delete course with {count} active campaign{plural}. Please delete or reassign the campaign{plural} first.",
+      "hasCampaignsSingular": "campaign",
+      "hasCampaignsPlural": "campaigns"
+    }
+  },
+  "performance": {
+    "title": "Performance Dashboard",
+    "subtitle": "Overall marketing campaign performance analysis",
+    "dateRange": {
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "last3Months": "Last 3 months"
+    },
+    "metrics": {
+      "totalVisitors": "Total Visitors",
+      "totalVisitorsDesc": "Total unique visitors",
+      "conversions": "Conversions",
+      "conversionsDesc": "Total conversions",
+      "conversionRate": "Conversion Rate",
+      "conversionRateDesc": "Average conversion rate",
+      "revenue": "Revenue",
+      "revenueDesc": "Total revenue"
+    },
+    "charts": {
+      "visitorTrend": {
+        "title": "Visitor Trend by Date",
+        "subtitle": "Period comparison",
+        "currentPeriod": "Current Period",
+        "previousPeriod": "Previous Period",
+        "noData": "No trend data available"
+      },
+      "channelDistribution": {
+        "title": "Visitors by Channel",
+        "subtitle": "Current period breakdown",
+        "total": "Total",
+        "noData": "No channel data available"
+      }
+    },
+    "table": {
+      "title": "Channel Performance Ranking",
+      "headers": {
+        "channel": "Channel",
+        "visitors": "Visitors",
+        "conversions": "Conversions",
+        "conversionRate": "Conversion Rate",
+        "revenue": "Revenue",
+        "cpa": "CPA"
+      },
+      "noData": "No channel data available for this period"
+    },
+    "mobile": {
+      "visitors": "Visitors",
+      "conversions": "Conversions",
+      "revenue": "Revenue",
+      "cpa": "CPA"
+    },
+    "errors": {
+      "loadFailed": "Failed to load data",
+      "fetchFailed": "Failed to fetch data",
+      "tryAgain": "Please try again or check your data connection."
+    },
+    "loading": "Loading...",
+    "export": {
+      "filename": "performance-dashboard-{start}-to-{end}.pdf",
+      "title": "Performance Dashboard - {start} to {end}"
+    }
+  },
+  "channelPerformance": {
+    "title": "Channel Performance",
+    "subtitle": "Detailed analysis of campaign performance by media channel",
+    "dateRange": {
+      "last7Days": "Last 7 Days",
+      "last30Days": "Last 30 Days",
+      "last3Months": "Last 3 Months"
+    },
+    "chart": {
+      "title": "Channel Performance Comparison",
+      "subtitle": "Compare visits, conversions, and ad cost across channels",
+      "visits": "Visits",
+      "conversions": "Conversions",
+      "adCost": "Ad Cost (₩)"
+    },
+    "table": {
+      "campaign": "Campaign",
+      "adType": "Ad Type",
+      "visits": "Visits",
+      "conversions": "Conversions",
+      "convRate": "Conv. Rate",
+      "adCost": "Ad Cost",
+      "ctr": "CTR",
+      "status": "Status",
+      "channelTotal": "Channel Total",
+      "campaigns": "campaigns",
+      "campaign": "campaign"
+    },
+    "mobile": {
+      "visits": "Visits",
+      "conversions": "Conversions",
+      "convRate": "Conv. Rate",
+      "ctr": "CTR",
+      "adCost": "Ad Cost"
+    },
+    "metrics": {
+      "totalVisits": "Total Visits",
+      "totalConversions": "Total Conversions",
+      "totalAdCost": "Total Ad Cost",
+      "avgCTR": "Avg CTR"
+    },
+    "empty": {
+      "noData": "No channel data available for this period",
+      "hint": "Create campaigns to see channel performance"
+    },
+    "errors": {
+      "loadFailed": "Failed to load data",
+      "fetchFailed": "Failed to fetch data",
+      "tryAgain": "Please try again or check your data connection."
+    },
+    "loading": "Loading...",
+    "export": {
+      "filename": "channel-performance-{start}-to-{end}.pdf",
+      "title": "Channel Performance - {start} to {end}"
+    }
+  },
+  "campaignAnalysis": {
+    "title": "Campaign Performance Analysis",
+    "subtitle": "Detailed performance metrics for individual campaigns",
+    "selectCampaign": "Select Campaign",
+    "noCampaigns": "No campaigns available",
+    "noCourseLinked": "No course linked",
+    "budget": "Budget",
+    "spent": "Spent",
+    "viewMode": {
+      "chart": "Chart",
+      "table": "Table"
+    },
+    "filters": {
+      "allPlatforms": "All Platforms",
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "last3Months": "Last 3 months"
+    },
+    "metrics": {
+      "visitors": "Visitors",
+      "conversions": "Conversions",
+      "convRate": "Conv. Rate",
+      "budget": "Budget",
+      "spend": "Spend",
+      "ctr": "CTR"
+    },
+    "charts": {
+      "dailyVisitors": "Daily Visitors",
+      "dailyCost": "Daily Cost",
+      "visitors": "Visitors",
+      "conversions": "Conversions",
+      "cost": "Cost (₩)"
+    },
+    "table": {
+      "title": "Daily Performance Data",
+      "date": "Date",
+      "visitors": "Visitors",
+      "conversions": "Conversions",
+      "convRate": "Conv. Rate",
+      "cost": "Cost",
+      "ctr": "CTR",
+      "avgCPC": "Avg. CPC",
+      "conversionsLabel": "conversions"
+    },
+    "mobile": {
+      "visitors": "Visitors",
+      "convRate": "Conv. Rate",
+      "cost": "Cost",
+      "avgCPC": "Avg. CPC"
+    },
+    "empty": {
+      "noData": "No performance data available for this campaign",
+      "hint": "Try selecting a different date range or campaign"
+    },
+    "errors": {
+      "loadFailed": "Failed to load data",
+      "fetchFailed": "Failed to fetch data"
+    },
+    "loading": "Loading..."
+  },
+  "environmentAnalysis": {
+    "title": "User Environment Analysis",
+    "subtitle": "Device, OS, and browser breakdown of your visitors",
+    "dateRange": {
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "last3Months": "Last 3 months"
+    },
+    "summary": {
+      "totalVisitors": "Total Visitors",
+      "uniqueVisitors": "Unique visitors",
+      "desktopUsers": "Desktop Users",
+      "mobileUsers": "Mobile Users",
+      "avgConvRate": "Avg. Conv. Rate",
+      "visitors": "visitors",
+      "acrossAllDevices": "Across all devices"
+    },
+    "sections": {
+      "deviceType": "Device Type",
+      "deviceStatistics": "Device Statistics",
+      "operatingSystem": "Operating System",
+      "osStatistics": "OS Statistics",
+      "browser": "Browser",
+      "browserStatistics": "Browser Statistics",
+      "topResolutions": "Top Screen Resolutions"
+    },
+    "table": {
+      "device": "Device",
+      "os": "OS",
+      "browser": "Browser",
+      "visitors": "Visitors",
+      "convRate": "Conv. Rate",
+      "resolution": "Resolution",
+      "pageviews": "Pageviews",
+      "share": "Share"
+    },
+    "empty": {
+      "noDeviceData": "No device data available",
+      "noOSData": "No OS data available",
+      "noBrowserData": "No browser data available",
+      "noData": "No environment data available",
+      "hint": "Data will appear as visitors use your tracking links"
+    },
+    "errors": {
+      "loadFailed": "Failed to load data",
+      "fetchFailed": "Failed to fetch data"
+    },
+    "loading": "Loading...",
+    "export": {
+      "filename": "environment-analysis-{start}-to-{end}.pdf",
+      "title": "User Environment Analysis - {start} to {end}"
+    }
+  },
+  "timeAnalysis": {
+    "title": "Time-based Analysis",
+    "subtitle": "Visitor behavior patterns by time and day",
+    "timezone": "KST (UTC+9)",
+    "dateRange": {
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "last3Months": "Last 3 months"
+    },
+    "insights": {
+      "peakHours": "Peak Hours",
+      "peakDays": "Peak Days",
+      "visitors": "visitors"
+    },
+    "charts": {
+      "hourlyTrend": "Hourly Visitor Trend",
+      "dayOfWeekTrend": "Day of Week Trend",
+      "dailyTrend": "Daily Trend",
+      "visitors": "Visitors",
+      "conversions": "Conversions"
+    },
+    "tables": {
+      "hourlyDetails": "Hourly Details",
+      "dayOfWeekDetails": "Day of Week Details",
+      "hour": "Hour (KST)",
+      "day": "Day",
+      "visitors": "Visitors",
+      "pageviews": "Pageviews",
+      "conversions": "Conversions",
+      "convRate": "Conv. Rate",
+      "conversionsLabel": "conversions"
+    },
+    "empty": {
+      "noHourlyData": "No hourly data available",
+      "noDayOfWeekData": "No day-of-week data available",
+      "noData": "No time-based data available",
+      "hint": "Data will appear as visitors use your site"
+    },
+    "errors": {
+      "loadFailed": "Failed to load data",
+      "fetchFailed": "Failed to fetch data"
+    },
+    "loading": "Loading..."
+  },
+  "returningAnalysis": {
+    "title": "Returning Visitor Analysis",
+    "subtitle": "New vs returning visitor behavior and retention patterns",
+    "dateRange": {
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "last3Months": "Last 3 months"
+    },
+    "insights": {
+      "newVisitors": "New Visitors",
+      "returningVisitors": "Returning Visitors",
+      "avgReturnInterval": "Avg. Return Interval",
+      "ofTotal": "% of total",
+      "daysBetweenVisits": "days between visits"
+    },
+    "charts": {
+      "visitorDistribution": "Visitor Distribution",
+      "comparisonMetrics": "Comparison Metrics",
+      "visitFrequency": "Visit Frequency Distribution",
+      "returnIntervals": "Return Interval Distribution",
+      "dailyTrend": "Daily New vs Returning Trend",
+      "newVisitors": "New Visitors",
+      "returning": "Returning",
+      "users": "Users"
+    },
+    "metrics": {
+      "conversionRate": "Conversion Rate",
+      "avgTimeOnPage": "Avg. Time on Page",
+      "pageviews": "Pageviews",
+      "new": "New",
+      "returning": "Returning"
+    },
+    "table": {
+      "title": "Detailed Comparison",
+      "metric": "Metric",
+      "newVisitors": "New Visitors",
+      "returningVisitors": "Returning Visitors",
+      "visitors": "Visitors",
+      "pageviews": "Pageviews",
+      "conversions": "Conversions",
+      "conversionRate": "Conversion Rate",
+      "avgTimeOnPage": "Avg. Time on Page"
+    },
+    "empty": {
+      "noData": "No visitor data available",
+      "hint": "Data will appear as visitors use your site"
+    },
+    "errors": {
+      "loadFailed": "Failed to load data",
+      "fetchFailed": "Failed to fetch data"
+    },
+    "loading": "Loading..."
+  },
+  "pageFlowAnalysis": {
+    "title": "UTM Performance Analysis",
+    "subtitle": "Detailed analysis of landing pages, exit pages, and UTM performance",
+    "viewSessionJourneys": "View Session Journeys",
+    "dateRange": {
+      "last7Days": "Last 7 Days",
+      "last30Days": "Last 30 Days",
+      "last3Months": "Last 3 Months"
+    },
+    "summary": {
+      "totalSessions": "Total Sessions",
+      "totalPageviews": "Total Pageviews",
+      "avgPagesPerSession": "Avg Pages per Session",
+      "landingPages": "Landing Pages",
+      "uniqueUserSessions": "unique user sessions",
+      "allPageViews": "all page views",
+      "pagesViewedOnAverage": "pages viewed on average",
+      "uniqueEntryPoints": "unique entry points"
+    },
+    "utmChart": {
+      "title": "UTM Performance Comparison",
+      "subtitle": "Average page views per session by UTM source",
+      "avgPagesPerSession": "Avg Pages per Session",
+      "utmSource": "UTM Source"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by domain or page URL...",
+      "allDomains": "All Domains",
+      "show20": "Show 20",
+      "show50": "Show 50"
+    },
+    "landingPages": {
+      "title": "Top Landing Pages",
+      "subtitle": "Pages where users first enter your site",
+      "page": "Page",
+      "visits": "Visits",
+      "avgPages": "Avg Pages",
+      "bounceRate": "Bounce Rate",
+      "avgTime": "Avg Time",
+      "noData": "No landing page data"
+    },
+    "exitPages": {
+      "title": "Top Exit Pages",
+      "subtitle": "Pages where users most often leave your site",
+      "page": "Page",
+      "exits": "Exits",
+      "exitRate": "Exit Rate",
+      "noData": "No exit page data"
+    },
+    "empty": {
+      "noData": "No data available",
+      "hint": "Data will appear as visitors navigate your site"
+    },
+    "errors": {
+      "loadFailed": "Failed to load data",
+      "fetchFailed": "Failed to fetch data"
+    },
+    "loading": "Loading..."
+  },
+  "sessionJourneys": {
+    "title": "Session Journeys",
+    "subtitle": "Complete page-by-page journey for each user session",
+    "timezone": "KST (UTC+9)",
+    "filters": {
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "refresh": "Refresh",
+      "loading": "Loading..."
+    },
+    "stats": {
+      "totalSessions": "Total Sessions",
+      "totalPageviews": "Total Pageviews",
+      "avgSessionDuration": "Avg Session Duration"
+    },
+    "session": {
+      "sessionStart": "Session Start (KST)",
+      "duration": "Duration",
+      "device": "Device",
+      "source": "Source",
+      "pageJourney": "Page Journey",
+      "pages": "pages",
+      "page": "page",
+      "landing": "Landing",
+      "sessionEnded": "Session Ended",
+      "completed": "Completed",
+      "active": "Active",
+      "userLeftAfterViewing": "User left after viewing:",
+      "lastPageViewed": "Last page viewed:",
+      "total": "total"
+    },
+    "empty": {
+      "noSessions": "No sessions found for the selected date range."
+    },
+    "loading": "Loading..."
+  },
+  "trackedWebsites": {
+    "title": "Tracked Websites",
+    "subtitle": "Websites using CosMos AI tracking script",
+    "dateRange": {
+      "last30Days": "Last 30 Days",
+      "last3Months": "Last 3 Months",
+      "last6Months": "Last 6 Months"
+    },
+    "summary": {
+      "totalWebsites": "Total Websites",
+      "active7d": "Active (7d)",
+      "totalSessions": "Total Sessions",
+      "uniqueVisitors": "Unique Visitors",
+      "pageviews": "Pageviews",
+      "conversions": "Conversions"
+    },
+    "filters": {
+      "allWebsites": "All Websites",
+      "active": "Active",
+      "inactive": "Inactive",
+      "disabled": "Disabled"
+    },
+    "table": {
+      "website": "Website",
+      "status": "Status",
+      "sessions": "Sessions",
+      "visitors": "Visitors",
+      "pageviews": "Pageviews",
+      "conversions": "Conversions",
+      "firstSeen": "First Seen",
+      "lastSeen": "Last Seen",
+      "actions": "Actions",
+      "disable": "Disable",
+      "enable": "Enable",
+      "disableTracking": "Disable Tracking",
+      "enableTracking": "Enable Tracking",
+      "processing": "Processing..."
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "disabled": "Disabled"
+    },
+    "toggle": {
+      "title": "Disable Tracking?",
+      "titleEnable": "Enable Tracking?",
+      "textDisable": "Are you sure you want to disable tracking for {domain}? New tracking requests from this domain will be blocked, but historical data will remain intact.",
+      "textEnable": "Enable tracking for {domain}? This domain will be able to send tracking data again.",
+      "confirm": "Yes, Disable it!",
+      "confirmEnable": "Yes, Enable it!",
+      "cancel": "Cancel",
+      "disabling": "Disabling tracking...",
+      "enabling": "Enabling tracking...",
+      "disabled": "Tracking disabled for {domain}",
+      "enabled": "Tracking enabled for {domain}",
+      "failed": "Failed to toggle: {error}"
+    },
+    "empty": {
+      "noWebsites": "No websites found",
+      "hint": "Add the tracking script to websites to see them here",
+      "hintFiltered": "No {status} websites in this period"
+    },
+    "errors": {
+      "loadFailed": "Failed to load data",
+      "fetchFailed": "Failed to fetch data",
+      "tryAgain": "Please try again or check your data connection."
+    },
+    "loading": "Loading...",
+    "export": {
+      "filename": "tracked-websites-{start}-to-{end}.pdf",
+      "title": "Tracked Websites - {start} to {end}"
+    }
+  },
+  "utmTools": {
+    "list": {
+      "title": "UTM Management",
+      "subtitle": "Manage and track UTM codes for campaign attribution",
+      "createUtm": "Create UTM",
+      "refresh": "Refresh",
+      "loading": "Loading UTM codes...",
+      "error": {
+        "title": "Error Loading UTM Codes",
+        "tryAgain": "Try Again"
+      },
+      "summary": {
+        "totalUtms": "Total UTMs",
+        "activeUtms": "Active UTMs",
+        "inactiveUtms": "Inactive",
+        "totalClicks": "Total Clicks",
+        "allTrackingCodes": "All tracking codes",
+        "currentlyInUse": "Currently in use",
+        "notBeingUsed": "Not being used",
+        "acrossAllUtms": "Across all UTMs"
+      },
+      "search": {
+        "placeholder": "Search by UTM name, campaign, or source..."
+      },
+      "table": {
+        "utmName": "UTM Name",
+        "campaign": "Campaign",
+        "source": "Source",
+        "medium": "Medium",
+        "landingUrl": "Landing URL",
+        "created": "Created",
+        "clicks": "Clicks",
+        "status": "Status",
+        "actions": "Actions",
+        "noData": "No UTM codes found",
+        "clearSearch": "Clear search"
+      },
+      "mobile": {
+        "campaign": "Campaign",
+        "trackingUrl": "Tracking URL",
+        "clicks": "clicks"
+      },
+      "pagination": {
+        "total": "Total {total} UTM codes",
+        "perPage": "per page"
+      },
+      "actions": {
+        "copyShortUrl": "Copy Short URL",
+        "openTrackingUrl": "Open Tracking URL",
+        "edit": "Edit",
+        "delete": "Delete",
+        "clickToDeactivate": "Click to deactivate",
+        "clickToActivate": "Click to activate"
+      },
+      "delete": {
+        "title": "Delete UTM Code?",
+        "text": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+        "confirm": "Yes, delete it!",
+        "cancel": "Cancel",
+        "deleting": "Deleting UTM code...",
+        "success": "UTM code deleted successfully!",
+        "error": "Error: {error}"
+      },
+      "toggle": {
+        "activateTitle": "Activate UTM Link?",
+        "deactivateTitle": "Deactivate UTM Link?",
+        "activateText": "Are you sure you want to activate \"{name}\"?",
+        "deactivateText": "Are you sure you want to deactivate \"{name}\"?",
+        "inactiveWarning": "⚠️ The link will show an \"expired\" message to visitors.",
+        "activeInfo": "✓ The link will redirect visitors normally.",
+        "confirmActivate": "Yes, activate it",
+        "confirmDeactivate": "Yes, deactivate it",
+        "cancel": "Cancel",
+        "activating": "Activating UTM link...",
+        "deactivating": "Deactivating UTM link...",
+        "activated": "UTM link activated successfully!",
+        "deactivated": "UTM link deactivated successfully!",
+        "error": "Error: {error}"
+      },
+      "copy": {
+        "success": "URL copied to clipboard!",
+        "error": "Failed to copy URL"
+      }
+    },
+    "generator": {
+      "title": "UTM Code Generator",
+      "editTitle": "Edit UTM Code",
+      "subtitle": "Create tracking URLs with UTM parameters for campaign attribution",
+      "editSubtitle": "Update tracking URL with UTM parameters",
+      "backToList": "Back to UTM List",
+      "loading": "Loading UTM code...",
+      "utmParameters": "UTM Parameters",
+      "generatedUrl": "Generated URL",
+      "form": {
+        "linkToCampaign": "Link to Campaign",
+        "selectCampaign": "-- Select Campaign --",
+        "campaignHint": "Select a campaign - UTM parameters will be auto-filled",
+        "utmName": "UTM Name",
+        "utmNameHint": "Auto-filled from selected campaign",
+        "targetLandingUrl": "Target Landing URL",
+        "landingUrlPlaceholder": "https://www.example.com/page",
+        "landingUrlHint": "The destination URL where users will land",
+        "utmSource": "UTM Source",
+        "selectSource": "Select source",
+        "sourceHint": "Platform where the ad will run (e.g., Google, Naver, Kakao)",
+        "utmMedium": "UTM Medium",
+        "selectMedium": "Select medium",
+        "mediumHint": "Ad format type (e.g., Search, Banner, Video, SNS)",
+        "utmTerm": "UTM Term",
+        "termPlaceholder": "e.g., running+shoes",
+        "termHint": "Identify paid search keywords (optional)",
+        "utmContent": "UTM Content",
+        "contentPlaceholder": "e.g., banner_top, sidebar_ad",
+        "contentHint": "Differentiate similar content or links (optional)"
+      },
+      "sourceOptions": {
+        "google": "Google",
+        "naver": "Naver",
+        "kakao": "Kakao",
+        "youtube": "Youtube",
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "saramin": "Saramin",
+        "email": "Email",
+        "other": "Other"
+      },
+      "mediumOptions": {
+        "search": "Search",
+        "display": "Display",
+        "video": "Video",
+        "social": "Social",
+        "email": "Email",
+        "banner": "Banner",
+        "sns": "SNS",
+        "referral": "Referral",
+        "organic": "Organic"
+      },
+      "preview": {
+        "trackingCode": "Tracking Code",
+        "fullTrackingUrl": "Full Tracking URL:",
+        "copyUrl": "Copy URL",
+        "copied": "Copied!",
+        "utmParameters": "UTM Parameters:",
+        "campaign": "Campaign:",
+        "name": "Name:",
+        "utmCampaign": "UTM Campaign:",
+        "utmSource": "UTM Source:",
+        "utmMedium": "UTM Medium:",
+        "utmTerm": "UTM Term:",
+        "utmContent": "UTM Content:",
+        "tip": "Tip: Fill in all required fields (*) to generate a complete tracking URL. {action}",
+        "tipCreate": "Click \"Create UTM Code\" to save and generate a tracking link.",
+        "tipEdit": "Click \"Update UTM Code\" to save your changes."
+      },
+      "actions": {
+        "reset": "Reset",
+        "create": "Create UTM Code",
+        "update": "Update UTM Code",
+        "creating": "Creating...",
+        "updating": "Updating..."
+      },
+      "validation": {
+        "selectCampaign": "Please select a campaign first",
+        "landingUrlRequired": "Target landing URL is required",
+        "ensureCampaign": "Please ensure a campaign is selected"
+      },
+      "success": {
+        "created": "UTM code created successfully!",
+        "updated": "UTM code updated successfully!"
+      },
+      "error": {
+        "loadFailed": "Failed to load UTM code",
+        "createFailed": "Failed to create UTM code",
+        "updateFailed": "Failed to update UTM code"
+      },
+      "copy": {
+        "trackingLinkCopied": "Tracking link copied!"
+      }
+    }
+  }
+}
+
