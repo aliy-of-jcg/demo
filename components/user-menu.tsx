@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { User, LogOut, Settings, Building2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface UserData {
   id: number;
@@ -13,6 +14,7 @@ interface UserData {
 }
 
 export function UserMenu() {
+  const t = useTranslations('userMenu');
   const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -74,13 +76,18 @@ export function UserMenu() {
     }
   };
 
+  const getUserTypeLabel = (type: string) => {
+    const typeKey = type.toLowerCase() as 'owner' | 'admin' | 'observer' | 'regular';
+    return t(`userTypes.${typeKey}`, { defaultValue: type.charAt(0).toUpperCase() + type.slice(1) });
+  };
+
   return (
     <div className="relative z-50" ref={menuRef}>
       {/* User Avatar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 p-2 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
-        aria-label="User menu"
+        aria-label={t('userMenu')}
       >
         <User className="h-5 w-5" />
       </button>
@@ -115,7 +122,7 @@ export function UserMenu() {
                     user.user_type
                   )}`}
                 >
-                  {user.user_type.charAt(0).toUpperCase() + user.user_type.slice(1)}
+                  {getUserTypeLabel(user.user_type)}
                 </span>
               </div>
             </div>
@@ -131,7 +138,7 @@ export function UserMenu() {
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 <Settings className="h-4 w-4 text-gray-400" />
-                Settings
+                {t('settings')}
               </button>
 
               <div className="border-t border-gray-100 my-1"></div>
@@ -141,7 +148,7 @@ export function UserMenu() {
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
               >
                 <LogOut className="h-4 w-4" />
-                Sign Out
+                {t('signOut')}
               </button>
             </div>
           </div>

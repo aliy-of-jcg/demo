@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { AuthFooter } from "@/components/auth-footer";
 import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function AuthPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
+  const t = useTranslations("auth.login");
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -48,7 +50,7 @@ export default function AuthPage() {
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-white" />
-          <p className="text-white text-lg font-medium">Loading...</p>
+          <p className="text-white text-lg font-medium">{t("loading")}</p>
         </div>
       </div>
     );

@@ -1106,6 +1106,41 @@
         "trackingLinkCopied": "Tracking link copied!"
       }
     }
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "campaignManagement": "Campaign Management",
+    "campaignList": "Campaign List",
+    "createNewCampaign": "Create New Campaign",
+    "courseManagement": "Course Management",
+    "logAnalysis": "Log Analysis",
+    "utmTools": "UTM Tools",
+    "utmList": "UTM List",
+    "utmGenerator": "UTM Generator",
+    "analyticsTrackingSystem": "Analytics & Tracking System",
+    "closeMenu": "Close menu",
+    "logAnalysisItems": {
+      "performanceDashboard": "Performance Dashboard",
+      "channelPerformance": "Channel Performance",
+      "campaignAnalysis": "Campaign Analysis",
+      "environmentAnalysis": "Environment Analysis",
+      "timeBasedAnalysis": "Time-based Analysis",
+      "returningVisitorAnalysis": "Returning Visitor Analysis",
+      "pageFlowAnalysis": "Page Flow Analysis",
+      "sessionJourneys": "Session Journeys",
+      "trackedWebsites": "Tracked Websites"
+    }
+  },
+  "userMenu": {
+    "userMenu": "User menu",
+    "settings": "Settings",
+    "signOut": "Sign Out",
+    "userTypes": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "observer": "Observer",
+      "regular": "Regular"
+    }
   }
 }
 

@@ -7,37 +7,10 @@ import { cn } from "@/lib/utils";
 import { UserMenu } from "./user-menu";
 import { LanguageSwitcher } from "./language-switcher";
 import { useState, useEffect } from "react";
-
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-];
+import { useTranslations } from "next-intl";
 
 const debugItems = [
   { name: "Debug Sessions (aptdecor.uz, gatoradestore.uz)", href: "/debug-sessions" },
-];
-
-const campaignManagementItems = [
-  { name: "Campaign List", href: "/campaigns" },
-  { name: "Create New Campaign", href: "/campaigns/new" },
-  { name: "Course Management", href: "/courses" },
-
-];
-
-const utmToolsItems = [
-  { name: "UTM List", href: "/utm-tools" },
-  { name: "UTM Generator", href: "/utm-tools/generator" },
-];
-
-const logAnalysisItems = [
-  { name: "Performance Dashboard", href: "/performance" },
-  { name: "Channel Performance", href: "/channel-performance" },
-  { name: "Campaign Analysis", href: "/campaign-analysis" },
-  { name: "Environment Analysis", href: "/environment-analysis" },
-  { name: "Time-based Analysis", href: "/time-analysis" },
-  { name: "Returning Visitor Analysis", href: "/returning-analysis" },
-  { name: "Page Flow Analysis", href: "/page-flow-analysis" },
-  { name: "Session Journeys", href: '/session-journeys' },
-  { name: "Tracked Websites", href: '/tracked-websites' },
 ];
 
 interface SidebarProps {
@@ -46,11 +19,40 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
+  const t = useTranslations('sidebar');
   const pathname = usePathname();
   const [isCampaignManagementOpen, setIsCampaignManagementOpen] = useState(false);
   const [isUTMToolsOpen, setIsUTMToolsOpen] = useState(false);
   const [isLogAnalysisOpen, setIsLogAnalysisOpen] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
+
+  // Build navigation items with translations
+  const navigation = [
+    { name: t('dashboard'), href: "/", icon: LayoutDashboard },
+  ];
+
+  const campaignManagementItems = [
+    { name: t('campaignList'), href: "/campaigns" },
+    { name: t('createNewCampaign'), href: "/campaigns/new" },
+    { name: t('courseManagement'), href: "/courses" },
+  ];
+
+  const utmToolsItems = [
+    { name: t('utmList'), href: "/utm-tools" },
+    { name: t('utmGenerator'), href: "/utm-tools/generator" },
+  ];
+
+  const logAnalysisItems = [
+    { name: t('logAnalysisItems.performanceDashboard'), href: "/performance" },
+    { name: t('logAnalysisItems.channelPerformance'), href: "/channel-performance" },
+    { name: t('logAnalysisItems.campaignAnalysis'), href: "/campaign-analysis" },
+    { name: t('logAnalysisItems.environmentAnalysis'), href: "/environment-analysis" },
+    { name: t('logAnalysisItems.timeBasedAnalysis'), href: "/time-analysis" },
+    { name: t('logAnalysisItems.returningVisitorAnalysis'), href: "/returning-analysis" },
+    { name: t('logAnalysisItems.pageFlowAnalysis'), href: "/page-flow-analysis" },
+    { name: t('logAnalysisItems.sessionJourneys'), href: '/session-journeys' },
+    { name: t('logAnalysisItems.trackedWebsites'), href: '/tracked-websites' },
+  ];
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -79,7 +81,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           <button
             onClick={onMobileClose}
             className="lg:hidden p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
-            aria-label="Close menu"
+            aria-label={t('closeMenu')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -117,7 +119,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           >
             <div className="flex items-center">
               <Megaphone className="w-5 h-5 mr-2 sm:mr-3" />
-              Campaign Management
+              {t('campaignManagement')}
             </div>
             {isCampaignManagementOpen ? (
               <ChevronUp className="w-4 h-4" />
@@ -161,7 +163,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           >
             <div className="flex items-center">
               <FileText className="w-5 h-5 mr-2 sm:mr-3" />
-              Log Analysis
+              {t('logAnalysis')}
             </div>
             {isLogAnalysisOpen ? (
               <ChevronUp className="w-4 h-4" />
@@ -205,7 +207,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           >
             <div className="flex items-center">
               <Target className="w-5 h-5 mr-2 sm:mr-3" />
-              UTM Tools
+              {t('utmTools')}
             </div>
             {isUTMToolsOpen ? (
               <ChevronUp className="w-4 h-4" />
@@ -290,7 +292,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
       </div>
       <div className="p-3 sm:p-4 border-t border-gray-800">
         <p className="text-xs text-gray-400 text-center sm:text-left">
-          Analytics & Tracking System
+          {t('analyticsTrackingSystem')}
         </p>
       </div>
     </>

@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { PageFooter } from "@/components/page-footer";
 
-// Disable static generation for this page
+// Home page now relies on the root layout's cookie-based locale handling.
 export const dynamic = 'force-dynamic';
 
 interface CampaignSummary {

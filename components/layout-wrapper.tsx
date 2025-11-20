@@ -9,9 +9,6 @@ import { Loader2, Menu } from "lucide-react";
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  
-  // Extract locale from pathname (e.g., /en/auth -> en, /ko/campaigns -> ko)
-  const locale = pathname?.split('/')[1] || 'en';
   const isAuthPage = pathname?.includes("/auth");
   const isResetPasswordPage = pathname?.includes("/reset-password");
   const isLinkExpiredPage = pathname?.includes("/link-expired");
@@ -33,8 +30,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         const token = localStorage.getItem("auth_token");
         
         if (!token) {
-          // Use replace to avoid adding to history - use locale-aware path
-          window.location.replace(`/${locale}/auth`);
+          // Use replace to avoid adding to history
+          window.location.replace(`/auth`);
           return;
         }
 
@@ -49,8 +46,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         if (!result.valid) {
           localStorage.removeItem("auth_token");
           localStorage.removeItem("user");
-          // Use replace to avoid back button issues - use locale-aware path
-          window.location.replace(`/${locale}/auth`);
+          // Use replace to avoid back button issues
+          window.location.replace(`/auth`);
         } else {
           if (result.user) {
             localStorage.setItem("user", JSON.stringify(result.user));
@@ -62,7 +59,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         console.error("Auth check failed:", error);
         localStorage.removeItem("auth_token");
         localStorage.removeItem("user");
-        window.location.replace(`/${locale}/auth`);
+        window.location.replace(`/auth`);
       }
     };
 
@@ -72,7 +69,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     }, 100);
 
     return () => clearTimeout(timeout);
-  }, [isPublicPage, locale]);
+  }, [isPublicPage]);
 
   // Close mobile sidebar when route changes
   useEffect(() => {

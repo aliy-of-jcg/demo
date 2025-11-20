@@ -518,8 +518,7 @@
       "ctr": "CTR",
       "status": "상태",
       "channelTotal": "채널 합계",
-      "campaigns": "캠페인",
-      "campaign": "캠페인"
+      "campaigns": "캠페인"
     },
     "mobile": {
       "visits": "방문",
@@ -1105,6 +1104,41 @@
       "copy": {
         "trackingLinkCopied": "추적 링크가 복사되었습니다!"
       }
+    }
+  },
+  "sidebar": {
+    "dashboard": "대시보드",
+    "campaignManagement": "캠페인 관리",
+    "campaignList": "캠페인 목록",
+    "createNewCampaign": "새 캠페인 만들기",
+    "courseManagement": "과정 관리",
+    "logAnalysis": "로그 분석",
+    "utmTools": "UTM 도구",
+    "utmList": "UTM 목록",
+    "utmGenerator": "UTM 생성기",
+    "analyticsTrackingSystem": "분석 및 추적 시스템",
+    "closeMenu": "메뉴 닫기",
+    "logAnalysisItems": {
+      "performanceDashboard": "성과 대시보드",
+      "channelPerformance": "채널 성과",
+      "campaignAnalysis": "캠페인 분석",
+      "environmentAnalysis": "환경 분석",
+      "timeBasedAnalysis": "시간 기반 분석",
+      "returningVisitorAnalysis": "재방문자 분석",
+      "pageFlowAnalysis": "페이지 흐름 분석",
+      "sessionJourneys": "세션 여정",
+      "trackedWebsites": "추적 웹사이트"
+    }
+  },
+  "userMenu": {
+    "userMenu": "사용자 메뉴",
+    "settings": "설정",
+    "signOut": "로그아웃",
+    "userTypes": {
+      "owner": "소유자",
+      "admin": "관리자",
+      "observer": "관찰자",
+      "regular": "일반"
     }
   }
 }

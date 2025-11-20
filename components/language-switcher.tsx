@@ -10,21 +10,14 @@ interface LanguageSwitcherProps {
 }
 
 export function LanguageSwitcher({ variant = 'light' }: LanguageSwitcherProps) {
-  const pathname = usePathname();
   const router = useRouter();
   const [currentLocale, setCurrentLocale] = useState<'en' | 'ko'>('en');
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Check if we're on a locale route (e.g., /en or /en/..., /ko or /ko/...)
-    if (pathname === '/ko' || pathname.startsWith('/ko/')) {
-      setCurrentLocale('ko');
-    } else if (pathname === '/en' || pathname.startsWith('/en/')) {
-      setCurrentLocale('en');
-    } else {
-      // For non-locale routes, check the cookie
-      const locale = getLocaleFromCookies();
-      setCurrentLocale(locale);
-    }
+    // Always derive current locale from cookies (single source of truth)
+    const locale = getLocaleFromCookies();
+    setCurrentLocale(locale);
   }, [pathname]);
 
   const switchLanguage = (newLocale: 'en' | 'ko') => {
@@ -34,21 +27,8 @@ export function LanguageSwitcher({ variant = 'light' }: LanguageSwitcherProps) {
     setLocaleCookie(newLocale);
     setCurrentLocale(newLocale);
 
-    // If we're on a locale route (e.g., /en/something or /ko/something), update it
-    if (
-      pathname === '/en' ||
-      pathname === '/ko' ||
-      pathname.startsWith('/en/') ||
-      pathname.startsWith('/ko/')
-    ) {
-      // Replace only the leading locale segment (/en or /ko), not any "en"/"ko" that
-      // might appear later in the path (e.g., /environment-analysis).
-      const newPathname = pathname.replace(/^\/(en|ko)(?=\/|$)/, `/${newLocale}`);
-      router.push(newPathname);
-    } else {
-      // For non-locale routes, just refresh the page to reload with new locale
-      router.refresh();
-    }
+    // Refresh the current route so server components re-read the updated cookie
+    router.refresh();
   };
 
   const isDark = variant === 'dark';
