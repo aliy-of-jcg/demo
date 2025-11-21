@@ -109,13 +109,46 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate summary stats
+    // IMPORTANT: total_visitors must count distinct users across ALL domains, not sum per-domain counts
+    // (Summing would double-count users who visit multiple domains)
+    let total_visitors = 0;
+    try {
+      const totalVisitorsQuery = await clickhouse.query({
+        query: `
+          SELECT COUNT(DISTINCT user_id) as unique_visitors
+          FROM analytics.visit_logs
+          WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+            AND page_url != ''
+            AND page_url IS NOT NULL
+            AND domain(page_url) != ''
+            AND lower(if(startsWith(domain(page_url), 'www.'), 
+              substring(domain(page_url), 5), 
+              domain(page_url))) NOT IN (
+              'dev.cosmosai.co.kr',
+              'cosmosai.co.kr',
+              'localhost',
+              '127.0.0.1',
+              '0.0.0.0'
+            )
+        `,
+        format: 'JSONEachRow'
+      });
+      
+      const totalVisitorsResult = await totalVisitorsQuery.json() as Array<{ unique_visitors: number }>;
+      total_visitors = totalVisitorsResult[0]?.unique_visitors || 0;
+    } catch (error) {
+      console.warn('Failed to calculate total visitors across all domains:', error);
+      // Fallback to sum (less accurate but won't break)
+      total_visitors = enrichedWebsites.reduce((sum, w) => sum + parseInt(w.unique_visitors.toString()), 0);
+    }
+
     const summary = {
       total_websites: enrichedWebsites.length,
       active_websites: enrichedWebsites.filter(w => w.status === 'Active').length,
       inactive_websites: enrichedWebsites.filter(w => w.status === 'Inactive').length,
       disabled_websites: enrichedWebsites.filter(w => w.status === 'Disabled').length,
       total_sessions: enrichedWebsites.reduce((sum, w) => sum + parseInt(w.total_sessions.toString()), 0),
-      total_visitors: enrichedWebsites.reduce((sum, w) => sum + parseInt(w.unique_visitors.toString()), 0),
+      total_visitors: total_visitors, // Distinct users across all domains
       total_pageviews: enrichedWebsites.reduce((sum, w) => sum + parseInt(w.total_pageviews.toString()), 0),
       total_conversions: enrichedWebsites.reduce((sum, w) => sum + parseInt(w.total_conversions.toString()), 0),
     };

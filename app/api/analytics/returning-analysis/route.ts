@@ -85,6 +85,23 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. New vs Returning Visitors
+    // IMPORTANT: Calculate total visitors directly (not by summing groups) to match performance dashboard
+    // This avoids discrepancies from users who might have both new and returning pageviews
+    const totalVisitorsQuery = `
+      SELECT COUNT(DISTINCT user_id) as total_visitors
+      FROM analytics.visit_logs
+      WHERE ${whereClause}
+    `;
+
+    const totalVisitorsResult = await clickhouse.query({
+      query: totalVisitorsQuery,
+      format: 'JSONEachRow',
+    });
+
+    const totalVisitorsJson = await totalVisitorsResult.json() as Array<{ total_visitors: number }>;
+    const totalVisitors = totalVisitorsJson[0]?.total_visitors || 0;
+
+    // Now get new vs returning breakdown
     const newVsReturningQuery = `
       SELECT 
         is_new_visitor,
@@ -118,8 +135,6 @@ export async function GET(request: NextRequest) {
       conversions: 0, 
       avg_time_on_page: 0
     };
-
-    const totalVisitors = newVisitors.visitors + returningVisitors.visitors;
 
     const newVsReturning: NewVsReturningData = {
       new: {
