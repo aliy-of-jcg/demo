@@ -74,14 +74,18 @@ export async function GET(request: NextRequest) {
     
     console.log(`🔄 Returning Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
 
-    // Build WHERE clause for date filtering
+    // Build WHERE clause for date filtering (standardized to match performance dashboard)
     let whereClause = '1=1';
 
-    if (startDate) {
-      whereClause += ` AND toDate(timestamp) >= '${startDate}'`;
-    }
-    if (endDate) {
-      whereClause += ` AND toDate(timestamp) <= '${endDate}'`;
+    if (startDate && endDate) {
+      whereClause += ` AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+    } else {
+      if (startDate) {
+        whereClause += ` AND toDate(timestamp) >= toDate('${startDate}')`;
+      }
+      if (endDate) {
+        whereClause += ` AND toDate(timestamp) <= toDate('${endDate}')`;
+      }
     }
 
     // 1. New vs Returning Visitors

@@ -164,8 +164,53 @@ export default function CampaignAnalysisPage() {
           size="sm"
         />
       </div>
-    
-     {/* Campaign Selector */}
+
+      {/* Date Range Picker - Top (matching Performance Dashboard layout) */}
+      <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
+          {/* Left: Date Range Picker */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
+            <input 
+              type="date" 
+              value={dateRange.start}
+              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+            />
+            <span className="text-gray-500">~</span>
+            <input 
+              type="date" 
+              value={dateRange.end}
+              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+            />
+          </div>
+
+          {/* Right: Quick Range Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setQuickRange(7)}
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+            >
+              {t('filters.last7Days')}
+            </button>
+            <button
+              onClick={() => setQuickRange(30)}
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+            >
+              {t('filters.last30Days')}
+            </button>
+            <button
+              onClick={() => setQuickRange(90)}
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+            >
+              {t('filters.last3Months')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Campaign Selector */}
       <div className="mb-4 sm:mb-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">{t('selectCampaign')}</label>
         <select
@@ -204,84 +249,42 @@ export default function CampaignAnalysisPage() {
         )}
       </div>
 
-      {/* Filters */}
-      <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-col gap-3">
-          {/* Chart/Table Toggle - Top */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('chart')}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                viewMode === 'chart' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {t('viewMode.chart')}
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                viewMode === 'table' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {t('viewMode.table')}
-            </button>
-          </div>
+      {/* View Mode Toggle and Platform Filter */}
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        {/* Platform Filter */}
+        <select
+          value={selectedPlatform}
+          onChange={(e) => setSelectedPlatform(e.target.value)}
+          className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm bg-white"
+        >
+          <option value="all">{t('filters.allPlatforms')}</option>
+          {displayedPlatforms.map((platform, idx) => (
+            <option key={idx} value={platform.toLowerCase()}>{platform}</option>
+          ))}
+        </select>
 
-          {/* Filters - Bottom */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 sm:gap-4">
-            {/* Platform Filter */}
-            <select
-              value={selectedPlatform}
-              onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm"
-            >
-              <option value="all">{t('filters.allPlatforms')}</option>
-              {displayedPlatforms.map((platform, idx) => (
-                <option key={idx} value={platform.toLowerCase()}>{platform}</option>
-              ))}
-            </select>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-              <input 
-                type="date" 
-                value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
-              />
-              <span className="text-gray-500">~</span>
-              <input 
-                type="date" 
-                value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
-              />
-
-              {/* Quick Range Buttons */}
-              <button
-                onClick={() => setQuickRange(7)}
-                className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-              >
-                {t('filters.last7Days')}
-              </button>
-              <button
-                onClick={() => setQuickRange(30)}
-                className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-              >
-                {t('filters.last30Days')}
-              </button>
-              <button
-                onClick={() => setQuickRange(90)}
-                className="hidden sm:inline-block px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-              >
-                {t('filters.last3Months')}
-              </button>
-            </div>
-          </div>
+        {/* View Mode Toggle */}
+        <div className="flex gap-2 bg-white p-1 rounded-lg shadow-sm border border-gray-200">
+          <button
+            onClick={() => setViewMode('chart')}
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              viewMode === 'chart' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-transparent text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            {t('viewMode.chart')}
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+              viewMode === 'table' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-transparent text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            {t('viewMode.table')}
+          </button>
         </div>
       </div>
 
@@ -489,82 +492,86 @@ export default function CampaignAnalysisPage() {
             </>
           )}
 
-          {/* Daily Performance Table - Always Shown */}
-          {data.dailyData.length > 0 ? (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
-              <div className="p-3 sm:p-4 border-b border-gray-200">
-                <h3 className="text-sm sm:text-base font-semibold text-gray-900">{t('table.title')}</h3>
-              </div>
-              
-              {/* Desktop Table View */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.date')}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.visitors')}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.conversions')}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.convRate')}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.cost')}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.ctr')}</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.avgCPC')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {data.dailyData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.date}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.visitors.toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{row.conversions}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.conversionRate}%</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₩{(row.cost / 10000).toFixed(1)}만</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {data.metrics.ctr}%
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          ₩{row.visitors > 0 ? ((row.cost / row.visitors) / 10).toFixed(0) : 0}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Mobile/Tablet Card View */}
-              <div className="lg:hidden divide-y divide-gray-200">
-                {data.dailyData.map((row, idx) => (
-                  <div key={idx} className="p-4 hover:bg-gray-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-semibold text-gray-900">{row.date}</span>
-                      <span className="text-sm font-medium text-green-600">{row.conversions} {t('table.conversionsLabel')}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <span className="text-gray-500 text-xs">{t('mobile.visitors')}</span>
-                        <p className="font-medium text-gray-900">{row.visitors.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 text-xs">{t('mobile.convRate')}</span>
-                        <p className="font-medium text-gray-900">{row.conversionRate}%</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 text-xs">{t('mobile.cost')}</span>
-                        <p className="font-medium text-gray-900">₩{(row.cost / 10000).toFixed(1)}만</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 text-xs">{t('mobile.avgCPC')}</span>
-                        <p className="font-medium text-gray-900">₩{row.visitors > 0 ? ((row.cost / row.visitors) / 10).toFixed(0) : 0}</p>
-                      </div>
-                    </div>
+          {/* Daily Performance Table - Only shown when table view is selected */}
+          {viewMode === 'table' && (
+            <>
+              {data.dailyData.length > 0 ? (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+                  <div className="p-3 sm:p-4 border-b border-gray-200">
+                    <h3 className="text-sm sm:text-base font-semibold text-gray-900">{t('table.title')}</h3>
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center mb-4 sm:mb-6">
-              <p className="text-gray-500">{t('empty.noData')}</p>
-              <p className="text-xs sm:text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
-            </div>
+                  
+                  {/* Desktop Table View */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.date')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.visitors')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.conversions')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.convRate')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.cost')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.ctr')}</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('table.avgCPC')}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {data.dailyData.map((row, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.date}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.visitors.toLocaleString()}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{row.conversions}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.conversionRate}%</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₩{(row.cost / 10000).toFixed(1)}만</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {data.metrics.ctr}%
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                              ₩{row.visitors > 0 ? ((row.cost / row.visitors) / 10).toFixed(0) : 0}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  {/* Mobile/Tablet Card View */}
+                  <div className="lg:hidden divide-y divide-gray-200">
+                    {data.dailyData.map((row, idx) => (
+                      <div key={idx} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-semibold text-gray-900">{row.date}</span>
+                          <span className="text-sm font-medium text-green-600">{row.conversions} {t('table.conversionsLabel')}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.visitors')}</span>
+                            <p className="font-medium text-gray-900">{row.visitors.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.convRate')}</span>
+                            <p className="font-medium text-gray-900">{row.conversionRate}%</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.cost')}</span>
+                            <p className="font-medium text-gray-900">₩{(row.cost / 10000).toFixed(1)}만</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.avgCPC')}</span>
+                            <p className="font-medium text-gray-900">₩{row.visitors > 0 ? ((row.cost / row.visitors) / 10).toFixed(0) : 0}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center mb-4 sm:mb-6">
+                  <p className="text-gray-500">{t('empty.noData')}</p>
+                  <p className="text-xs sm:text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
