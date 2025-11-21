@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 
+/**
+ * Returning Visitor Analysis API
+ * 
+ * Provides detailed analytics on visitor return behavior:
+ * - New vs Returning visitor comparison
+ * - Visit frequency distribution (uses MAX visit_count per user to avoid double-counting)
+ * - Return interval analysis (measures time between consecutive sessions)
+ * - Daily trends
+ * 
+ * Version: 2.0
+ * Fixed Issues:
+ * - Visit frequency now uses MAX(visit_count) per user instead of grouping all pageviews
+ * - Return intervals now measure consecutive session gaps instead of first-to-last span
+ */
+
 // Type definitions for the analytics data
 interface VisitorData {
   is_new_visitor: number;
@@ -134,14 +149,21 @@ export async function GET(request: NextRequest) {
     };
 
     // 2. Visit Frequency Distribution
+    // Get the maximum visit_count per user to avoid double-counting
     const visitFrequencyQuery = `
       SELECT 
-        visit_count,
-        COUNT(DISTINCT user_id) as users
-      FROM analytics.visit_logs
-      WHERE ${whereClause}
-      GROUP BY visit_count
-      ORDER BY visit_count ASC
+        max_visit_count,
+        COUNT(*) as users
+      FROM (
+        SELECT 
+          user_id,
+          MAX(visit_count) as max_visit_count
+        FROM analytics.visit_logs
+        WHERE ${whereClause}
+        GROUP BY user_id
+      )
+      GROUP BY max_visit_count
+      ORDER BY max_visit_count ASC
     `;
 
     const visitFrequencyResult = await clickhouse.query({
@@ -149,7 +171,7 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const visitFrequencyJson = await visitFrequencyResult.json() as { visit_count: number; users: number }[];
+    const visitFrequencyJson = await visitFrequencyResult.json() as { max_visit_count: number; users: number }[];
     
     // Group visit counts: 1, 2-5, 6-10, 11-20, 21+
     const frequencyBuckets: FrequencyBucket[] = [
@@ -161,7 +183,7 @@ export async function GET(request: NextRequest) {
     ];
 
     visitFrequencyJson.forEach((row) => {
-      const count = row.visit_count;
+      const count = row.max_visit_count;
       const users = row.users;
       
       for (const bucket of frequencyBuckets) {
@@ -172,19 +194,18 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // 3. Return Interval Analysis (days between visits)
-    // This requires session-level data, so we'll calculate based on first and last pageview per user
+    // 3. Return Interval Analysis (days between consecutive visits)
+    // Calculate intervals between consecutive sessions per user
     const returnIntervalQuery = `
       SELECT 
         user_id,
-        MIN(timestamp) as first_visit,
-        MAX(timestamp) as last_visit,
-        COUNT(DISTINCT session_id) as session_count
+        session_id,
+        MIN(timestamp) as session_start
       FROM analytics.visit_logs
       WHERE ${whereClause}
         AND is_new_visitor = 0
-      GROUP BY user_id
-      HAVING session_count > 1
+      GROUP BY user_id, session_id
+      ORDER BY user_id, session_start
     `;
 
     const returnIntervalResult = await clickhouse.query({
@@ -194,12 +215,11 @@ export async function GET(request: NextRequest) {
 
     const returnIntervalJson = await returnIntervalResult.json() as { 
       user_id: string; 
-      first_visit: string; 
-      last_visit: string; 
-      session_count: number 
+      session_id: string;
+      session_start: string; 
     }[];
     
-    // Calculate average return interval
+    // Calculate intervals between consecutive sessions
     let totalIntervals = 0;
     let intervalSum = 0;
     
@@ -212,23 +232,36 @@ export async function GET(request: NextRequest) {
       { label: '31+ days', min: 31, max: Infinity, users: 0 },
     ];
 
+    // Group sessions by user
+    const userSessions = new Map<string, Date[]>();
     returnIntervalJson.forEach((row) => {
-      const firstVisit = new Date(row.first_visit);
-      const lastVisit = new Date(row.last_visit);
-      const daysDiff = Math.floor((lastVisit.getTime() - firstVisit.getTime()) / (1000 * 60 * 60 * 24));
+      if (!userSessions.has(row.user_id)) {
+        userSessions.set(row.user_id, []);
+      }
+      userSessions.get(row.user_id)!.push(new Date(row.session_start));
+    });
+
+    // Calculate intervals between consecutive sessions for each user
+    userSessions.forEach((sessions, userId) => {
+      // Sort sessions by time
+      sessions.sort((a, b) => a.getTime() - b.getTime());
       
-      if (daysDiff > 0) {
+      // Calculate intervals between consecutive sessions
+      for (let i = 1; i < sessions.length; i++) {
+        const prevSession = sessions[i - 1];
+        const currentSession = sessions[i];
+        const daysDiff = Math.floor((currentSession.getTime() - prevSession.getTime()) / (1000 * 60 * 60 * 24));
+        
         totalIntervals++;
         intervalSum += daysDiff;
         
+        // Find appropriate bucket
         for (const bucket of intervalBuckets) {
           if (daysDiff >= bucket.min && daysDiff <= bucket.max) {
             bucket.users++;
             break;
           }
         }
-      } else {
-        intervalBuckets[0].users++; // Same day
       }
     });
 

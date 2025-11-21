@@ -1,16 +1,20 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.8.0
+ * Version: 4.8.1
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
  * - Direct visits marked as utm_source: '(direct)', utm_medium: '(none)'
- * - 30-minute visit window (refreshes within window don't increment visit_count)
+ * - 2-minute visit window (refreshes within window don't increment visit_count)
  * - Page count per session
  * - Google Analytics-style exit tracking (one exit per session)
  * - Page refreshes count as pageviews
  * - Proper landing page tracking across multiple sessions
  * - Client-side navigation tracking (SPA/Next.js router support)
+ *
+ * New in v4.8.1:
+ * - Fixed visit timeout to match session timeout (2 minutes)
+ * - Visit count now increments every 2 minutes, not 30 seconds
  *
  * New in v4.8.0:
  * - Google Analytics approach: All data stored in localStorage (no cookies)
@@ -57,7 +61,7 @@
     lastActivityStorageKey: 'cosmos_last_activity',
     
     sessionTimeoutMinutes: 2,
-    visitTimeoutMinutes: 0.5,
+    visitTimeoutMinutes: 2,
     pageViewDebounceMs: 500,
   };
 
