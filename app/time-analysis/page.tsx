@@ -45,6 +45,21 @@ interface ApiResponse {
 
 export default function TimeAnalysisPage() {
   const t = useTranslations('timeAnalysis');
+  
+  // Map English day names to translation keys
+  const translateDay = (day: string): string => {
+    const dayMap: Record<string, string> = {
+      'Monday': t('days.monday'),
+      'Tuesday': t('days.tuesday'),
+      'Wednesday': t('days.wednesday'),
+      'Thursday': t('days.thursday'),
+      'Friday': t('days.friday'),
+      'Saturday': t('days.saturday'),
+      'Sunday': t('days.sunday'),
+    };
+    return dayMap[day] || day;
+  };
+  
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -204,7 +219,7 @@ export default function TimeAnalysisPage() {
                 <div className="space-y-2">
                   {data.insights.peakDays.map((peak, idx) => (
                     <div key={idx} className="flex justify-between items-center">
-                      <span className="text-xs sm:text-sm font-medium text-gray-700">{peak.day}</span>
+                      <span className="text-xs sm:text-sm font-medium text-gray-700">{translateDay(peak.day)}</span>
                       <span className="text-xs sm:text-sm font-bold text-green-600">{peak.visitors} {t('insights.visitors')}</span>
                     </div>
                   ))}
@@ -247,7 +262,7 @@ export default function TimeAnalysisPage() {
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('charts.dayOfWeekTrend')}</h2>
             {data.dayOfWeek.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={data.dayOfWeek}>
+                <BarChart data={data.dayOfWeek.map(d => ({ ...d, day: translateDay(d.day) }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
@@ -321,7 +336,7 @@ export default function TimeAnalysisPage() {
             {/* Mobile/Tablet Card View */}
             <div className="lg:hidden divide-y divide-gray-200">
               {data.hourly.length === 0 ? (
-                <div className="p-8 text-center text-gray-500 text-sm">No data available</div>
+                <div className="p-8 text-center text-gray-500 text-sm">{t('empty.noHourlyData')}</div>
               ) : (
                 data.hourly.map((row, idx) => (
                   <div key={idx} className="p-4 hover:bg-gray-50">
@@ -374,7 +389,7 @@ export default function TimeAnalysisPage() {
                   ) : (
                     data.dayOfWeek.map((row, idx) => (
                       <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{row.day}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{translateDay(row.day)}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{row.visitors.toLocaleString()}</td>
                         <td className="px-6 py-4 text-sm text-gray-900">{row.pageviews.toLocaleString()}</td>
                         <td className="px-6 py-4 text-sm text-green-600 font-medium">{row.conversions}</td>
@@ -393,7 +408,7 @@ export default function TimeAnalysisPage() {
                 data.dayOfWeek.map((row, idx) => (
                   <div key={idx} className="p-4 hover:bg-gray-50">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-semibold text-gray-900">{row.day}</span>
+                      <span className="text-sm font-semibold text-gray-900">{translateDay(row.day)}</span>
                       <span className="text-sm font-medium text-green-600">{row.conversions} {t('tables.conversionsLabel')}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
@@ -419,8 +434,8 @@ export default function TimeAnalysisPage() {
           {/* Empty State */}
           {data.hourly.length === 0 && data.dayOfWeek.length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-              <p className="text-gray-500">No time-based data available</p>
-              <p className="text-sm text-gray-400 mt-1">Data will appear as visitors use your site</p>
+              <p className="text-gray-500">{t('empty.noData')}</p>
+              <p className="text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
             </div>
           )}
         </div>

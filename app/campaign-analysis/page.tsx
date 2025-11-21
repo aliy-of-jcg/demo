@@ -388,15 +388,15 @@ export default function CampaignAnalysisPage() {
                   {/* Daily Visitors Chart */}
                   <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">Daily Visitors</h3>
+                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">{t('charts.dailyVisitors')}</h3>
                       <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
                         <div className="flex items-center gap-1">
                           <div className="w-2.5 h-0.5 sm:w-3 sm:h-0.5 bg-blue-500"></div>
-                          <span className="text-gray-600">Visitors</span>
+                          <span className="text-gray-600">{t('charts.visitors')}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <div className="w-2.5 h-0.5 sm:w-3 sm:h-0.5 bg-green-500"></div>
-                          <span className="text-gray-600">Conversions</span>
+                          <span className="text-gray-600">{t('charts.conversions')}</span>
                         </div>
                       </div>
                     </div>
@@ -445,10 +445,10 @@ export default function CampaignAnalysisPage() {
                   {/* Daily Cost Chart */}
                   <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">Daily Cost</h3>
+                      <h3 className="text-sm sm:text-base font-semibold text-gray-900">{t('charts.dailyCost')}</h3>
                       <div className="flex items-center gap-1 text-xs sm:text-sm">
                         <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-orange-500 rounded"></div>
-                        <span className="text-gray-600">Cost (₩)</span>
+                        <span className="text-gray-600">{t('charts.cost')}</span>
                       </div>
                     </div>
                     <ResponsiveContainer width="100%" height={240}>
@@ -485,8 +485,8 @@ export default function CampaignAnalysisPage() {
                 </div>
               ) : (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center mb-4 sm:mb-6">
-                  <p className="text-gray-500">No performance data available for this campaign</p>
-                  <p className="text-xs sm:text-sm text-gray-400 mt-1">Try selecting a different date range or campaign</p>
+                  <p className="text-gray-500">{t('empty.noData')}</p>
+                  <p className="text-xs sm:text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
                 </div>
               )}
             </>

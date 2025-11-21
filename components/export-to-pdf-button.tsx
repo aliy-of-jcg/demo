@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { exportToPDF, ExportToPDFOptions } from '@/lib/pdf-export';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 export interface ExportToPDFButtonProps {
   /**
@@ -46,11 +47,13 @@ export function ExportToPDFButton({
   filename = 'export.pdf',
   title,
   html2canvasOptions,
-  label = 'Export to PDF',
+  label,
   variant = 'outline',
   size = 'default',
   className = '',
 }: ExportToPDFButtonProps) {
+  const t = useTranslations('common');
+  const defaultLabel = label || t('export.button');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
@@ -81,14 +84,14 @@ export function ExportToPDFButton({
         title,
         html2canvasOptions,
         onStart: () => {
-          toast.loading('Generating PDF...', { id: 'pdf-export' });
+          toast.loading(t('export.generating'), { id: 'pdf-export' });
         },
         onComplete: () => {
-          toast.success('PDF exported successfully!', { id: 'pdf-export' });
+          toast.success(t('export.success'), { id: 'pdf-export' });
           setIsExporting(false);
         },
         onError: (error) => {
-          toast.error(`Failed to export PDF: ${error.message}`, { id: 'pdf-export' });
+          toast.error(`${t('export.error')}: ${error.message}`, { id: 'pdf-export' });
           setIsExporting(false);
         },
       });
@@ -131,12 +134,12 @@ export function ExportToPDFButton({
       {isExporting ? (
         <>
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span>Exporting...</span>
+          <span>{t('export.exporting')}</span>
         </>
       ) : (
         <>
           <Download className="w-4 h-4" />
-          <span>{label}</span>
+          <span>{defaultLabel}</span>
         </>
       )}
     </button>

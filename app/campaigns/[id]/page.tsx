@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { copyToClipboard } from '@/lib/clipboard';
+import { useTranslations } from 'next-intl';
 
 interface Campaign {
   id: number;
@@ -66,6 +67,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function CampaignDetailsPage() {
+  const t = useTranslations('campaigns');
   const params = useParams();
   const router = useRouter();
   const campaignId = params.id as string;
@@ -469,7 +471,7 @@ export default function CampaignDetailsPage() {
               <p className="text-xs text-gray-500 mt-1">
                 {campaign?.clicks && campaign.visitors 
                   ? `${((campaign.visitors / campaign.clicks) * 100).toFixed(1)}% of clicks`
-                  : 'No data yet'
+                  : t('noDataYet')
                 }
               </p>
             </div>

@@ -37,10 +37,20 @@ const statusColors: Record<string, string> = {
 };
 
 export default function CoursesPage() {
+  const t = useTranslations('courses');
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const t = useTranslations('courses');
+
+  // Format duration with translated month/months
+  const formatDuration = (duration: string | null | undefined): string => {
+    if (!duration || duration.trim() === '') return '-';
+    const num = parseInt(duration);
+    if (isNaN(num)) return duration; // Return as-is if not a number
+    return num === 1 
+      ? `${num} ${t('modal.duration.month')}` 
+      : `${num} ${t('modal.duration.months')}`;
+  };
   
   const statusLabels: Record<string, string> = {
     active: t('status.active'),
@@ -446,7 +456,7 @@ export default function CoursesPage() {
                       {course.category || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {course.duration || '-'}
+                      {formatDuration(course.duration)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {course.price ? `${course.price.toLocaleString()}원` : '-'}
@@ -519,7 +529,7 @@ export default function CoursesPage() {
                   </div>
                   <div>
                     <span className="text-xs text-gray-500">{t('mobile.duration')}</span>
-                    <p className="text-sm text-gray-900 mt-0.5">{course.duration || '-'}</p>
+                    <p className="text-sm text-gray-900 mt-0.5">{formatDuration(course.duration)}</p>
                   </div>
                   <div>
                     <span className="text-xs text-gray-500">{t('mobile.price')}</span>
@@ -648,13 +658,35 @@ export default function CoursesPage() {
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                   {t('modal.fields.duration')}
                 </label>
-                <input
-                  type="text"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  placeholder={t('modal.placeholders.duration')}
-                  className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={['1', '2', '3', '6', '12'].includes(formData.duration) ? formData.duration : ''}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setFormData({ ...formData, duration: e.target.value });
+                      } else {
+                        setFormData({ ...formData, duration: '' });
+                      }
+                    }}
+                    className="px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">{t('modal.duration.select')}</option>
+                    <option value="1">1 {t('modal.duration.month')}</option>
+                    <option value="2">2 {t('modal.duration.months')}</option>
+                    <option value="3">3 {t('modal.duration.months')}</option>
+                    <option value="6">6 {t('modal.duration.months')}</option>
+                    <option value="12">12 {t('modal.duration.months')}</option>
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                    placeholder={t('modal.placeholders.duration')}
+                    className="flex-1 px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">{t('modal.duration.helper')}</p>
               </div>
 
               <div>

@@ -64,6 +64,15 @@
       "phoneCopied": "전화번호가 클립보드에 복사되었습니다!"
     }
   },
+  "common": {
+    "export": {
+      "button": "PDF 내보내기",
+      "generating": "PDF 생성 중...",
+      "success": "PDF 내보내기 성공!",
+      "error": "PDF 내보내기 실패",
+      "exporting": "내보내는 중..."
+    }
+  },
   "home": {
     "hero": {
       "badge": "스마트 마케팅 분석 플랫폼",
@@ -173,6 +182,7 @@
       "action": "작업",
       "clicks": "클릭",
       "noData": "데이터 없음",
+      "noDataYet": "아직 데이터 없음",
       "copyTrackingLink": "추적 링크 복사",
       "openTrackingLink": "새 탭에서 추적 링크 열기",
       "viewDetails": "캠페인 세부 정보 보기",
@@ -394,7 +404,14 @@
         "status": "상태"
       },
       "placeholders": {
-        "duration": "예: 3개월"
+        "duration": "숫자 입력"
+      },
+      "duration": {
+        "select": "빠른 선택",
+        "custom": "사용자 지정",
+        "month": "개월",
+        "months": "개월",
+        "helper": "개월 수를 입력하세요 (예: 1 = 1개월, 3 = 3개월)"
       },
       "actions": {
         "cancel": "취소",
@@ -696,6 +713,15 @@
       "conversions": "전환",
       "convRate": "전환율",
       "conversionsLabel": "전환"
+    },
+    "days": {
+      "monday": "월요일",
+      "tuesday": "화요일",
+      "wednesday": "수요일",
+      "thursday": "목요일",
+      "friday": "금요일",
+      "saturday": "토요일",
+      "sunday": "일요일"
     },
     "empty": {
       "noHourlyData": "시간별 데이터 없음",

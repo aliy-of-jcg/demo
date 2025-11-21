@@ -25,7 +25,7 @@ services:
       retries: 5
     networks:
       - app-network
-    profiles: ["dev", "prod"]
+    profiles: ["dev", "prod", "prod-only"]
 
   mysql:
     image: mysql:8.0
@@ -50,7 +50,7 @@ services:
       retries: 5
     networks:
       - app-network
-    profiles: ["dev", "prod"]
+    profiles: ["dev", "prod", "prod-only"]
 
   cosmos-ai:
     image: centras-ai.kr.ncr.ntruss.com/centras-ai/cosmos-ai:latest
@@ -83,7 +83,7 @@ services:
       retries: 3
     networks:
       - app-network
-    profiles: ["dev"]
+    profiles: ["dev", "prod-only"]
 
   
 volumes:
