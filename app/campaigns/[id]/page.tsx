@@ -28,6 +28,8 @@ interface Campaign {
   visitors?: number;
   ctr?: string;
   conversion_rate?: string;
+  hasLegacyData?: boolean;
+  activeTrackingLinksCount?: number;
 }
 
 interface TrackingLink {
@@ -453,7 +455,10 @@ export default function CampaignDetailsPage() {
                 {(campaign?.clicks ?? 0).toLocaleString()}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                From {trackingLinks.length} tracking link{trackingLinks.length !== 1 ? 's' : ''}
+                {campaign?.hasLegacyData
+                  ? `From ${campaign?.activeTrackingLinksCount || trackingLinks.length} active tracking link${(campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''} (may include legacy data)`
+                  : `From ${campaign?.activeTrackingLinksCount || trackingLinks.length} tracking link${(campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''}`
+                }
               </p>
             </div>
             <div>

@@ -73,23 +73,22 @@ export async function GET(
     }
 
     // Get unique visitors from visit_logs (include both tracking codes AND legacy data)
-    // Match channel-performance and campaigns list approach
-    // Use string interpolation for consistency with campaign-analysis API
+    // Use campaign_id (denormalized) as primary method, with fallbacks for legacy data
+    // Match campaign-analysis API approach
     let visitorsQuery: string;
     
     if (trackingCodesList.length === 0 && utmCampaigns.length > 0) {
-      // Fallback: only legacy data available
+      // Fallback: only legacy data available (use campaign_id OR utm_campaign)
       const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
       visitorsQuery = `
         SELECT 
           COUNT(DISTINCT user_id) as unique_visitors
         FROM analytics.visit_logs
-        WHERE utm_campaign IN (${utmCampaignsList})
-          AND (tracking_code = '' OR tracking_code IS NULL)
+        WHERE (campaign_id = ${id} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
           AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
     } else if (trackingCodesList.length > 0 && utmCampaigns.length > 0) {
-      // Both tracking codes and legacy data
+      // Both tracking codes and legacy data (use campaign_id OR tracking_code OR utm_campaign)
       const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
       const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
       
@@ -97,22 +96,27 @@ export async function GET(
         SELECT 
           COUNT(DISTINCT user_id) as unique_visitors
         FROM analytics.visit_logs
-        WHERE (tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
+        WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
           AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
     } else if (trackingCodesList.length > 0) {
-      // Only tracking codes
+      // Only tracking codes (use campaign_id OR tracking_code)
       const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
       
       visitorsQuery = `
         SELECT 
           COUNT(DISTINCT user_id) as unique_visitors
         FROM analytics.visit_logs
-        WHERE tracking_code IN (${trackingCodesListEscaped})
+        WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}))
       `;
     } else {
-      // No data available
-      visitorsQuery = null as any;
+      // No tracking codes, try campaign_id only
+      visitorsQuery = `
+        SELECT 
+          COUNT(DISTINCT user_id) as unique_visitors
+        FROM analytics.visit_logs
+        WHERE campaign_id = ${id}
+      `;
     }
 
     if (visitorsQuery) {
@@ -142,6 +146,80 @@ export async function GET(
     const DEMO_COST_PER_CLICK = 0.50;
     const calculatedSpent = clicks * DEMO_COST_PER_CLICK;
 
+    // Detect legacy data by querying ClickHouse for tracking codes that have data for this campaign
+    let hasLegacyData = false;
+    let activeTrackingLinksCount = (trackingCodesForDisplay as any[]).length;
+    
+    try {
+      // Get all distinct tracking codes from ClickHouse that have data for this campaign
+      // This includes data from hard-deleted UTMs (campaign_id is stored in ClickHouse)
+      const clickhouseTrackingCodesQuery = await clickhouse.query({
+        query: `
+          SELECT DISTINCT tracking_code
+          FROM analytics.visit_logs
+          WHERE campaign_id = ${id}
+            AND tracking_code != ''
+            AND tracking_code IS NOT NULL
+        `,
+        format: 'JSONEachRow'
+      });
+      
+      const clickhouseTrackingCodesData = await clickhouseTrackingCodesQuery.json() as Array<{ tracking_code: string }>;
+      const clickhouseTrackingCodes = new Set(
+        clickhouseTrackingCodesData.map(row => row.tracking_code).filter(code => code && code !== '')
+      );
+      
+      // Also check tracking_events for clicks
+      if (clickhouseTrackingCodes.size > 0) {
+        const trackingCodesList = Array.from(clickhouseTrackingCodes).map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        const clickhouseClicksQuery = await clickhouse.query({
+          query: `
+            SELECT DISTINCT tracking_code
+            FROM analytics.tracking_events
+            WHERE tracking_code IN (${trackingCodesList})
+          `,
+          format: 'JSONEachRow'
+        });
+        
+        const clickhouseClicksData = await clickhouseClicksQuery.json() as Array<{ tracking_code: string }>;
+        clickhouseClicksData.forEach(row => {
+          if (row.tracking_code) {
+            clickhouseTrackingCodes.add(row.tracking_code);
+          }
+        });
+      }
+      
+      // Get active tracking codes from MySQL
+      const activeTrackingCodes = new Set(
+        (trackingCodesForDisplay as any[]).map(tc => tc.tracking_code).filter(code => code && code !== '')
+      );
+      
+      // Check if there are tracking codes in ClickHouse that don't exist in active MySQL records
+      // This indicates legacy data (hard-deleted UTMs or data from before campaign_id was stored)
+      for (const code of clickhouseTrackingCodes) {
+        if (!activeTrackingCodes.has(code)) {
+          hasLegacyData = true;
+          break;
+        }
+      }
+      
+      // Also check if we have data via campaign_id but no active tracking codes
+      // This happens when UTMs were hard-deleted but campaign_id is stored in ClickHouse
+      if (clickhouseTrackingCodes.size > 0 && activeTrackingCodes.size === 0 && clicks > 0) {
+        hasLegacyData = true;
+      }
+      
+      // Check if we have visitors/clicks but no matching active tracking codes
+      // This could indicate legacy data matched by utm_campaign name
+      if ((visitors > 0 || clicks > 0) && activeTrackingCodes.size === 0 && trackingCodesList.length === 0) {
+        hasLegacyData = true;
+      }
+      
+    } catch (error) {
+      console.error('Error checking for legacy data:', error);
+      // Continue without legacy data detection - assume no legacy data if check fails
+    }
+
     return NextResponse.json({
       success: true,
       campaign: {
@@ -150,7 +228,9 @@ export async function GET(
         visitors,
         ctr,
         conversion_rate: conversionRate,
-        spent: calculatedSpent // Override spent with calculated value
+        spent: calculatedSpent, // Override spent with calculated value
+        hasLegacyData, // Flag indicating if legacy data is included
+        activeTrackingLinksCount // Count of active tracking links for display
       }
     });
   } catch (error) {
