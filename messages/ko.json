@@ -622,10 +622,9 @@
       "last3Months": "최근 3개월"
     },
     "summary": {
-      "totalVisitors": "총 방문자",
-      "uniqueVisitors": "고유 방문자",
       "desktopUsers": "데스크톱 사용자",
       "mobileUsers": "모바일 사용자",
+      "tabletUsers": "태블릿 사용자",
       "avgConvRate": "평균 전환율",
       "visitors": "방문자",
       "acrossAllDevices": "모든 디바이스 전체"

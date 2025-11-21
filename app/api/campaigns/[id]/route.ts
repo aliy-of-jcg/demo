@@ -196,7 +196,7 @@ export async function GET(
       
       // Check if there are tracking codes in ClickHouse that don't exist in active MySQL records
       // This indicates legacy data (hard-deleted UTMs or data from before campaign_id was stored)
-      for (const code of clickhouseTrackingCodes) {
+      for (const code of Array.from(clickhouseTrackingCodes)) {
         if (!activeTrackingCodes.has(code)) {
           hasLegacyData = true;
           break;

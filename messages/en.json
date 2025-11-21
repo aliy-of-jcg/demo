@@ -622,10 +622,9 @@
       "last3Months": "Last 3 months"
     },
     "summary": {
-      "totalVisitors": "Total Visitors",
-      "uniqueVisitors": "Unique visitors",
       "desktopUsers": "Desktop Users",
       "mobileUsers": "Mobile Users",
+      "tabletUsers": "Tablet Users",
       "avgConvRate": "Avg. Conv. Rate",
       "visitors": "visitors",
       "acrossAllDevices": "Across all devices"
