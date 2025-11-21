@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
           SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
           SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT user_id) as conversion_rate
         FROM analytics.visit_logs
-        WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       `;
 
       const metricsResult = await clickhouse.query({
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT user_id) as conversion_rate
       FROM analytics.visit_logs
-      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       GROUP BY channel
       ORDER BY visitors DESC
       LIMIT 10
@@ -112,10 +112,10 @@ export async function GET(request: NextRequest) {
     // Query 4: Daily Visitor Trend (current period)
     const trendQuery = `
       SELECT 
-        toDate(timestamp) as date,
+        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
         COUNT(DISTINCT user_id) as visitors
       FROM analytics.visit_logs
-      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       GROUP BY date
       ORDER BY date ASC
     `;
@@ -132,10 +132,10 @@ export async function GET(request: NextRequest) {
     // Query 5: Comparison Period Trend
     const comparisonTrendQuery = `
       SELECT 
-        toDate(timestamp) as date,
+        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
         COUNT(DISTINCT user_id) as visitors
       FROM analytics.visit_logs
-      WHERE toDate(timestamp) BETWEEN toDate('${comparisonStart}') AND toDate('${comparisonEnd}')
+      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${comparisonStart}') AND toDate('${comparisonEnd}')
       GROUP BY date
       ORDER BY date ASC
     `;

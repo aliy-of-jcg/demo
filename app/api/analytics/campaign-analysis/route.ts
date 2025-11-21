@@ -98,13 +98,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (startDate && endDate) {
-      whereClause += ` AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
     } else {
       if (startDate) {
-        whereClause += ` AND toDate(timestamp) >= toDate('${startDate}')`;
+        whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
       }
       if (endDate) {
-        whereClause += ` AND toDate(timestamp) <= toDate('${endDate}')`;
+        whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
       }
     }
 
@@ -152,13 +152,13 @@ export async function GET(request: NextRequest) {
     }
     
     if (startDate && endDate) {
-      clickWhereClause += ` AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+      clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
     } else {
       if (startDate) {
-        clickWhereClause += ` AND toDate(timestamp) >= toDate('${startDate}')`;
+        clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
       }
       if (endDate) {
-        clickWhereClause += ` AND toDate(timestamp) <= toDate('${endDate}')`;
+        clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
       }
     }
 
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
     // This ensures each user is counted only once per day per campaign
     const dailyQuery = `
       SELECT 
-        toDate(timestamp) as date,
+        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
         COUNT(DISTINCT user_id) as visitors,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs

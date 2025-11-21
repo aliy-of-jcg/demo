@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT user_id) as users,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs
-      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
         AND utm_source != ''
         AND utm_source != 'Direct'
         AND utm_source != '(direct)'
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       FROM analytics.visit_logs
       WHERE 
         (utm_source = 'Direct' OR utm_source = '(direct)' OR utm_source = '')
-        AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
     `;
     
     const directTrafficResult = await clickhouse.query({

@@ -77,14 +77,15 @@ export async function GET(request: NextRequest) {
     // Build WHERE clause for date filtering (standardized to match performance dashboard)
     let whereClause = '1=1';
 
+    // Date filtering
     if (startDate && endDate) {
-      whereClause += ` AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
     } else {
       if (startDate) {
-        whereClause += ` AND toDate(timestamp) >= toDate('${startDate}')`;
+        whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
       }
       if (endDate) {
-        whereClause += ` AND toDate(timestamp) <= toDate('${endDate}')`;
+        whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
       }
     }
 
@@ -289,7 +290,7 @@ export async function GET(request: NextRequest) {
     // 4. Daily new vs returning trend
     const dailyTrendQuery = `
       SELECT 
-        toDate(timestamp) as date,
+        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
         countDistinctIf(user_id, is_new_visitor = 1) as new_visitors,
         countDistinctIf(user_id, is_new_visitor = 0) as returning_visitors
       FROM analytics.visit_logs

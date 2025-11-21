@@ -16,10 +16,10 @@ export async function GET(request: NextRequest) {
     let whereClause = '1=1';
 
     if (startDate) {
-      whereClause += ` AND toDate(toDateTime(timestamp, 'Asia/Seoul')) >= '${startDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= '${startDate}'`;
     }
     if (endDate) {
-      whereClause += ` AND toDate(toDateTime(timestamp, 'Asia/Seoul')) <= '${endDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= '${endDate}'`;
     }
 
     // Fetch all sessions with their complete page journeys
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
         SELECT DISTINCT
           session_id,
           user_id,
-          toString(toDateTime(MIN(timestamp), 'Asia/Seoul')) as session_start,
-          toString(toDateTime(MAX(timestamp), 'Asia/Seoul')) as session_end,
+          toString(toTimeZone(MIN(timestamp), 'Asia/Seoul')) as session_start,
+          toString(toTimeZone(MAX(timestamp), 'Asia/Seoul')) as session_end,
           COUNT(*) as total_pages,
           SUM(time_on_page) as duration,
           MAX(CASE WHEN is_landing_page = 1 THEN page_url ELSE '' END) as landing_page,
@@ -52,14 +52,13 @@ export async function GET(request: NextRequest) {
           v.page_url,
           v.page_title,
           v.page_sequence,
-          toString(toDateTime(v.timestamp, 'Asia/Seoul')) as timestamp,
+          toString(toTimeZone(v.timestamp, 'Asia/Seoul')) as timestamp,
           v.time_on_page,
           v.event_type,
           v.is_landing_page,
           v.is_exit_page
         FROM analytics.visit_logs v
         INNER JOIN session_list s ON v.session_id = s.session_id
-        WHERE ${whereClause}
         ORDER BY v.session_id, v.page_sequence
       )
       SELECT 

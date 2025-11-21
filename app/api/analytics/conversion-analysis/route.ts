@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const campaignId = searchParams.get('campaignId');
 
     // Build WHERE clause
-    const whereConditions = [`toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`];
+    const whereConditions = [`toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`];
     whereConditions.push(`event_type = 'conversion'`);
     
     if (campaignId && campaignId !== 'all') {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     // Get conversion trend over time
     const conversionTrendQuery = `
       SELECT 
-        toDate(timestamp) as date,
+        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
         conversion_type,
         COUNT(*) as count,
         SUM(conversion_value) as total_value
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         countIf(event_type = 'conversion' AND conversion_type = 'trial_start') as trial_conversions,
         SUM(CASE WHEN event_type = 'conversion' THEN conversion_value ELSE 0 END) as total_revenue
       FROM analytics.visit_logs
-      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       ${campaignId && campaignId !== 'all' ? `AND campaign_id = ${campaignId}` : ''}
     `;
 

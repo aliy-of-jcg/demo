@@ -11,14 +11,14 @@ export async function GET(request: NextRequest) {
     
     console.log(`🌍 Environment Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
 
-    // Build WHERE clause for date filtering
+    // Build WHERE clause for date filtering (using KST timezone)
     let whereClause = '1=1';
 
     if (startDate) {
-      whereClause += ` AND toDate(timestamp) >= '${startDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= '${startDate}'`;
     }
     if (endDate) {
-      whereClause += ` AND toDate(timestamp) <= '${endDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= '${endDate}'`;
     }
 
     // 1. Device Type Breakdown (normalize to lowercase using subquery)
