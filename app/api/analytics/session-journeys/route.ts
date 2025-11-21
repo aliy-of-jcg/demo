@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
         total_pages: session.total_pages,
         landing_page: session.landing_page,
         exit_page: session.exit_page,
-        utm_source: session.utm_source || '(direct)',
+        utm_source: session.utm_source || 'Direct',
         utm_medium: session.utm_medium || '(none)',
         utm_campaign: session.utm_campaign || '',
         device_type: session.device_type,

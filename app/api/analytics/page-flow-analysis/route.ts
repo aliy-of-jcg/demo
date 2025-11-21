@@ -54,10 +54,11 @@ export async function GET(request: NextRequest) {
     const totalPageviews = totalPageviewsJson[0]?.total_pageviews || 0;
 
     // 2. UTM Source Breakdown with avg pageviews per session
+    // Normalize all direct traffic variations to 'Direct'
     const utmBreakdownQuery = `
       SELECT 
         CASE 
-          WHEN utm_source = '' THEN 'Direct'
+          WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'
           ELSE utm_source
         END as utm_source,
         COUNT(DISTINCT session_id) as total_sessions,

@@ -1,16 +1,20 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.8.1
+ * Version: 4.8.2
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
- * - Direct visits marked as utm_source: '(direct)', utm_medium: '(none)'
+ * - Direct visits marked as utm_source: 'Direct', utm_medium: '(none)'
  * - 2-minute visit window (refreshes within window don't increment visit_count)
  * - Page count per session
  * - Google Analytics-style exit tracking (one exit per session)
  * - Page refreshes count as pageviews
  * - Proper landing page tracking across multiple sessions
  * - Client-side navigation tracking (SPA/Next.js router support)
+ *
+ * New in v4.8.2:
+ * - Standardized direct traffic to use 'Direct' instead of '(direct)'
+ * - Fixed default fallback to 'Direct' when UTM data is missing/corrupted
  *
  * New in v4.8.1:
  * - Fixed visit timeout to match session timeout (2 minutes)
@@ -528,7 +532,7 @@
         
         const sessionUTMData = {
           tracking_code: trackingCode,
-          utm_source: hasUTMParams ? (urlParams.utm_source || '') : '(direct)',
+          utm_source: hasUTMParams ? (urlParams.utm_source || '') : 'Direct',
           utm_medium: hasUTMParams ? (urlParams.utm_medium || '') : '(none)',
           utm_campaign: urlParams.utm_campaign || '',
           utm_term: urlParams.utm_term || '',
@@ -538,7 +542,7 @@
         
         // Store UTM data in localStorage for this session
         localStorage.setItem('cosmos_session_utm_data', JSON.stringify(sessionUTMData));
-        console.log('[CosMos] 🎯 Session UTMs locked:', hasUTMParams ? urlParams.utm_source : '(direct)');
+        console.log('[CosMos] 🎯 Session UTMs locked:', hasUTMParams ? urlParams.utm_source : 'Direct');
       } else {
         // EXISTING SESSION: UTMs already locked, ignore any new UTM parameters
         const storedUTMData = localStorage.getItem('cosmos_session_utm_data');
@@ -647,8 +651,8 @@
       // This ensures consistent attribution throughout the entire session
       //
       // Example Flow:
-      // 1. User visits aptdecor.uz directly → UTMs: (direct)/(none) [LOCKED]
-      // 2. User clicks link with ?utm_source=facebook → UTMs: (direct)/(none) [IGNORED]
+      // 1. User visits aptdecor.uz directly → UTMs: Direct/(none) [LOCKED]
+      // 2. User clicks link with ?utm_source=facebook → UTMs: Direct/(none) [IGNORED]
       // 3. Session expires (2 min)
       // 4. User clicks ?utm_source=facebook → NEW SESSION with UTMs: facebook/... [LOCKED]
       //
@@ -674,12 +678,12 @@
       const storedUTMData = localStorage.getItem('cosmos_session_utm_data');
       let sessionUTMs = {
         tracking_code: '',
-        utm_source: '',
-        utm_medium: '',
+        utm_source: 'Direct',  // Default to 'Direct' if UTM data is missing/corrupted
+        utm_medium: '(none)',
         utm_campaign: '',
         utm_term: '',
         utm_content: '',
-        is_direct: 0
+        is_direct: 1  // Default to direct if data is missing
       };
       
       if (storedUTMData) {
@@ -723,7 +727,7 @@
       // Determine referrer domain (or mark as direct)
       let referrerDomain = utils.getReferrerDomain();
       if (isDirectTraffic && !document.referrer) {
-        referrerDomain = '(direct)';
+        referrerDomain = 'Direct';
       }
       
       const eventData = {

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const channelQuery = `
       SELECT 
         CASE 
-          WHEN utm_source = '' THEN 'Direct'
+          WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'
           ELSE utm_source
         END as channel,
         COUNT(DISTINCT user_id) as visitors,

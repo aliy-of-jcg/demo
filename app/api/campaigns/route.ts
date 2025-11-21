@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
             utm_campaign,
             COUNT(DISTINCT user_id) as unique_visitors
           FROM analytics.visit_logs
-          WHERE utm_source != '' AND utm_source != '(direct)'
+          WHERE utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
           GROUP BY tracking_code, utm_campaign
         `,
         format: 'JSONEachRow'

@@ -79,7 +79,7 @@ export async function GET(
         FROM analytics.visit_logs
         WHERE utm_campaign IN (${utmCampaignsList})
           AND (tracking_code = '' OR tracking_code IS NULL)
-          AND utm_source != '' AND utm_source != '(direct)'
+          AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
     } else if (trackingCodesList.length > 0 && utmCampaigns.length > 0) {
       // Both tracking codes and legacy data
@@ -91,7 +91,7 @@ export async function GET(
           COUNT(DISTINCT user_id) as unique_visitors
         FROM analytics.visit_logs
         WHERE (tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
-          AND utm_source != '' AND utm_source != '(direct)'
+          AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
     } else if (trackingCodesList.length > 0) {
       // Only tracking codes

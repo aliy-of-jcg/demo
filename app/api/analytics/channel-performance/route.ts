@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
       FROM analytics.visit_logs
       WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
         AND utm_source != ''
+        AND utm_source != 'Direct'
         AND utm_source != '(direct)'
       GROUP BY tracking_code, utm_source, utm_medium, utm_campaign
     `;
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     const trafficData = await trafficResult.json() as any[];
     
-    // Step 1.5: Get direct traffic data (utm_source = '(direct)')
+    // Step 1.5: Get direct traffic data (utm_source = 'Direct' or '(direct)' for legacy data)
     const directTrafficQuery = `
       SELECT 
         COUNT(DISTINCT session_id) as sessions,
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs
       WHERE 
-        utm_source = '(direct)'
+        (utm_source = 'Direct' OR utm_source = '(direct)' OR utm_source = '')
         AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
     `;
     
