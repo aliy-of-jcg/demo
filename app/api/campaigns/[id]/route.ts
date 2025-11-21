@@ -25,14 +25,21 @@ export async function GET(
 
     const campaign = (campaigns as any)[0];
 
-    // Fetch ALL tracking codes and UTM campaign names for this campaign
-    const [trackingCodes] = await pool.execute(
+    // Fetch ALL tracking codes and UTM campaign names for this campaign (INCLUDING hidden for analytics)
+    const [trackingCodesForAnalytics] = await pool.execute(
+      'SELECT tracking_code, utm_campaign FROM utm_codes WHERE campaign_id = ?',
+      [id]
+    );
+
+    // Fetch ONLY active tracking codes for display
+    const [trackingCodesForDisplay] = await pool.execute(
       'SELECT tracking_code, utm_campaign FROM utm_codes WHERE campaign_id = ? AND status = "active"',
       [id]
     );
 
-    const trackingCodesList = (trackingCodes as any[]).map(tc => tc.tracking_code).filter(code => code && code !== '');
-    const utmCampaigns = Array.from(new Set((trackingCodes as any[]).map(tc => tc.utm_campaign).filter(Boolean)));
+    // Use ALL tracking codes (including hidden) for analytics calculations
+    const trackingCodesList = (trackingCodesForAnalytics as any[]).map(tc => tc.tracking_code).filter(code => code && code !== '');
+    const utmCampaigns = Array.from(new Set((trackingCodesForAnalytics as any[]).map(tc => tc.utm_campaign).filter(Boolean)));
 
     // Fetch analytics from ClickHouse for ALL tracking codes + legacy data
     let clicks = 0;

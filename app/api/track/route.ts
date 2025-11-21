@@ -176,6 +176,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: 'Domain disabled' });
     }
 
+    // Lookup campaign_id and course_id from MySQL to preserve legacy data even after hard deletion
+    let campaign_id = 0;
+    let course_id = 0;
+    
+    const pool = getPool();
+    try {
+      if (tracking_code && tracking_code !== '') {
+        // Primary method: lookup by tracking_code
+        const [utmRows] = await pool.execute(
+          'SELECT campaign_id, c.course_id FROM utm_codes u LEFT JOIN campaigns c ON u.campaign_id = c.id WHERE u.tracking_code = ? LIMIT 1',
+          [tracking_code]
+        );
+        
+        if ((utmRows as any[]).length > 0) {
+          campaign_id = (utmRows as any[])[0].campaign_id || 0;
+          course_id = (utmRows as any[])[0].course_id || 0;
+        }
+      }
+      
+      // Fallback: if no tracking_code match, try matching by utm_campaign name (legacy data)
+      if (campaign_id === 0 && utm_campaign && utm_campaign !== '') {
+        const [campaignRows] = await pool.execute(
+          'SELECT id, course_id FROM campaigns WHERE name = ? LIMIT 1',
+          [utm_campaign]
+        );
+        
+        if ((campaignRows as any[]).length > 0) {
+          campaign_id = (campaignRows as any[])[0].id || 0;
+          course_id = (campaignRows as any[])[0].course_id || 0;
+        }
+      }
+    } catch (error) {
+      // If lookup fails, continue with 0 values (for direct traffic or unmatched UTMs)
+      console.error('Error looking up campaign/course ID:', error);
+    }
+
     // Insert into ClickHouse visit_logs table
     try {
       await clickhouse.insert({
@@ -194,8 +230,8 @@ export async function POST(request: NextRequest) {
           utm_campaign: utm_campaign || '',
           utm_term: utm_term || '',
           utm_content: utm_content || '',
-          campaign_id: 0, // Will be populated based on UTM mapping later
-          course_id: 0, // Will be populated based on UTM mapping later
+          campaign_id: campaign_id, // Now populated from MySQL lookup
+          course_id: course_id, // Now populated from MySQL lookup
           user_agent: user_agent || '',
           device_type: device_type || 'Desktop',
           os: os || 'Unknown',

@@ -82,24 +82,30 @@ export async function GET(request: NextRequest) {
     const utmCampaigns = Array.from(new Set(trackingCodes.map(tc => tc.utm_campaign))).filter(Boolean);
     
     let whereClause: string;
+    // Use campaign_id directly from ClickHouse (preserves data even after UTM hard deletion)
+    // Also include tracking_code and utm_campaign for backward compatibility with legacy data
     if (validTrackingCodes.length === 0) {
-      // Fallback: use utm_campaign if no tracking codes available (legacy data only)
+      // Fallback: use campaign_id OR utm_campaign if no tracking codes available
       const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
-      whereClause = `utm_campaign IN (${utmCampaignsList})`;
+      whereClause = `(campaign_id = ${campaignId} OR utm_campaign IN (${utmCampaignsList}))`;
     } else {
-      // Primary method: use tracking_code + include legacy data with empty tracking codes
+      // Primary method: use campaign_id (most reliable) + tracking_code + utm_campaign for legacy data
       const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
       const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
       
-      // Include both: visits with valid tracking codes AND legacy visits with empty tracking codes
-      whereClause = `(tracking_code IN (${trackingCodesList}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))`;
+      // Include: campaign_id (denormalized) OR tracking_code OR legacy utm_campaign
+      whereClause = `(campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesList}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))`;
     }
 
-    if (startDate) {
-      whereClause += ` AND toDate(timestamp) >= '${startDate}'`;
-    }
-    if (endDate) {
-      whereClause += ` AND toDate(timestamp) <= '${endDate}'`;
+    if (startDate && endDate) {
+      whereClause += ` AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+    } else {
+      if (startDate) {
+        whereClause += ` AND toDate(timestamp) >= toDate('${startDate}')`;
+      }
+      if (endDate) {
+        whereClause += ` AND toDate(timestamp) <= toDate('${endDate}')`;
+      }
     }
 
     // Platform filter (utm_medium or utm_source)
@@ -109,16 +115,14 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Get visitor and conversion metrics from visit_logs
-    // Match channel-performance API approach: count distinct users per tracking_code, then sum
-    // This ensures visits are counted per channel/tracking_code (same as channel-performance page)
+    // Count distinct users across ALL tracking codes for the campaign (not per tracking_code)
+    // This ensures each user is counted only once per campaign, matching the campaigns page behavior
     const visitMetricsQuery = `
       SELECT 
-        tracking_code,
-        COUNT(DISTINCT user_id) as unique_visitors_per_code,
-        countIf(event_type = 'conversion') as conversions_per_code
+        COUNT(DISTINCT user_id) as unique_visitors,
+        countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs
       WHERE ${whereClause}
-      GROUP BY tracking_code
     `;
 
     const visitResult = await clickhouse.query({
@@ -126,11 +130,10 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const visitData = await visitResult.json() as Array<{ tracking_code: string; unique_visitors_per_code: number; conversions_per_code: number }>;
+    const visitData = await visitResult.json() as Array<{ unique_visitors: number; conversions: number }>;
     
-    // Sum up visits and conversions across all tracking codes (matches channel-performance behavior)
-    const visitors = visitData.reduce((sum, row) => sum + (row.unique_visitors_per_code || 0), 0);
-    const conversions = visitData.reduce((sum, row) => sum + (row.conversions_per_code || 0), 0);
+    const visitors = visitData[0]?.unique_visitors || 0;
+    const conversions = visitData[0]?.conversions || 0;
     const conversionRate = visitors > 0 ? ((conversions / visitors) * 100).toFixed(2) : '0.00';
 
     // 5. Get click metrics from tracking_events
@@ -148,11 +151,15 @@ export async function GET(request: NextRequest) {
       clickWhereClause = `tracking_code IN (${trackingCodesList})`;
     }
     
-    if (startDate) {
-      clickWhereClause += ` AND toDate(timestamp) >= '${startDate}'`;
-    }
-    if (endDate) {
-      clickWhereClause += ` AND toDate(timestamp) <= '${endDate}'`;
+    if (startDate && endDate) {
+      clickWhereClause += ` AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+    } else {
+      if (startDate) {
+        clickWhereClause += ` AND toDate(timestamp) >= toDate('${startDate}')`;
+      }
+      if (endDate) {
+        clickWhereClause += ` AND toDate(timestamp) <= toDate('${endDate}')`;
+      }
     }
 
     const clickQuery = `
@@ -176,16 +183,16 @@ export async function GET(request: NextRequest) {
     const cpa = conversions > 0 ? Math.round(revenue / conversions) : 0;
 
     // 7. Get daily performance data
-    // Match channel-performance approach: count distinct users per tracking_code per day, then sum
+    // Count distinct users per day across ALL tracking codes (not per tracking_code)
+    // This ensures each user is counted only once per day per campaign
     const dailyQuery = `
       SELECT 
         toDate(timestamp) as date,
-        tracking_code,
-        COUNT(DISTINCT user_id) as visitors_per_code,
-        countIf(event_type = 'conversion') as conversions_per_code
+        COUNT(DISTINCT user_id) as visitors,
+        countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs
       WHERE ${whereClause}
-      GROUP BY date, tracking_code
+      GROUP BY date
       ORDER BY date ASC
     `;
 
@@ -194,33 +201,17 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const dailyJson = await dailyResult.json() as Array<{ date: string; tracking_code: string; visitors_per_code: number; conversions_per_code: number }>;
+    const dailyJson = await dailyResult.json() as Array<{ date: string; visitors: number; conversions: number }>;
     
-    // Aggregate daily data by date (sum visitors and conversions across all tracking codes per day)
-    const dailyMap = new Map<string, { visitors: number; conversions: number }>();
-    dailyJson.forEach((row) => {
-      const date = row.date;
-      const visitors = row.visitors_per_code || 0;
-      const conversions = row.conversions_per_code || 0;
-      
-      if (dailyMap.has(date)) {
-        const existing = dailyMap.get(date)!;
-        existing.visitors += visitors;
-        existing.conversions += conversions;
-      } else {
-        dailyMap.set(date, { visitors, conversions });
-      }
-    });
-    
-    // Convert map to array and calculate metrics
-    const dailyData = Array.from(dailyMap.entries())
-      .map(([date, data]) => ({
-        date,
-        visitors: data.visitors,
-        conversions: data.conversions,
-        conversionRate: data.visitors > 0 ? ((data.conversions / data.visitors) * 100).toFixed(2) : '0.00',
+    // Convert to array and calculate metrics
+    const dailyData = dailyJson
+      .map((row) => ({
+        date: row.date,
+        visitors: row.visitors || 0,
+        conversions: row.conversions || 0,
+        conversionRate: (row.visitors || 0) > 0 ? (((row.conversions || 0) / (row.visitors || 0)) * 100).toFixed(2) : '0.00',
         // Estimate daily cost based on total spent
-        cost: conversions > 0 ? Math.round((parseFloat(campaign.spent) || 0) * (data.conversions / conversions)) : 0,
+        cost: conversions > 0 ? Math.round((parseFloat(campaign.spent) || 0) * ((row.conversions || 0) / conversions)) : 0,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 

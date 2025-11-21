@@ -9,9 +9,6 @@ import { LanguageSwitcher } from "./language-switcher";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 
-const debugItems = [
-  { name: "Debug Sessions (aptdecor.uz, gatoradestore.uz)", href: "/debug-sessions" },
-];
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -24,7 +21,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   const [isCampaignManagementOpen, setIsCampaignManagementOpen] = useState(false);
   const [isUTMToolsOpen, setIsUTMToolsOpen] = useState(false);
   const [isLogAnalysisOpen, setIsLogAnalysisOpen] = useState(false);
-  const [isDebugOpen, setIsDebugOpen] = useState(false);
+
 
   // Build navigation items with translations
   const navigation = [
@@ -239,53 +236,8 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
             </div>
           )}
         </div>
-
-        {/* DEBUG Dropdown */}
-        <div className="space-y-1 border-t border-red-900 pt-2 mt-2">
-          <button
-            onClick={() => setIsDebugOpen(!isDebugOpen)}
-            className={cn(
-              "flex items-center justify-between w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium rounded-lg transition-colors",
-              "text-red-300 hover:bg-red-900 hover:text-white"
-            )}
-          >
-            <div className="flex items-center">
-              <Bug className="w-5 h-5 mr-2 sm:mr-3" />
-              DEBUG (Remove Later)
-            </div>
-            {isDebugOpen ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-          
-          {isDebugOpen && (
-            <div className="ml-2 sm:ml-4 space-y-1">
-              {debugItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={onMobileClose}
-                    className={cn(
-                      "flex items-center px-3 sm:px-4 py-2 text-xs font-medium rounded-lg transition-colors",
-                      isActive
-                        ? "bg-red-800 text-white"
-                        : "text-red-400 hover:bg-red-900 hover:text-white"
-                    )}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-   
-      </nav>
+  
+    </nav>
       {/* Language Switcher */}
       <div className="px-3 sm:px-4 py-3 border-t border-gray-800">
         <LanguageSwitcher variant="dark" />

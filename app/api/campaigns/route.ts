@@ -121,12 +121,13 @@ export async function GET(request: NextRequest) {
     const campaignIds = (campaigns as any[]).map(c => c.id);
     
     let platformsMap = new Map();
-    let trackingCodesMap = new Map(); // Map: campaign_id -> array of tracking codes
+    let trackingCodesMap = new Map(); // Map: campaign_id -> array of tracking codes (active only, for display)
+    let trackingCodesMapForAnalytics = new Map(); // Map: campaign_id -> array of tracking codes (includes hidden, for analytics)
     
     if (campaignIds.length > 0) {
       const placeholders = campaignIds.map(() => '?').join(',');
       
-      // Fetch platforms (unique source/medium combinations)
+      // Fetch platforms (unique source/medium combinations) - ONLY active for display
       const [allPlatforms] = await pool.execute(
         `SELECT campaign_id, utm_source, utm_medium 
          FROM utm_codes 
@@ -136,11 +137,20 @@ export async function GET(request: NextRequest) {
         campaignIds
       );
       
-      // Fetch ALL tracking codes for each campaign (not just the first one)
+      // Fetch ALL tracking codes for each campaign (not just the first one) - ONLY active for display
       const [allTrackingCodes] = await pool.execute(
         `SELECT campaign_id, tracking_code 
          FROM utm_codes
          WHERE campaign_id IN (${placeholders}) AND status != 'hidden'
+         ORDER BY campaign_id`,
+        campaignIds
+      );
+      
+      // Fetch ALL tracking codes INCLUDING hidden for analytics calculations (preserve legacy data)
+      const [allTrackingCodesForAnalytics] = await pool.execute(
+        `SELECT campaign_id, tracking_code 
+         FROM utm_codes
+         WHERE campaign_id IN (${placeholders})
          ORDER BY campaign_id`,
         campaignIds
       );
@@ -156,12 +166,20 @@ export async function GET(request: NextRequest) {
         });
       });
       
-      // Group tracking codes by campaign_id
+      // Group tracking codes by campaign_id (active only, for display)
       (allTrackingCodes as any[]).forEach(tc => {
         if (!trackingCodesMap.has(tc.campaign_id)) {
           trackingCodesMap.set(tc.campaign_id, []);
         }
         trackingCodesMap.get(tc.campaign_id).push(tc.tracking_code);
+      });
+      
+      // Group tracking codes by campaign_id (includes hidden, for analytics)
+      (allTrackingCodesForAnalytics as any[]).forEach(tc => {
+        if (!trackingCodesMapForAnalytics.has(tc.campaign_id)) {
+          trackingCodesMapForAnalytics.set(tc.campaign_id, []);
+        }
+        trackingCodesMapForAnalytics.get(tc.campaign_id).push(tc.tracking_code);
       });
     }
 
@@ -235,14 +253,15 @@ export async function GET(request: NextRequest) {
     
     if (campaignIds.length > 0) {
       try {
-        // Aggregate analytics for ALL tracking codes per campaign
+        // Aggregate analytics for ALL tracking codes per campaign (INCLUDING hidden for legacy data)
         (campaigns as any[]).forEach(campaign => {
-          const trackingCodes = trackingCodesMap.get(campaign.id) || [];
+          // Use analytics map which includes hidden UTMs
+          const trackingCodesForAnalytics = trackingCodesMapForAnalytics.get(campaign.id) || [];
           let totalClicks = 0;
           let totalVisitors = 0;
           
-          // Sum clicks and visitors from all tracking codes
-          trackingCodes.forEach((trackingCode: string) => {
+          // Sum clicks and visitors from all tracking codes (including hidden)
+          trackingCodesForAnalytics.forEach((trackingCode: string) => {
             const code = trackingCode?.trim() || trackingCode;
             
             // Try exact match first (trimmed)
@@ -406,12 +425,12 @@ export async function GET(request: NextRequest) {
 
     if (allMatchingCampaignIds.length > 0) {
       try {
-        // Get all tracking codes for ALL matching campaigns
+        // Get all tracking codes for ALL matching campaigns (INCLUDING hidden for legacy data)
         const allPlaceholders = allMatchingCampaignIds.map(() => '?').join(',');
         const [allTrackingCodesForSummary] = await pool.execute(
           `SELECT campaign_id, tracking_code 
            FROM utm_codes
-           WHERE campaign_id IN (${allPlaceholders}) AND status != 'hidden'
+           WHERE campaign_id IN (${allPlaceholders})
            ORDER BY campaign_id`,
           allMatchingCampaignIds
         );

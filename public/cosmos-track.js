@@ -1,6 +1,6 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.8.2
+ * Version: 4.8.3
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
@@ -11,6 +11,11 @@
  * - Page refreshes count as pageviews
  * - Proper landing page tracking across multiple sessions
  * - Client-side navigation tracking (SPA/Next.js router support)
+ * - 2-year UUID expiration (Google Analytics standard)
+ *
+ * New in v4.8.3:
+ * - Added 2-year expiration for visitor UUID (matches Google Analytics standard)
+ * - UUIDs older than 2 years are automatically reset, treating user as new visitor
  *
  * New in v4.8.2:
  * - Standardized direct traffic to use 'Direct' instead of '(direct)'
@@ -410,9 +415,11 @@
     },
 
     // Setup visitor tracking (persistent UUID) - Google Analytics approach (localStorage only)
+    // UUID expires after 2 years (Google Analytics standard)
     setupVisitorTracking: function() {
       this.visitorId = utils.getStorage(CONFIG.visitorStorageKey);
       const now = utils.getTimestamp();
+      const twoYearsInSeconds = 2 * 365 * 24 * 60 * 60; // 2 years in seconds
       
       if (!this.visitorId) {
         // Brand new visitor
@@ -427,27 +434,46 @@
         utils.setStorage(CONFIG.firstVisitStorageKey, this.firstVisitTime.toString());
         utils.setStorage(CONFIG.lastActivityStorageKey, this.lastActivityTime.toString());
       } else {
-        // Returning visitor - check if it's a new visit or same visit
-        this.visitCount = parseInt(utils.getStorage(CONFIG.visitCountStorageKey) || '1');
-        this.firstVisitTime = parseInt(utils.getStorage(CONFIG.firstVisitStorageKey) || now.toString());
-        this.lastActivityTime = parseInt(utils.getStorage(CONFIG.lastActivityStorageKey) || '0');
+        // Check if UUID has expired (older than 2 years)
+        const storedFirstVisitTime = parseInt(utils.getStorage(CONFIG.firstVisitStorageKey) || '0');
+        const timeSinceFirstVisit = now - storedFirstVisitTime;
         
-        // Check if last activity was more than the visit timeout
-        const minutesSinceLastActivity = (now - this.lastActivityTime) / 60;
-        
-        if (minutesSinceLastActivity > CONFIG.visitTimeoutMinutes) {
-          // New visit - increment visit count
-          this.visitCount++;
-          this.isNewVisitor = false;
-          utils.setStorage(CONFIG.visitCountStorageKey, this.visitCount.toString());
+        if (storedFirstVisitTime > 0 && timeSinceFirstVisit > twoYearsInSeconds) {
+          // UUID expired after 2 years - reset to new visitor (Google Analytics standard)
+          console.log('[CosMos] 🔄 UUID expired after 2 years, creating new visitor ID');
+          this.visitorId = utils.generateUUID();
+          this.isNewVisitor = true;
+          this.visitCount = 1;
+          this.firstVisitTime = now;
+          this.lastActivityTime = now;
+          
+          utils.setStorage(CONFIG.visitorStorageKey, this.visitorId);
+          utils.setStorage(CONFIG.visitCountStorageKey, '1');
+          utils.setStorage(CONFIG.firstVisitStorageKey, this.firstVisitTime.toString());
+          utils.setStorage(CONFIG.lastActivityStorageKey, this.lastActivityTime.toString());
         } else {
-          // Same visit - don't increment
-          this.isNewVisitor = false;
+          // Returning visitor - check if it's a new visit or same visit
+          this.visitCount = parseInt(utils.getStorage(CONFIG.visitCountStorageKey) || '1');
+          this.firstVisitTime = storedFirstVisitTime || now;
+          this.lastActivityTime = parseInt(utils.getStorage(CONFIG.lastActivityStorageKey) || '0');
+          
+          // Check if last activity was more than the visit timeout
+          const minutesSinceLastActivity = (now - this.lastActivityTime) / 60;
+          
+          if (minutesSinceLastActivity > CONFIG.visitTimeoutMinutes) {
+            // New visit - increment visit count
+            this.visitCount++;
+            this.isNewVisitor = false;
+            utils.setStorage(CONFIG.visitCountStorageKey, this.visitCount.toString());
+          } else {
+            // Same visit - don't increment
+            this.isNewVisitor = false;
+          }
+          
+          // Update last activity time
+          this.lastActivityTime = now;
+          utils.setStorage(CONFIG.lastActivityStorageKey, this.lastActivityTime.toString());
         }
-        
-        // Update last activity time
-        this.lastActivityTime = now;
-        utils.setStorage(CONFIG.lastActivityStorageKey, this.lastActivityTime.toString());
       }
       
       // Update last visit time
