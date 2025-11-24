@@ -58,6 +58,20 @@ export async function PUT(
       );
     }
 
+    if (!category || category.trim() === '') {
+      return NextResponse.json(
+        { success: false, error: 'Category is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!duration || duration.toString().trim() === '') {
+      return NextResponse.json(
+        { success: false, error: 'Duration is required' },
+        { status: 400 }
+      );
+    }
+
     const pool = getPool();
     const query = `
       UPDATE courses 
@@ -68,8 +82,8 @@ export async function PUT(
     await pool.execute(query, [
       name,
       code,
-      category || null,
-      duration || null,
+      category,
+      duration,
       price || null,
       status || 'active',
       id

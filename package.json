@@ -11,6 +11,7 @@
     "clickhouse:clean": "node scripts/clean-clickhouse.js",
     "clickhouse:seed": "node scripts/seed-data.js",
     "clickhouse:migrate": "node scripts/migrate-clickhouse.js",
+    "clickhouse:migrate-phase1": "node scripts/migrate-clickhouse-phase1.js",
     "mysql:init": "node scripts/init-mysql.js",
     "generate:secret": "node scripts/generate-secret.js",
     "db:drop": "node scripts/drop-all-tables.js",

@@ -6,14 +6,20 @@ import clickhouse from '@/lib/clickhouse';
  * 
  * Provides detailed analytics on visitor return behavior:
  * - New vs Returning visitor comparison
- * - Visit frequency distribution (uses MAX visit_count per user to avoid double-counting)
- * - Return interval analysis (measures time between consecutive sessions)
+ * - Visit frequency distribution (counts distinct visits per user within date range, matches Google Analytics)
+ * - Return interval analysis (measures time between consecutive visits using visit_count)
  * - Daily trends
  * 
- * Version: 2.0
+ * Version: 2.3
  * Fixed Issues:
- * - Visit frequency now uses MAX(visit_count) per user instead of grouping all pageviews
- * - Return intervals now measure consecutive session gaps instead of first-to-last span
+ * - New vs Returning visitors now correctly classify each user as either "new" OR "returning" (not both)
+ *   Users with any visit having is_new_visitor = 1 are classified as "new", others as "returning"
+ *   This ensures new + returning = total visitors, matching performance dashboard totals
+ * - Visit frequency now counts distinct visit_count per user within the selected date range
+ *   (not lifetime visit_count), matching Google Analytics behavior of showing visits in the period
+ * - Return intervals now measure consecutive visit gaps (by visit_count) instead of session gaps
+ *   This ensures accurate intervals by counting actual return visits, not multiple sessions within the same visit
+ * - Daily trends now correctly classify users as either new OR returning per day (not both)
  */
 
 // Type definitions for the analytics data
@@ -90,8 +96,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. New vs Returning Visitors
-    // IMPORTANT: Calculate total visitors directly (not by summing groups) to match performance dashboard
-    // This avoids discrepancies from users who might have both new and returning pageviews
+    // Fixed: Classify each user as either "new" OR "returning" (not both)
+    // If a user has ANY visit with is_new_visitor = 1, they're classified as "new"
+    // Otherwise, they're classified as "returning"
+    // This ensures each user is counted only once and matches the performance dashboard total
+    
+    // First, get total visitors (to match performance dashboard)
     const totalVisitorsQuery = `
       SELECT COUNT(DISTINCT user_id) as total_visitors
       FROM analytics.visit_logs
@@ -106,17 +116,26 @@ export async function GET(request: NextRequest) {
     const totalVisitorsJson = await totalVisitorsResult.json() as Array<{ total_visitors: number }>;
     const totalVisitors = totalVisitorsJson[0]?.total_visitors || 0;
 
-    // Now get new vs returning breakdown
+    // Now get new vs returning breakdown - classify users first, then aggregate
+    // Classify each user based on max(is_new_visitor): if any visit = 1, user is "new", else "returning"
     const newVsReturningQuery = `
       SELECT 
-        is_new_visitor,
-        COUNT(DISTINCT user_id) as visitors,
+        if(max_user_is_new = 1, 'new', 'returning') as visitor_type,
+        uniqExact(vl.user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions,
         AVG(time_on_page) as avg_time_on_page
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs vl
+      INNER JOIN (
+        SELECT 
+          user_id,
+          max(is_new_visitor) as max_user_is_new
+        FROM analytics.visit_logs
+        WHERE ${whereClause}
+        GROUP BY user_id
+      ) user_types ON vl.user_id = user_types.user_id
       WHERE ${whereClause}
-      GROUP BY is_new_visitor
+      GROUP BY visitor_type
     `;
 
     const newVsReturningResult = await clickhouse.query({
@@ -124,21 +143,44 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const newVsReturningJson = await newVsReturningResult.json() as VisitorData[];
+    const newVsReturningJson = await newVsReturningResult.json() as Array<{
+      visitor_type: string;
+      visitors: number;
+      pageviews: number;
+      conversions: number;
+      avg_time_on_page: number;
+    }>;
     
-    const newVisitors: VisitorData = newVsReturningJson.find((row: VisitorData) => row.is_new_visitor === 1) || {
-      is_new_visitor: 1,
-      visitors: 0, 
-      pageviews: 0, 
-      conversions: 0, 
+    const newVisitorsData = newVsReturningJson.find((row) => row.visitor_type === 'new') || {
+      visitor_type: 'new',
+      visitors: 0,
+      pageviews: 0,
+      conversions: 0,
       avg_time_on_page: 0
     };
-    const returningVisitors: VisitorData = newVsReturningJson.find((row: VisitorData) => row.is_new_visitor === 0) || {
-      is_new_visitor: 0,
-      visitors: 0, 
-      pageviews: 0, 
-      conversions: 0, 
+    
+    const returningVisitorsData = newVsReturningJson.find((row) => row.visitor_type === 'returning') || {
+      visitor_type: 'returning',
+      visitors: 0,
+      pageviews: 0,
+      conversions: 0,
       avg_time_on_page: 0
+    };
+    
+    const newVisitors: VisitorData = {
+      is_new_visitor: 1,
+      visitors: newVisitorsData.visitors,
+      pageviews: newVisitorsData.pageviews,
+      conversions: newVisitorsData.conversions,
+      avg_time_on_page: newVisitorsData.avg_time_on_page
+    };
+    
+    const returningVisitors: VisitorData = {
+      is_new_visitor: 0,
+      visitors: returningVisitorsData.visitors,
+      pageviews: returningVisitorsData.pageviews,
+      conversions: returningVisitorsData.conversions,
+      avg_time_on_page: returningVisitorsData.avg_time_on_page
     };
 
     const newVsReturning: NewVsReturningData = {
@@ -169,21 +211,22 @@ export async function GET(request: NextRequest) {
     };
 
     // 2. Visit Frequency Distribution
-    // Get the maximum visit_count per user to avoid double-counting
+    // Count distinct visits per user within the date range (not lifetime visit_count)
+    // This matches Google Analytics behavior: shows how many times users visited in the selected period
     const visitFrequencyQuery = `
       SELECT 
-        max_visit_count,
+        visits_in_range,
         COUNT(*) as users
       FROM (
         SELECT 
           user_id,
-          MAX(visit_count) as max_visit_count
+          uniqExact(visit_count) as visits_in_range
         FROM analytics.visit_logs
         WHERE ${whereClause}
         GROUP BY user_id
       )
-      GROUP BY max_visit_count
-      ORDER BY max_visit_count ASC
+      GROUP BY visits_in_range
+      ORDER BY visits_in_range ASC
     `;
 
     const visitFrequencyResult = await clickhouse.query({
@@ -191,7 +234,7 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const visitFrequencyJson = await visitFrequencyResult.json() as { max_visit_count: number; users: number }[];
+    const visitFrequencyJson = await visitFrequencyResult.json() as { visits_in_range: number; users: number }[];
     
     // Group visit counts: 1, 2-5, 6-10, 11-20, 21+
     const frequencyBuckets: FrequencyBucket[] = [
@@ -203,7 +246,7 @@ export async function GET(request: NextRequest) {
     ];
 
     visitFrequencyJson.forEach((row) => {
-      const count = row.max_visit_count;
+      const count = row.visits_in_range;
       const users = row.users;
       
       for (const bucket of frequencyBuckets) {
@@ -215,17 +258,22 @@ export async function GET(request: NextRequest) {
     });
 
     // 3. Return Interval Analysis (days between consecutive visits)
-    // Calculate intervals between consecutive sessions per user
+    // Calculate intervals between consecutive visits per user (using visit_count instead of session_id)
+    // This ensures we measure actual return visits, not multiple sessions within the same visit
     const returnIntervalQuery = `
       SELECT 
         user_id,
-        session_id,
-        MIN(timestamp) as session_start
+        visit_count,
+        MIN(timestamp) as visit_start
       FROM analytics.visit_logs
       WHERE ${whereClause}
-        AND is_new_visitor = 0
-      GROUP BY user_id, session_id
-      ORDER BY user_id, session_start
+        AND user_id IN (
+          SELECT DISTINCT user_id 
+          FROM analytics.visit_logs 
+          WHERE ${whereClause} AND is_new_visitor = 0
+        )
+      GROUP BY user_id, visit_count
+      ORDER BY user_id, visit_count ASC
     `;
 
     const returnIntervalResult = await clickhouse.query({
@@ -235,11 +283,11 @@ export async function GET(request: NextRequest) {
 
     const returnIntervalJson = await returnIntervalResult.json() as { 
       user_id: string; 
-      session_id: string;
-      session_start: string; 
+      visit_count: number;
+      visit_start: string; 
     }[];
     
-    // Calculate intervals between consecutive sessions
+    // Calculate intervals between consecutive visits
     let totalIntervals = 0;
     let intervalSum = 0;
     
@@ -252,25 +300,37 @@ export async function GET(request: NextRequest) {
       { label: '31+ days', min: 31, max: Infinity, users: 0 },
     ];
 
-    // Group sessions by user
-    const userSessions = new Map<string, Date[]>();
+    // Group visits by user (each visit has a unique visit_count)
+    const userVisits = new Map<string, Array<{ visit_count: number; visit_start: Date }>>();
     returnIntervalJson.forEach((row) => {
-      if (!userSessions.has(row.user_id)) {
-        userSessions.set(row.user_id, []);
+      if (!userVisits.has(row.user_id)) {
+        userVisits.set(row.user_id, []);
       }
-      userSessions.get(row.user_id)!.push(new Date(row.session_start));
+      userVisits.get(row.user_id)!.push({
+        visit_count: row.visit_count,
+        visit_start: new Date(row.visit_start)
+      });
     });
 
-    // Calculate intervals between consecutive sessions for each user
-    userSessions.forEach((sessions, userId) => {
-      // Sort sessions by time
-      sessions.sort((a, b) => a.getTime() - b.getTime());
+    // Calculate intervals between consecutive visits for each user
+    userVisits.forEach((visits, userId) => {
+      // Sort visits by visit_count (should already be sorted, but ensure it)
+      visits.sort((a, b) => a.visit_count - b.visit_count);
       
-      // Calculate intervals between consecutive sessions
-      for (let i = 1; i < sessions.length; i++) {
-        const prevSession = sessions[i - 1];
-        const currentSession = sessions[i];
-        const daysDiff = Math.floor((currentSession.getTime() - prevSession.getTime()) / (1000 * 60 * 60 * 24));
+      // Calculate intervals between consecutive visit_counts
+      for (let i = 1; i < visits.length; i++) {
+        const prevVisit = visits[i - 1];
+        const currentVisit = visits[i];
+        
+        // Skip if visit_count is not consecutive (shouldn't happen, but safety check)
+        if (currentVisit.visit_count !== prevVisit.visit_count + 1) {
+          continue;
+        }
+        
+        const daysDiff = Math.floor(
+          (currentVisit.visit_start.getTime() - prevVisit.visit_start.getTime()) 
+          / (1000 * 60 * 60 * 24)
+        );
         
         totalIntervals++;
         intervalSum += daysDiff;
@@ -288,13 +348,23 @@ export async function GET(request: NextRequest) {
     const avgReturnInterval = totalIntervals > 0 ? Math.round(intervalSum / totalIntervals) : 0;
 
     // 4. Daily new vs returning trend
+    // Fixed: Each user is counted only once per day (as either new or returning, not both)
+    // If a user has any visit with is_new_visitor = 1 on a day, they're classified as "new" for that day
+    // Otherwise, they're classified as "returning" for that day
     const dailyTrendQuery = `
       SELECT 
-        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
-        countDistinctIf(user_id, is_new_visitor = 1) as new_visitors,
-        countDistinctIf(user_id, is_new_visitor = 0) as returning_visitors
-      FROM analytics.visit_logs
-      WHERE ${whereClause}
+        date,
+        countIf(visitor_type = 'new') as new_visitors,
+        countIf(visitor_type = 'returning') as returning_visitors
+      FROM (
+        SELECT 
+          toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
+          user_id,
+          if(max(is_new_visitor) = 1, 'new', 'returning') as visitor_type
+        FROM analytics.visit_logs
+        WHERE ${whereClause}
+        GROUP BY date, user_id
+      )
       GROUP BY date
       ORDER BY date ASC
     `;

@@ -208,6 +208,17 @@ export default function CoursesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Client-side validation
+    if (!formData.category || formData.category.trim() === '') {
+      toast.error(t('modal.validation.categoryRequired'));
+      return;
+    }
+
+    if (!formData.duration || formData.duration.trim() === '') {
+      toast.error(t('modal.validation.durationRequired'));
+      return;
+    }
+
     const actionKey = editingCourse ? 'updating' : 'creating';
     const actionPastKey = editingCourse ? 'updated' : 'created';
     const errorKey = editingCourse ? 'updateFailed' : 'createFailed';
@@ -625,6 +636,12 @@ export default function CoursesPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
+                  onInvalid={(e) => {
+                    e.currentTarget.setCustomValidity(t('modal.validation.courseNameRequired'));
+                  }}
+                  onInput={(e) => {
+                    e.currentTarget.setCustomValidity('');
+                  }}
                   className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -638,25 +655,38 @@ export default function CoursesPage() {
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   required
+                  onInvalid={(e) => {
+                    e.currentTarget.setCustomValidity(t('modal.validation.courseCodeRequired'));
+                  }}
+                  onInput={(e) => {
+                    e.currentTarget.setCustomValidity('');
+                  }}
                   className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  {t('modal.fields.category')}
+                  {t('modal.fields.category')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  required
+                  onInvalid={(e) => {
+                    e.currentTarget.setCustomValidity(t('modal.validation.categoryRequiredHtml'));
+                  }}
+                  onInput={(e) => {
+                    e.currentTarget.setCustomValidity('');
+                  }}
                   className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  {t('modal.fields.duration')}
+                  {t('modal.fields.duration')} <span className="text-red-500">*</span>
                 </label>
                 <div className="flex gap-2">
                   <select
@@ -683,6 +713,13 @@ export default function CoursesPage() {
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                     placeholder={t('modal.placeholders.duration')}
+                    required
+                    onInvalid={(e) => {
+                      e.currentTarget.setCustomValidity(t('modal.validation.durationRequiredHtml'));
+                    }}
+                    onInput={(e) => {
+                      e.currentTarget.setCustomValidity('');
+                    }}
                     className="flex-1 px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>

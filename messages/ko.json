@@ -368,12 +368,12 @@
       "totalVisits": "총 방문 수"
     },
     "filters": {
-      "searchPlaceholder": "과정 이름 또는 코드로 검색...",
+      "searchPlaceholder": "과정 이름, 코드 또는 카테고리로 검색...",
       "allStatus": "모든 상태"
     },
     "table": {
       "title": "과정 목록",
-      "searchHint": "과정 이름 또는 코드로 검색...",
+      "searchHint": "과정 이름, 코드 또는 카테고리로 검색...",
       "courseName": "과정 이름",
       "category": "카테고리",
       "duration": "기간",
@@ -412,6 +412,14 @@
         "month": "개월",
         "months": "개월",
         "helper": "개월 수를 입력하세요 (예: 1 = 1개월, 3 = 3개월)"
+      },
+      "validation": {
+        "categoryRequired": "카테고리는 필수입니다",
+        "durationRequired": "기간은 필수입니다",
+        "courseNameRequired": "이 필드를 입력하세요",
+        "courseCodeRequired": "이 필드를 입력하세요",
+        "categoryRequiredHtml": "이 필드를 입력하세요",
+        "durationRequiredHtml": "이 필드를 입력하세요"
       },
       "actions": {
         "cancel": "취소",

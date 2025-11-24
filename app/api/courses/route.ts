@@ -62,9 +62,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      whereConditions += ' AND (courses.name LIKE ? OR courses.code LIKE ?)';
-      queryParams.push(`%${search}%`, `%${search}%`);
-      countParams.push(`%${search}%`, `%${search}%`);
+      whereConditions += ' AND (courses.name LIKE ? OR courses.code LIKE ? OR courses.category LIKE ?)';
+      queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      countParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     // Get total count for pagination
@@ -388,7 +388,21 @@ export async function POST(request: NextRequest) {
     // Validation
     if (!name || !code) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Course name and code are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!category || category.trim() === '') {
+      return NextResponse.json(
+        { success: false, error: 'Category is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!duration || duration.toString().trim() === '') {
+      return NextResponse.json(
+        { success: false, error: 'Duration is required' },
         { status: 400 }
       );
     }
@@ -402,8 +416,8 @@ export async function POST(request: NextRequest) {
     const [result] = await pool.execute(query, [
       name,
       code,
-      category || null,
-      duration || null,
+      category,
+      duration,
       price || null,
       status || 'active'
     ]) as [any, any];

@@ -368,12 +368,12 @@
       "totalVisits": "Total Visits"
     },
     "filters": {
-      "searchPlaceholder": "Search by course name or code...",
+      "searchPlaceholder": "Search by course name, code, or category...",
       "allStatus": "All Status"
     },
     "table": {
       "title": "Course List",
-      "searchHint": "Search by course name or code...",
+      "searchHint": "Search by course name, code, or category...",
       "courseName": "Course Name",
       "category": "Category",
       "duration": "Duration",
@@ -412,6 +412,14 @@
         "month": "month",
         "months": "months",
         "helper": "Enter number of months (e.g., 1 = 1 month, 3 = 3 months)"
+      },
+      "validation": {
+        "categoryRequired": "Category is required",
+        "durationRequired": "Duration is required",
+        "courseNameRequired": "Please fill out this field",
+        "courseCodeRequired": "Please fill out this field",
+        "categoryRequiredHtml": "Please fill out this field",
+        "durationRequiredHtml": "Please fill out this field"
       },
       "actions": {
         "cancel": "Cancel",

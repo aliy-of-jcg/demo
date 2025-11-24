@@ -1,9 +1,9 @@
 name: Deploy CosMos AI to Dev/Prod Environment
 
 on:
-  push:
-    branches:
-      - dev  # dev 브랜치 push 시 dev 환경에 자동 배포
+  # push:
+  #   branches:
+  #     - dev  # dev 브랜치 push 시 dev 환경에 자동 배포
   workflow_dispatch:  # 수동 실행
     inputs:
       environment:
