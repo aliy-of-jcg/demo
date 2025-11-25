@@ -59,8 +59,8 @@ export default function UTMGeneratorPage() {
       const campaignsRes = await fetch('/api/campaigns?limit=1000');
       const campaignsData = await campaignsRes.json();
       if (campaignsData.success && campaignsData.campaigns) {
-        setCampaigns(campaignsData.campaigns.map((c: any) => ({ 
-          id: c.id, 
+        setCampaigns(campaignsData.campaigns.map((c: any) => ({
+          id: c.id,
           name: c.name,
           source: c.source || '',
           medium: c.medium || ''
@@ -137,11 +137,11 @@ export default function UTMGeneratorPage() {
 
   const generateUTMUrl = () => {
     const { landing_url, utm_source, utm_medium, utm_term, utm_content } = formData;
-    
+
     // Get campaign name from selected campaign
     const selectedCampaign = campaigns.find(c => c.id.toString() === formData.campaign_id);
     const utm_campaign = selectedCampaign ? selectedCampaign.name : '';
-    
+
     // Return early if required fields are missing
     if (!landing_url || !utm_campaign || !utm_source || !utm_medium) {
       return landing_url || 'https://example.com';
@@ -150,15 +150,15 @@ export default function UTMGeneratorPage() {
     // Validate URL format before creating URL object
     try {
       const url = new URL(landing_url);
-      
+
       url.searchParams.set('utm_campaign', utm_campaign);
       url.searchParams.set('utm_source', utm_source);
       url.searchParams.set('utm_medium', utm_medium);
-      
+
       if (utm_term) {
         url.searchParams.set('utm_term', utm_term);
       }
-      
+
       if (utm_content) {
         url.searchParams.set('utm_content', utm_content);
       }
@@ -210,8 +210,14 @@ export default function UTMGeneratorPage() {
       return;
     }
 
-    // These should be auto-filled, but double-check
-    if (!formData.name || !formData.utm_source || !formData.utm_medium) {
+    // Check if source and medium are selected
+    if (!formData.utm_source || !formData.utm_medium) {
+      toast.error(t('validation.ensureSourceMedium'));
+      return;
+    }
+
+    // Check if name is filled (should be auto-filled from campaign)
+    if (!formData.name) {
       toast.error(t('validation.ensureCampaign'));
       return;
     }
@@ -242,7 +248,7 @@ export default function UTMGeneratorPage() {
       }
 
       toast.success(isEditMode ? t('success.updated') : t('success.created'));
-      
+
       // Redirect after a short delay to show the success message
       setTimeout(() => {
         router.push('/utm-tools');
@@ -270,7 +276,7 @@ export default function UTMGeneratorPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-4 sm:mb-6">
-        <Link 
+        <Link
           href="/utm-tools"
           className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-3 sm:mb-4 text-sm sm:text-base"
         >
@@ -290,7 +296,7 @@ export default function UTMGeneratorPage() {
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">{t('utmParameters')}</h2>
-            
+
             <div className="space-y-4 sm:space-y-6">
               {/* Link to Campaign (First - Required) */}
               <div>
@@ -447,7 +453,7 @@ export default function UTMGeneratorPage() {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 lg:sticky lg:top-8">
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">{t('generatedUrl')}</h2>
-            
+
             {/* Tracking Code Display (for edit mode) */}
             {trackingCode && (
               <div className="mb-3 sm:mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -468,7 +474,7 @@ export default function UTMGeneratorPage() {
                 </div>
               </div>
             )}
-            
+
             <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
               <p className="text-xs text-gray-600 mb-2 font-medium">{t('preview.fullTrackingUrl')}</p>
               <div className="bg-white border border-gray-200 rounded p-2 sm:p-3 break-all text-xs sm:text-sm text-gray-700 max-h-32 sm:max-h-40 overflow-y-auto">
@@ -514,7 +520,7 @@ export default function UTMGeneratorPage() {
                 <div className="flex justify-between text-xs gap-2">
                   <span className="text-gray-600">{t('preview.utmCampaign')}</span>
                   <span className="text-gray-900 font-medium truncate">
-                    {formData.campaign_id 
+                    {formData.campaign_id
                       ? campaigns.find(c => c.id.toString() === formData.campaign_id)?.name || '-'
                       : '-'}
                   </span>

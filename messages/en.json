@@ -1141,7 +1141,8 @@
       "validation": {
         "selectCampaign": "Please select a campaign first",
         "landingUrlRequired": "Target landing URL is required",
-        "ensureCampaign": "Please ensure a campaign is selected"
+        "ensureCampaign": "Please ensure a campaign is selected",
+        "ensureSourceMedium": "Please ensure source and medium are selected"
       },
       "success": {
         "created": "UTM code created successfully!",
@@ -1193,4 +1194,3 @@
     }
   }
 }
-

@@ -1141,7 +1141,8 @@
       "validation": {
         "selectCampaign": "먼저 캠페인을 선택하세요",
         "landingUrlRequired": "대상 랜딩 URL이 필요합니다",
-        "ensureCampaign": "캠페인이 선택되었는지 확인하세요"
+        "ensureCampaign": "캠페인이 선택되었는지 확인하세요",
+        "ensureSourceMedium": "소스와 미디엄을 선택했는지 확인하세요"
       },
       "success": {
         "created": "UTM 코드가 성공적으로 생성되었습니다!",
@@ -1193,4 +1194,3 @@
     }
   }
 }
-

@@ -72,15 +72,15 @@ export async function GET(request: NextRequest) {
 
     // 3. Extract unique platforms and build filter
     const allPlatforms = Array.from(new Set(trackingCodes.map(tc => tc.utm_medium || tc.utm_source))).filter(Boolean);
-    
+
     // Build WHERE clause using tracking_code (more reliable than utm_campaign matching)
     const validTrackingCodes = trackingCodes
       .map(tc => tc.tracking_code)
       .filter(code => code && code !== '');
-    
+
     // Get utm_campaign names for legacy data fallback
     const utmCampaigns = Array.from(new Set(trackingCodes.map(tc => tc.utm_campaign))).filter(Boolean);
-    
+
     let whereClause: string;
     // Use campaign_id directly from ClickHouse (preserves data even after UTM hard deletion)
     // Also include tracking_code and utm_campaign for backward compatibility with legacy data
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       // Primary method: use campaign_id (most reliable) + tracking_code + utm_campaign for legacy data
       const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
       const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
-      
+
       // Include: campaign_id (denormalized) OR tracking_code OR legacy utm_campaign
       whereClause = `(campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesList}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))`;
     }
@@ -131,52 +131,187 @@ export async function GET(request: NextRequest) {
     });
 
     const visitData = await visitResult.json() as Array<{ unique_visitors: number; conversions: number }>;
-    
+
     const visitors = visitData[0]?.unique_visitors || 0;
     const conversions = visitData[0]?.conversions || 0;
     const conversionRate = visitors > 0 ? ((conversions / visitors) * 100).toFixed(2) : '0.00';
 
     // 5. Get click metrics from tracking_events
     // Use actual tracking_code from database (same as visit query)
-    let clickWhereClause: string;
+    // Also include clicks from hard-deleted UTMs (legacy data)
+    let clicks = 0;
+    let clicksFromLegacyData = 0;
+
+    // First, get clicks from active tracking codes
     if (validTrackingCodes.length > 0) {
       const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-      clickWhereClause = `tracking_code IN (${trackingCodesList})`;
+      let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
+
+      if (startDate && endDate) {
+        clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+      } else {
+        if (startDate) {
+          clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+        }
+        if (endDate) {
+          clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+        }
+      }
+
+      const clickQuery = `
+        SELECT COUNT(*) as total_clicks
+        FROM analytics.tracking_events
+        WHERE ${clickWhereClause}
+      `;
+
+      const clickResult = await clickhouse.query({
+        query: clickQuery,
+        format: 'JSONEachRow',
+      });
+
+      const clickData = await clickResult.json() as Array<{ total_clicks: number }>;
+      clicks = clickData[0]?.total_clicks || 0;
     } else {
       // Fallback: construct tracking code from UTM parameters (legacy data)
       const trackingCodesList = trackingCodes.map(tc => {
         const code = [tc.utm_source, tc.utm_medium, tc.utm_campaign].filter(Boolean).join('_');
         return `'${code.replace(/'/g, "\\'")}'`;
       }).join(',');
-      clickWhereClause = `tracking_code IN (${trackingCodesList})`;
-    }
-    
-    if (startDate && endDate) {
-      clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
-    } else {
-      if (startDate) {
-        clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+
+      let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
+
+      if (startDate && endDate) {
+        clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+      } else {
+        if (startDate) {
+          clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+        }
+        if (endDate) {
+          clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+        }
       }
-      if (endDate) {
-        clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
-      }
+
+      const clickQuery = `
+        SELECT COUNT(*) as total_clicks
+        FROM analytics.tracking_events
+        WHERE ${clickWhereClause}
+      `;
+
+      const clickResult = await clickhouse.query({
+        query: clickQuery,
+        format: 'JSONEachRow',
+      });
+
+      const clickData = await clickResult.json() as Array<{ total_clicks: number }>;
+      clicks = clickData[0]?.total_clicks || 0;
     }
 
-    const clickQuery = `
-      SELECT COUNT(*) as total_clicks
-      FROM analytics.tracking_events
-      WHERE ${clickWhereClause}
-    `;
+    // Also get clicks from legacy data (hard-deleted UTMs) by matching utm_campaign name
+    if (utmCampaigns.length > 0) {
+      try {
+        const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
+        const activeTrackingCodesSet = new Set(validTrackingCodes);
 
-    const clickResult = await clickhouse.query({
-      query: clickQuery,
-      format: 'JSONEachRow',
-    });
+        let legacyClickWhereClause = `utm_campaign IN (${utmCampaignsList}) AND tracking_code != '' AND tracking_code IS NOT NULL`;
 
-    const clickData = await clickResult.json() as Array<{ total_clicks: number }>;
-    const clicks = clickData[0]?.total_clicks || 0;
+        if (startDate && endDate) {
+          legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+        } else {
+          if (startDate) {
+            legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+          }
+          if (endDate) {
+            legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+          }
+        }
+
+        const legacyClicksQuery = await clickhouse.query({
+          query: `
+            SELECT 
+              tracking_code,
+              COUNT(*) as total_clicks
+            FROM analytics.tracking_events
+            WHERE ${legacyClickWhereClause}
+            GROUP BY tracking_code
+          `,
+          format: 'JSONEachRow'
+        });
+
+        const legacyClicksData = await legacyClicksQuery.json() as any[];
+
+        legacyClicksData.forEach((result: any) => {
+          const code = result.tracking_code;
+          const legacyClicks = parseInt(result.total_clicks || '0');
+
+          // If this tracking code is not in active MySQL records, it's legacy data
+          if (code && !activeTrackingCodesSet.has(code)) {
+            clicksFromLegacyData += legacyClicks;
+            clicks += legacyClicks; // Add to total clicks
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching legacy clicks:', error);
+      }
+    }
     // CTR = (Visits / Clicks) * 100 (matches channel-performance API calculation)
     const ctr = clicks > 0 ? ((visitors / clicks) * 100).toFixed(2) : '0.00';
+
+    // 5.5. Detect legacy data (hard-deleted UTMs)
+    let hasLegacyData = false;
+    try {
+      // Get all tracking codes from MySQL for this campaign (including hidden)
+      const [allTrackingCodes] = await pool.query<RowDataPacket[]>(
+        'SELECT tracking_code FROM utm_codes WHERE campaign_id = ?',
+        [campaignId]
+      );
+      const allTrackingCodesInMySQL = new Set(
+        allTrackingCodes.map(tc => tc.tracking_code).filter(code => code && code !== '')
+      );
+      const activeTrackingCodes = new Set(validTrackingCodes);
+
+      // Check visit_logs for tracking codes that don't exist in MySQL
+      if (campaignId) {
+        const clickhouseTrackingCodesQuery = await clickhouse.query({
+          query: `
+            SELECT DISTINCT tracking_code
+            FROM analytics.visit_logs
+            WHERE campaign_id = ${campaignId}
+              AND tracking_code != ''
+              AND tracking_code IS NOT NULL
+          `,
+          format: 'JSONEachRow'
+        });
+
+        const clickhouseTrackingCodesData = await clickhouseTrackingCodesQuery.json() as Array<{ tracking_code: string }>;
+        const clickhouseTrackingCodes = new Set(
+          clickhouseTrackingCodesData.map(row => row.tracking_code?.trim() || row.tracking_code).filter(code => code && code !== '')
+        );
+
+        // Check if there are tracking codes in ClickHouse that don't exist in MySQL
+        for (const code of Array.from(clickhouseTrackingCodes)) {
+          if (!allTrackingCodesInMySQL.has(code)) {
+            hasLegacyData = true;
+            break;
+          }
+        }
+
+        // Also check if we have clicks from legacy data
+        if (clicksFromLegacyData > 0) {
+          hasLegacyData = true;
+        }
+
+        // Check if total tracking codes in ClickHouse > active tracking codes
+        if (clickhouseTrackingCodes.size > activeTrackingCodes.size) {
+          hasLegacyData = true;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for legacy data in campaign analysis:', error);
+      // Still flag if we have legacy clicks
+      if (clicksFromLegacyData > 0) {
+        hasLegacyData = true;
+      }
+    }
 
     // 6. Calculate revenue and CPA (using budget as revenue proxy)
     const revenue = parseFloat(campaign.budget) || 0;
@@ -202,7 +337,7 @@ export async function GET(request: NextRequest) {
     });
 
     const dailyJson = await dailyResult.json() as Array<{ date: string; visitors: number; conversions: number }>;
-    
+
     // Convert to array and calculate metrics
     const dailyData = dailyJson
       .map((row) => ({
@@ -234,15 +369,17 @@ export async function GET(request: NextRequest) {
         revenue,
         cpa,
       },
+      hasLegacyData,
+      clicksFromLegacyData,
       dailyData,
     });
 
   } catch (error) {
     console.error('Campaign analysis API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
