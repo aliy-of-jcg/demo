@@ -31,6 +31,7 @@ interface Campaign {
   conversion_rate?: string;
   hasLegacyData?: boolean;
   activeTrackingLinksCount?: number;
+  clicksFromLegacyData?: number;
 }
 
 interface TrackingLink {
@@ -99,7 +100,7 @@ export default function CampaignDetailsPage() {
     try {
       const response = await fetch(`/api/campaigns/${campaignId}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setCampaign(data.campaign);
       } else {
@@ -118,7 +119,7 @@ export default function CampaignDetailsPage() {
     try {
       const response = await fetch(`/api/campaigns/${campaignId}/tracking-links`);
       const data = await response.json();
-      
+
       if (data.success) {
         setTrackingLinks(data.links);
       }
@@ -130,7 +131,7 @@ export default function CampaignDetailsPage() {
   const handleCopyTrackingLink = async (trackingCode: string) => {
     const baseUrl = window.location.origin;
     const shortUrl = `${baseUrl}/t/${trackingCode}`;
-    
+
     const success = await copyToClipboard(shortUrl);
     if (success) {
       setCopiedCode(trackingCode);
@@ -225,9 +226,9 @@ export default function CampaignDetailsPage() {
         const response = await fetch(`/api/utm-codes/${id}`, {
           method: 'DELETE'
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok || !data.success) {
           throw new Error(data.error || 'Failed to delete tracking link');
         }
@@ -456,12 +457,30 @@ export default function CampaignDetailsPage() {
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {(campaign?.clicks ?? 0).toLocaleString()}
               </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {campaign?.hasLegacyData
-                  ? `From ${campaign?.activeTrackingLinksCount || trackingLinks.length} active tracking link${(campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''} (may include legacy data)`
-                  : `From ${campaign?.activeTrackingLinksCount || trackingLinks.length} tracking link${(campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''}`
-                }
-              </p>
+              <div className="text-xs text-gray-500 mt-1 space-y-1">
+                {campaign?.hasLegacyData ? (
+                  <>
+                    <div>
+                      From {campaign?.activeTrackingLinksCount || trackingLinks.length} active tracking link{(campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''}
+                    </div>
+                    {campaign?.clicksFromLegacyData && campaign.clicksFromLegacyData > 0 ? (
+                      <div className="text-amber-600 font-medium flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>+ {campaign.clicksFromLegacyData.toLocaleString()} from deleted link{campaign.clicksFromLegacyData !== 1 ? 's' : ''}</span>
+                      </div>
+                    ) : (
+                      <div className="text-amber-600 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>Includes data from deleted links</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div>
+                    From {campaign?.activeTrackingLinksCount || trackingLinks.length} tracking link{(campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Unique Visitors</p>
@@ -469,7 +488,7 @@ export default function CampaignDetailsPage() {
                 {(campaign?.visitors ?? 0).toLocaleString()}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {campaign?.clicks && campaign.visitors 
+                {campaign?.clicks && campaign.visitors
                   ? `${((campaign.visitors / campaign.clicks) * 100).toFixed(1)}% of clicks`
                   : t('noDataYet')
                 }
@@ -614,14 +633,13 @@ export default function CampaignDetailsPage() {
                             Spent: ${link.spent.toLocaleString()}
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                            <div 
-                              className={`h-1.5 rounded-full ${
-                                (link.spent / link.budget) * 100 > 90 
-                                  ? 'bg-red-600' 
-                                  : (link.spent / link.budget) * 100 > 70 
-                                  ? 'bg-yellow-600' 
-                                  : 'bg-green-600'
-                              }`}
+                            <div
+                              className={`h-1.5 rounded-full ${(link.spent / link.budget) * 100 > 90
+                                  ? 'bg-red-600'
+                                  : (link.spent / link.budget) * 100 > 70
+                                    ? 'bg-yellow-600'
+                                    : 'bg-green-600'
+                                }`}
                               style={{ width: `${Math.min((link.spent / link.budget) * 100, 100)}%` }}
                             ></div>
                           </div>
@@ -636,11 +654,10 @@ export default function CampaignDetailsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => handleToggleStatus(link.id, link.status, link.name)}
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full transition-all hover:ring-2 hover:ring-offset-1 cursor-pointer ${
-                          link.status === 'active' 
-                            ? 'bg-green-100 text-green-800 hover:ring-green-400' 
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full transition-all hover:ring-2 hover:ring-offset-1 cursor-pointer ${link.status === 'active'
+                            ? 'bg-green-100 text-green-800 hover:ring-green-400'
                             : 'bg-gray-100 text-gray-800 hover:ring-gray-400'
-                        }`}
+                          }`}
                         title={`Click to ${link.status === 'active' ? 'deactivate' : 'activate'}`}
                       >
                         {link.status === 'active' ? 'Active' : 'Inactive'}
@@ -874,16 +891,16 @@ export default function CampaignDetailsPage() {
                         {trackingLinks
                           .filter(l => l.budget)
                           .reduce((sum, l) => sum + (l.budget || 0), 0) + parseFloat(formData.budget) > (campaign?.budget || 0) && (
-                          <div className="text-orange-700 font-medium pt-1">
-                            ⚠️ Exceeds campaign budget by ${
-                              (trackingLinks
-                                .filter(l => l.budget)
-                                .reduce((sum, l) => sum + (l.budget || 0), 0) + parseFloat(formData.budget) - (campaign?.budget || 0))
-                                .toLocaleString()
-                            }
-                            {formData.auto_update_campaign_budget && " (will be auto-increased)"}
-                          </div>
-                        )}
+                            <div className="text-orange-700 font-medium pt-1">
+                              ⚠️ Exceeds campaign budget by ${
+                                (trackingLinks
+                                  .filter(l => l.budget)
+                                  .reduce((sum, l) => sum + (l.budget || 0), 0) + parseFloat(formData.budget) - (campaign?.budget || 0))
+                                  .toLocaleString()
+                              }
+                              {formData.auto_update_campaign_budget && " (will be auto-increased)"}
+                            </div>
+                          )}
                       </div>
                     </div>
                   )}
