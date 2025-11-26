@@ -2,8 +2,8 @@ export const apiSpec = {
   openapi: "3.0.0",
   info: {
     title: "CosMos AI Analytics & Tracking API",
-    version: "2.0.0",
-    description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, and campaign management capabilities. Updated with 30 active endpoints.",
+    version: "2.1.0",
+    description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, and campaign management capabilities. Updated with 35+ active endpoints.",
     contact: {
       name: "CosMos AI Support",
       email: "support@cosmosai.com",
@@ -38,11 +38,15 @@ export const apiSpec = {
     },
     {
       name: "Analytics",
-      description: "Advanced analytics and metrics endpoints (7 endpoints)",
+      description: "Advanced analytics and metrics endpoints (10 endpoints)",
     },
     {
       name: "Tracking",
       description: "Event tracking and data collection (4 endpoints)",
+    },
+    {
+      name: "Tracked Websites",
+      description: "Tracked websites management and analytics (2 endpoints)",
     },
     {
       name: "System",
@@ -1077,6 +1081,246 @@ export const apiSpec = {
       },
     },
 
+    "/api/analytics/session-journeys": {
+      get: {
+        tags: ["Analytics"],
+        summary: "Session Journeys",
+        description: "Complete page-by-page user journey visualization with session timeline, landing pages, exit pages, and device information",
+        parameters: [
+          {
+            name: "start_date",
+            in: "query",
+            schema: { type: "string", format: "date" },
+            description: "Start date for session filtering",
+          },
+          {
+            name: "end_date",
+            in: "query",
+            schema: { type: "string", format: "date" },
+            description: "End date for session filtering",
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 50 },
+            description: "Maximum number of sessions to return (default: 50)",
+          },
+        ],
+        responses: {
+          200: {
+            description: "Session journeys with complete page sequences",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    sessions: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          session_id: { type: "string", example: "uuid-session-123" },
+                          user_id: { type: "string", example: "uuid-user-456" },
+                          session_start: { type: "string", format: "date-time" },
+                          session_end: { type: "string", format: "date-time" },
+                          total_pages: { type: "number", example: 5 },
+                          duration: { type: "number", example: 180 },
+                          landing_page: { type: "string" },
+                          exit_page: { type: "string" },
+                          utm_source: { type: "string" },
+                          utm_medium: { type: "string" },
+                          utm_campaign: { type: "string" },
+                          device_type: { type: "string", example: "desktop" },
+                          browser: { type: "string", example: "Chrome" },
+                          os: { type: "string", example: "Windows" },
+                          pages: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                page_url: { type: "string" },
+                                page_title: { type: "string" },
+                                page_sequence: { type: "number" },
+                                timestamp: { type: "string", format: "date-time" },
+                                time_on_page: { type: "number" },
+                                event_type: { type: "string" },
+                                is_landing_page: { type: "number" },
+                                is_exit_page: { type: "number" },
+                              },
+                            },
+                          },
+                          has_exit_event: { type: "boolean" },
+                          exit_page_url: { type: "string" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    "/api/analytics/tracked-websites": {
+      get: {
+        tags: ["Analytics"],
+        summary: "Tracked Websites Analysis",
+        description: "Domain-level tracking statistics including sessions, visitors, pageviews, conversions, and activity status",
+        parameters: [
+          {
+            name: "start",
+            in: "query",
+            schema: { type: "string", format: "date" },
+            description: "Start date (default: 90 days ago)",
+          },
+          {
+            name: "end",
+            in: "query",
+            schema: { type: "string", format: "date" },
+            description: "End date (default: today)",
+          },
+        ],
+        responses: {
+          200: {
+            description: "Tracked websites statistics",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    websites: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          domain: { type: "string", example: "example.com" },
+                          total_sessions: { type: "number", example: 1250 },
+                          unique_visitors: { type: "number", example: 890 },
+                          total_pageviews: { type: "number", example: 3420 },
+                          total_conversions: { type: "number", example: 45 },
+                          first_seen: { type: "string", format: "date-time" },
+                          last_seen: { type: "string", format: "date-time" },
+                          is_active: { type: "boolean", example: true },
+                          is_enabled: { type: "boolean", example: true },
+                          status: { type: "string", enum: ["Active", "Inactive", "Disabled"] },
+                        },
+                      },
+                    },
+                    summary: {
+                      type: "object",
+                      properties: {
+                        total_websites: { type: "number", example: 15 },
+                        active_websites: { type: "number", example: 12 },
+                        inactive_websites: { type: "number", example: 2 },
+                        disabled_websites: { type: "number", example: 1 },
+                        total_sessions: { type: "number", example: 18500 },
+                        total_visitors: { type: "number", example: 12500 },
+                        total_pageviews: { type: "number", example: 45200 },
+                        total_conversions: { type: "number", example: 320 },
+                      },
+                    },
+                    dateRange: {
+                      type: "object",
+                      properties: {
+                        start: { type: "string", format: "date" },
+                        end: { type: "string", format: "date" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    "/api/analytics/debug-sessions": {
+      get: {
+        tags: ["Analytics"],
+        summary: "Debug Sessions",
+        description: "Session journeys filtered by specific debug domains for testing and validation purposes",
+        parameters: [
+          {
+            name: "start_date",
+            in: "query",
+            schema: { type: "string", format: "date" },
+            description: "Start date for session filtering",
+          },
+          {
+            name: "end_date",
+            in: "query",
+            schema: { type: "string", format: "date" },
+            description: "End date for session filtering",
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 50 },
+            description: "Maximum number of sessions to return (default: 50)",
+          },
+        ],
+        responses: {
+          200: {
+            description: "Debug session journeys for specific domains",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    sessions: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          session_id: { type: "string" },
+                          user_id: { type: "string" },
+                          session_start: { type: "string", format: "date-time" },
+                          session_end: { type: "string", format: "date-time" },
+                          total_pages: { type: "number" },
+                          duration: { type: "number" },
+                          landing_page: { type: "string" },
+                          exit_page: { type: "string" },
+                          utm_source: { type: "string" },
+                          utm_medium: { type: "string" },
+                          utm_campaign: { type: "string" },
+                          device_type: { type: "string" },
+                          browser: { type: "string" },
+                          os: { type: "string" },
+                          tracked_domain: { type: "string", example: "aptdecor.uz" },
+                          pages: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                page_url: { type: "string" },
+                                page_title: { type: "string" },
+                                page_sequence: { type: "number" },
+                                timestamp: { type: "string", format: "date-time" },
+                                time_on_page: { type: "number" },
+                                event_type: { type: "string" },
+                                is_landing_page: { type: "number" },
+                                is_exit_page: { type: "number" },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
     // ==================== TRACKING ====================
     "/api/track": {
       post: {
@@ -1324,6 +1568,54 @@ export const apiSpec = {
         responses: {
           200: {
             description: "Performance metrics retrieved",
+          },
+        },
+      },
+    },
+
+    // ==================== TRACKED WEBSITES ====================
+    "/api/tracked-websites/toggle": {
+      patch: {
+        tags: ["Tracked Websites"],
+        summary: "Toggle website tracking status",
+        description: "Enable or disable tracking for a specific domain",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["domain", "is_enabled"],
+                properties: {
+                  domain: { type: "string", example: "example.com" },
+                  is_enabled: { type: "boolean", example: true },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Website status updated successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Domain enabled successfully" },
+                    domain: { type: "string", example: "example.com" },
+                    is_enabled: { type: "boolean", example: true },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: "Invalid parameters",
+          },
+          404: {
+            description: "Domain not found",
           },
         },
       },

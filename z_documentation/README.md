@@ -16,10 +16,17 @@ A comprehensive marketing analytics and campaign management platform built with 
   - Returning User Analysis
   - Conversion Tracking & Analysis
   - Session Journeys - Complete page-by-page user journey visualization
+  - Tracked Websites Management - Domain-level tracking and statistics
 - 🔗 **UTM Tools** - Link generator and tracking utilities with custom tracking codes
+  - UTM Link List & Management
+  - UTM Link Generator (dedicated page)
 - 📱 **Device & Environment Analysis** - Comprehensive user device, browser, and OS detection
 - 🌍 **Multi-Platform Support** - Track across Telegram, Kakao, Naver, Google, and more
 - 📄 **PDF Export** - Export analytics dashboards and reports to PDF format
+- 🌐 **Internationalization (i18n)** - Multi-language support using next-intl
+- 🔗 **Short URL Tracking** - Tracking link redirection via `/t/[code]` route
+- 🐛 **Debug Tools** - Session debugging and tracking validation pages
+- 💚 **Health Check API** - System status monitoring endpoint
 
 ### Technical Features
 - ⚡ **Dual Database Architecture** - ClickHouse for analytics + MySQL for app data
@@ -130,6 +137,7 @@ npm run clickhouse:init     # Initialize ClickHouse schema
 npm run clickhouse:clean    # Clean ClickHouse data
 npm run clickhouse:seed     # Add sample tracking events
 npm run clickhouse:migrate  # Run ClickHouse migrations
+npm run clickhouse:migrate-phase1  # Run ClickHouse migration phase 1
 
 # MySQL Commands
 npm run mysql:init       # Initialize MySQL schema
@@ -153,7 +161,9 @@ demo/
 │   │   │   ├── performance/          # Dashboard metrics
 │   │   │   ├── returning-analysis/   # New vs returning visitors
 │   │   │   ├── session-journeys/     # Complete user session journeys
-│   │   │   └── time-analysis/        # Time-based patterns (KST)
+│   │   │   ├── time-analysis/        # Time-based patterns (KST)
+│   │   │   ├── tracked-websites/    # Tracked websites analysis
+│   │   │   └── debug-sessions/      # Debug sessions analysis
 │   │   ├── auth/          # Authentication
 │   │   │   ├── signup/               # User registration
 │   │   │   ├── login/                # User login
@@ -167,6 +177,8 @@ demo/
 │   │   ├── tracking/      # Link tracking generation
 │   │   ├── track/         # External tracking endpoint
 │   │   ├── track-internal/# Internal testing endpoint
+│   │   ├── tracked-websites/ # Tracked websites management API
+│   │   ├── health/        # Health check endpoint
 │   │   └── utm-codes/     # UTM code utilities
 │   ├── auth/              # Authentication pages (login/signup)
 │   ├── campaigns/         # Campaign management interface
@@ -179,8 +191,13 @@ demo/
 │   ├── returning-analysis/ # Returning user analysis
 │   ├── session-journeys/   # Complete user session journey visualization
 │   ├── time-analysis/     # Time-based analytics (KST)
-│   ├── tracking-debug/    # Debug tools for tracking
-│   ├── utm-tools/         # UTM link generator
+│   ├── tracked-websites/  # Tracked websites management and statistics
+│   ├── debug-sessions/    # Session debugging tools
+│   ├── utm-tools/         # UTM tools
+│   │   ├── page.tsx       # UTM link list
+│   │   └── generator/     # UTM link generator
+│   ├── t/                 # Short URL tracking redirection
+│   │   └── [code]/        # Redirection by tracking code
 │   ├── reset-password/    # Password reset page
 │   ├── link-expired/      # Expired link handler
 │   └── api-docs/          # Swagger API documentation
@@ -270,6 +287,9 @@ CosMos AI uses a dual-database architecture optimized for both real-time analyti
 - `/api/track/*` - External tracking endpoint for landing pages
 - `/api/performance/*` - Dashboard performance metrics
 - `/api/utm-codes/*` - UTM code utilities
+- `/api/tracked-websites/*` - Tracked websites management
+- `/api/health` - System health check
+- `/t/[code]` - Short URL tracking redirection
 
 **Database Layer**
 
@@ -536,10 +556,22 @@ Access various analytics modules:
 - Device and source information per session
 - Active vs completed session indicators
 
+**Tracked Websites Management**
+- Domain-level tracking statistics
+- Website active/inactive status management
+- Domain-specific sessions, visitors, pageviews, and conversions
+- First seen and last seen timestamp tracking
+- Performance dashboard per website
+
 **Conversion Analysis**
 - Conversion rates by campaign
 - Conversion value tracking
 - Attribution analysis
+
+**Debug Tools**
+- Session debugging page
+- Real-time session data validation
+- Tracking link testing and verification
 
 **PDF Export**
 - Export any analytics dashboard to PDF
@@ -556,12 +588,16 @@ Access various analytics modules:
 - Campaign status management (active/paused/ended)
 - Link campaigns to courses
 
-#### UTM Link Generation
+#### UTM Link Generation & Management
 - Automatic UTM parameter generation
 - Unique tracking codes
 - Link click tracking
 - Budget allocation per link
-- Link status management
+- Link status management (active/inactive/ended/hidden)
+- UTM link list and filtering
+- Dedicated generator page (`/utm-tools/generator`)
+- Short URL redirection (`/t/[code]`)
+- Expired link handling page
 
 #### Advanced Analytics
 - Real-time data updates
@@ -625,6 +661,7 @@ Access various analytics modules:
 ### Additional Libraries
 - **nanoid 5.0** - Unique ID generation for tracking codes
 - **uuid 13.0** - UUID generation for sessions and users
+- **next-intl 4.5** - Internationalization (i18n) and multi-language support
 - **next-swagger-doc 0.4** - API documentation with Swagger UI
 - **swagger-ui-react 5.29** - Interactive API documentation interface
 - **SweetAlert2 11.26** - Beautiful, responsive alerts and modals

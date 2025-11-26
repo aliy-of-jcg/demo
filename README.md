@@ -16,10 +16,17 @@ Next.js 14로 구축된 포괄적인 마케팅 분석 및 캠페인 관리 플�
   - 재방문 사용자 분석
   - 전환 추적 및 분석
   - 세션 여정 - 페이지별 사용자 여정 시각화
+  - 추적 웹사이트 관리 - 도메인별 추적 및 통계
 - 🔗 **UTM 도구** - 사용자 정의 추적 코드를 사용한 링크 생성기 및 추적 유틸리티
+  - UTM 링크 목록 및 관리
+  - UTM 링크 생성기 (별도 페이지)
 - 📱 **기기 및 환경 분석** - 포괄적인 사용자 기기, 브라우저 및 OS 감지
 - 🌍 **다중 플랫폼 지원** - Telegram, Kakao, Naver, Google 등에서 추적
 - 📄 **PDF 내보내기** - 분석 대시보드 및 보고서를 PDF 형식으로 내보내기
+- 🌐 **다국어 지원 (i18n)** - next-intl을 사용한 국제화 지원
+- 🔗 **짧은 URL 추적** - `/t/[code]` 경로를 통한 추적 링크 리디렉션
+- 🐛 **디버그 도구** - 세션 디버깅 및 추적 검증 페이지
+- 💚 **헬스 체크 API** - 시스템 상태 모니터링 엔드포인트
 
 ### 기술 기능
 - ⚡ **이중 데이터베이스 아키텍처** - 분석용 ClickHouse + 앱 데이터용 MySQL
@@ -130,6 +137,7 @@ npm run clickhouse:init     # ClickHouse 스키마 초기화
 npm run clickhouse:clean    # ClickHouse 데이터 정리
 npm run clickhouse:seed     # 샘플 추적 이벤트 추가
 npm run clickhouse:migrate  # ClickHouse 마이그레이션 실행
+npm run clickhouse:migrate-phase1  # ClickHouse 마이그레이션 1단계
 
 # MySQL 명령어
 npm run mysql:init       # MySQL 스키마 초기화
@@ -151,9 +159,11 @@ demo/
 │   │   │   ├── environment-analysis/ # 기기/브라우저/OS 통계
 │   │   │   ├── page-flow-analysis/   # 사용자 네비게이션 흐름
 │   │   │   ├── performance/          # 대시보드 지표
-│   │   │   ├── returning-analysis/   # 신규 vs 재방문 방문자
+│   │   │   │   ├── returning-analysis/   # 신규 vs 재방문 방문자
 │   │   │   ├── session-journeys/     # 완전한 사용자 세션 여정
-│   │   │   └── time-analysis/        # 시간 기반 패턴 (KST)
+│   │   │   ├── time-analysis/        # 시간 기반 패턴 (KST)
+│   │   │   ├── tracked-websites/    # 추적 웹사이트 분석
+│   │   │   └── debug-sessions/      # 디버그 세션 분석
 │   │   ├── auth/          # 인증
 │   │   │   ├── signup/               # 사용자 등록
 │   │   │   ├── login/                # 사용자 로그인
@@ -167,6 +177,8 @@ demo/
 │   │   ├── tracking/      # 링크 추적 생성
 │   │   ├── track/         # 외부 추적 엔드포인트
 │   │   ├── track-internal/# 내부 테스트 엔드포인트
+│   │   ├── tracked-websites/ # 추적 웹사이트 관리 API
+│   │   ├── health/        # 헬스 체크 엔드포인트
 │   │   └── utm-codes/     # UTM 코드 유틸리티
 │   ├── auth/              # 인증 페이지 (로그인/회원가입)
 │   ├── campaigns/         # 캠페인 관리 인터페이스
@@ -179,8 +191,13 @@ demo/
 │   ├── returning-analysis/ # 재방문 사용자 분석
 │   ├── session-journeys/   # 완전한 사용자 세션 여정 시각화
 │   ├── time-analysis/     # 시간 기반 분석 (KST)
-│   ├── tracking-debug/    # 추적 디버그 도구
-│   ├── utm-tools/         # UTM 링크 생성기
+│   ├── tracked-websites/  # 추적 웹사이트 관리 및 통계
+│   ├── debug-sessions/    # 세션 디버깅 도구
+│   ├── utm-tools/         # UTM 도구
+│   │   ├── page.tsx       # UTM 링크 목록
+│   │   └── generator/     # UTM 링크 생성기
+│   ├── t/                 # 짧은 URL 추적 리디렉션
+│   │   └── [code]/        # 추적 코드별 리디렉션
 │   ├── reset-password/    # 비밀번호 재설정 페이지
 │   ├── link-expired/      # 만료된 링크 핸들러
 │   └── api-docs/          # Swagger API 문서
@@ -270,6 +287,9 @@ CosMos AI는 실시간 분석과 안정적인 애플리케이션 데이터 관�
 - `/api/track/*` - 랜딩 페이지용 외부 추적 엔드포인트
 - `/api/performance/*` - 대시보드 성능 지표
 - `/api/utm-codes/*` - UTM 코드 유틸리티
+- `/api/tracked-websites/*` - 추적 웹사이트 관리
+- `/api/health` - 시스템 헬스 체크
+- `/t/[code]` - 짧은 URL 추적 리디렉션
 
 **데이터베이스 레이어**
 
@@ -535,10 +555,22 @@ window.CosmosTracker.trackConversion({
 - 세션별 기기 및 소스 정보
 - 활성 vs 완료된 세션 표시기
 
+**추적 웹사이트 관리**
+- 도메인별 추적 통계
+- 웹사이트 활성/비활성 상태 관리
+- 도메인별 세션, 방문자, 페이지뷰, 전환 통계
+- 첫 방문 및 마지막 방문 시간 추적
+- 웹사이트별 성능 대시보드
+
 **전환 분석**
 - 캠페인별 전환율
 - 전환 가치 추적
 - 속성 분석
+
+**디버그 도구**
+- 세션 디버깅 페이지
+- 실시간 세션 데이터 검증
+- 추적 링크 테스트 및 검증
 
 **PDF 내보내기**
 - 모든 분석 대시보드를 PDF로 내보내기
@@ -555,12 +587,16 @@ window.CosmosTracker.trackConversion({
 - 캠페인 상태 관리 (active/paused/ended)
 - 캠페인을 코스에 연결
 
-#### UTM 링크 생성
+#### UTM 링크 생성 및 관리
 - 자동 UTM 매개변수 생성
 - 고유 추적 코드
 - 링크 클릭 추적
 - 링크당 예산 할당
-- 링크 상태 관리
+- 링크 상태 관리 (활성/비활성/종료/숨김)
+- UTM 링크 목록 및 필터링
+- 별도 생성기 페이지 (`/utm-tools/generator`)
+- 짧은 URL 리디렉션 (`/t/[code]`)
+- 만료된 링크 처리 페이지
 
 #### 고급 분석
 - 실시간 데이터 업데이트
@@ -624,6 +660,7 @@ window.CosmosTracker.trackConversion({
 ### 추가 라이브러리
 - **nanoid 5.0** - 추적 코드용 고유 ID 생성
 - **uuid 13.0** - 세션 및 사용자용 UUID 생성
+- **next-intl 4.5** - 국제화(i18n) 및 다국어 지원
 - **next-swagger-doc 0.4** - Swagger UI가 있는 API 문서
 - **swagger-ui-react 5.29** - 대화형 API 문서 인터페이스
 - **SweetAlert2 11.26** - 아름답고 반응형 알림 및 모달

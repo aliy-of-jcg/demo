@@ -114,6 +114,9 @@ export async function GET(request: NextRequest) {
       whereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
     }
 
+    // Exclude direct traffic to match campaigns list and detail page behavior
+    whereClause += ` AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'`;
+
     // 4. Get visitor and conversion metrics from visit_logs
     // Count distinct users across ALL tracking codes for the campaign (not per tracking_code)
     // This ensures each user is counted only once per campaign, matching the campaigns page behavior

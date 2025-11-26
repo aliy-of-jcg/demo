@@ -123,6 +123,7 @@ export async function GET(request: NextRequest) {
       let platformsMap = new Map();
       let trackingCodesMap = new Map(); // Map: campaign_id -> array of tracking codes (active only, for display)
       let trackingCodesMapForAnalytics = new Map(); // Map: campaign_id -> array of tracking codes (includes hidden, for analytics)
+      let utmCampaignsMapForAnalytics = new Map(); // Map: campaign_id -> array of unique utm_campaign names (includes hidden, for analytics)
 
       if (campaignIds.length > 0) {
         const placeholders = campaignIds.map(() => '?').join(',');
@@ -147,8 +148,9 @@ export async function GET(request: NextRequest) {
         );
 
         // Fetch ALL tracking codes INCLUDING hidden for analytics calculations (preserve legacy data)
+        // Also fetch utm_campaign for legacy data fallback matching
         const [allTrackingCodesForAnalytics] = await pool.execute(
-          `SELECT campaign_id, tracking_code 
+          `SELECT campaign_id, tracking_code, utm_campaign 
          FROM utm_codes
          WHERE campaign_id IN (${placeholders})
          ORDER BY campaign_id`,
@@ -180,6 +182,16 @@ export async function GET(request: NextRequest) {
             trackingCodesMapForAnalytics.set(tc.campaign_id, []);
           }
           trackingCodesMapForAnalytics.get(tc.campaign_id).push(tc.tracking_code);
+        });
+
+        // Group utm_campaign names by campaign_id (includes hidden, for analytics legacy data fallback)
+        (allTrackingCodesForAnalytics as any[]).forEach(tc => {
+          if (tc.utm_campaign && tc.utm_campaign !== '') {
+            if (!utmCampaignsMapForAnalytics.has(tc.campaign_id)) {
+              utmCampaignsMapForAnalytics.set(tc.campaign_id, new Set());
+            }
+            utmCampaignsMapForAnalytics.get(tc.campaign_id).add(tc.utm_campaign);
+          }
         });
       }
 
@@ -217,18 +229,39 @@ export async function GET(request: NextRequest) {
         // Use OR tracking_code fallback to capture visitors without campaign_id set
         if (campaignIds.length > 0) {
           try {
-            // Query each campaign with tracking codes as fallback (matches detail page)
+            // Query each campaign with tracking codes and utm_campaign fallback (matches detail page)
             for (const campaignId of campaignIds) {
               const trackingCodesForCampaign = trackingCodesMapForAnalytics.get(campaignId) || [];
+              const utmCampaignsForCampaign = Array.from(utmCampaignsMapForAnalytics.get(campaignId) || []) as string[];
 
               let visitorsQuery: string;
 
-              if (trackingCodesForCampaign.length > 0) {
-                // Include tracking codes as fallback (OR logic like detail page)
+              if (trackingCodesForCampaign.length === 0 && utmCampaignsForCampaign.length > 0) {
+                // Fallback: only legacy data available (use campaign_id OR utm_campaign)
+                const utmCampaignsList = utmCampaignsForCampaign.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
+                visitorsQuery = `
+                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  FROM analytics.visit_logs
+                  WHERE (campaign_id = ${campaignId} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
+                    AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                `;
+              } else if (trackingCodesForCampaign.length > 0 && utmCampaignsForCampaign.length > 0) {
+                // Both tracking codes and legacy data (use campaign_id OR tracking_code OR utm_campaign)
                 const trackingCodesListEscaped = trackingCodesForCampaign
                   .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
                   .join(',');
-
+                const utmCampaignsList = utmCampaignsForCampaign.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
+                visitorsQuery = `
+                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  FROM analytics.visit_logs
+                  WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
+                    AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                `;
+              } else if (trackingCodesForCampaign.length > 0) {
+                // Only tracking codes (use campaign_id OR tracking_code)
+                const trackingCodesListEscaped = trackingCodesForCampaign
+                  .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
+                  .join(',');
                 visitorsQuery = `
                   SELECT COUNT(DISTINCT user_id) as unique_visitors
                   FROM analytics.visit_logs
@@ -559,10 +592,10 @@ export async function GET(request: NextRequest) {
       // This ensures we capture all visitors, even those without campaign_id set
       if (allMatchingCampaignIds.length > 0) {
         try {
-          // Get all tracking codes for all matching campaigns
+          // Get all tracking codes and utm_campaigns for all matching campaigns
           const allPlaceholders = allMatchingCampaignIds.map(() => '?').join(',');
           const [allTrackingCodesForVisitors] = await pool.execute(
-            `SELECT campaign_id, tracking_code 
+            `SELECT campaign_id, tracking_code, utm_campaign 
              FROM utm_codes
              WHERE campaign_id IN (${allPlaceholders})
              ORDER BY campaign_id`,
@@ -578,18 +611,51 @@ export async function GET(request: NextRequest) {
             trackingCodesByCampaign.get(tc.campaign_id)!.push(tc.tracking_code);
           });
 
-          // Query visitors for each campaign with tracking_code fallback (like detail page)
+          // Group utm_campaign names by campaign_id (for legacy data fallback)
+          const utmCampaignsByCampaign = new Map<number, Set<string>>();
+          (allTrackingCodesForVisitors as any[]).forEach(tc => {
+            if (tc.utm_campaign && tc.utm_campaign !== '') {
+              if (!utmCampaignsByCampaign.has(tc.campaign_id)) {
+                utmCampaignsByCampaign.set(tc.campaign_id, new Set());
+              }
+              utmCampaignsByCampaign.get(tc.campaign_id)!.add(tc.utm_campaign);
+            }
+          });
+
+          // Query visitors for each campaign with tracking_code and utm_campaign fallback (like detail page)
           for (const campaignId of allMatchingCampaignIds) {
             try {
               const trackingCodes = trackingCodesByCampaign.get(campaignId) || [];
+              const utmCampaigns = Array.from(utmCampaignsByCampaign.get(campaignId) || []) as string[];
 
               let visitorsQuery: string;
 
-              if (trackingCodes.length > 0) {
+              if (trackingCodes.length === 0 && utmCampaigns.length > 0) {
+                // Fallback: only legacy data available (use campaign_id OR utm_campaign)
+                const utmCampaignsList = utmCampaigns.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
+                visitorsQuery = `
+                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  FROM analytics.visit_logs
+                  WHERE (campaign_id = ${campaignId} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
+                    AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                `;
+              } else if (trackingCodes.length > 0 && utmCampaigns.length > 0) {
+                // Both tracking codes and legacy data (use campaign_id OR tracking_code OR utm_campaign)
                 const trackingCodesListEscaped = trackingCodes
                   .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
                   .join(',');
-
+                const utmCampaignsList = utmCampaigns.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
+                visitorsQuery = `
+                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  FROM analytics.visit_logs
+                  WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
+                    AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                `;
+              } else if (trackingCodes.length > 0) {
+                // Only tracking codes (use campaign_id OR tracking_code)
+                const trackingCodesListEscaped = trackingCodes
+                  .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
+                  .join(',');
                 visitorsQuery = `
                   SELECT COUNT(DISTINCT user_id) as unique_visitors
                   FROM analytics.visit_logs
@@ -597,6 +663,7 @@ export async function GET(request: NextRequest) {
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
                 `;
               } else {
+                // No tracking codes, use campaign_id only
                 visitorsQuery = `
                   SELECT COUNT(DISTINCT user_id) as unique_visitors
                   FROM analytics.visit_logs
