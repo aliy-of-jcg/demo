@@ -18,10 +18,11 @@ import clickhouse from '@/lib/clickhouse';
  * - Key: If a user's first session is in the range, all their visits in that range count as "new"
  * 
  * Implementation:
- * - Finds each user's first-ever session date globally (MIN timestamp where is_new_visitor = 1)
+ * - Finds each user's first-ever session date globally (MIN timestamp - GA4 approach)
  * - Classifies users by comparing that first session date to the selected date range
  * - Aggregates metrics (pageviews, conversions, time on page) per classification
  * - Daily trends use the same classification logic for consistency
+ * - Uses MIN(timestamp) globally instead of filtering by is_new_visitor flag for robustness
  */
 
 // Type definitions for the analytics data
@@ -119,8 +120,9 @@ export async function GET(request: NextRequest) {
     const totalVisitors = totalVisitorsJson[0]?.total_visitors || 0;
 
     // Now get new vs returning breakdown using GA4 logic
-    // Step 1: Find each user's first-ever session date (globally)
+    // Step 1: Find each user's first-ever session date (globally using MIN(timestamp))
     // Step 2: Classify based on whether that date falls within the selected range
+    // Uses MIN(timestamp) globally (GA4 approach) instead of filtering by is_new_visitor flag
     const newVsReturningQuery = `
       SELECT 
         visitor_type,
@@ -146,7 +148,6 @@ export async function GET(request: NextRequest) {
             user_id,
             toDate(MIN(timestamp)) as first_session_date
           FROM analytics.visit_logs
-          WHERE is_new_visitor = 1
           GROUP BY user_id
         ) user_first_sessions ON vl.user_id = user_first_sessions.user_id
         WHERE ${whereClause}
@@ -367,6 +368,7 @@ export async function GET(request: NextRequest) {
     // 4. Daily new vs returning trend
     // GA4 Logic: Classify users based on their first-ever session date (globally)
     // Then count their daily activity
+    // Uses MIN(timestamp) globally (GA4 approach) instead of filtering by is_new_visitor flag
     const dailyTrendQuery = `
       SELECT 
         date,
@@ -388,7 +390,6 @@ export async function GET(request: NextRequest) {
             user_id,
             toDate(MIN(timestamp)) as first_session_date
           FROM analytics.visit_logs
-          WHERE is_new_visitor = 1
           GROUP BY user_id
         ) user_first_sessions ON vl.user_id = user_first_sessions.user_id
         WHERE ${whereClause}
@@ -436,3 +437,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+// 
