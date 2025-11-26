@@ -256,8 +256,9 @@ export async function GET(request: NextRequest) {
     // CTR = (Visits / Clicks) * 100 (matches channel-performance API calculation)
     const ctr = clicks > 0 ? ((visitors / clicks) * 100).toFixed(2) : '0.00';
 
-    // 5.5. Detect legacy data (hard-deleted UTMs)
+    // 5.5. Detect legacy data (hard-deleted UTMs) and count deleted links
     let hasLegacyData = false;
+    let deletedLinksCount = 0;
     try {
       // Get all tracking codes from MySQL for this campaign (including hidden)
       const [allTrackingCodes] = await pool.query<RowDataPacket[]>(
@@ -287,11 +288,11 @@ export async function GET(request: NextRequest) {
           clickhouseTrackingCodesData.map(row => row.tracking_code?.trim() || row.tracking_code).filter(code => code && code !== '')
         );
 
-        // Check if there are tracking codes in ClickHouse that don't exist in MySQL
+        // Count deleted links (tracking codes in ClickHouse but not in MySQL)
         for (const code of Array.from(clickhouseTrackingCodes)) {
           if (!allTrackingCodesInMySQL.has(code)) {
             hasLegacyData = true;
-            break;
+            deletedLinksCount++;
           }
         }
 
@@ -463,6 +464,26 @@ export async function GET(request: NextRequest) {
         })
     );
 
+    // Calculate non-legacy metrics (only from active UTMs) for UTM Comparison view
+    const nonLegacyMetrics = {
+      visitors: 0,
+      conversions: 0,
+      clicks: 0,
+    };
+
+    utmBreakdown.forEach(utm => {
+      nonLegacyMetrics.visitors += utm.metrics.visitors;
+      nonLegacyMetrics.conversions += utm.metrics.conversions;
+      nonLegacyMetrics.clicks += utm.metrics.clicks;
+    });
+
+    const nonLegacyConversionRate = nonLegacyMetrics.visitors > 0
+      ? ((nonLegacyMetrics.conversions / nonLegacyMetrics.visitors) * 100).toFixed(2)
+      : '0.00';
+    const nonLegacyCtr = nonLegacyMetrics.clicks > 0
+      ? ((nonLegacyMetrics.visitors / nonLegacyMetrics.clicks) * 100).toFixed(2)
+      : '0.00';
+
     return NextResponse.json({
       success: true,
       campaign: {
@@ -484,6 +505,14 @@ export async function GET(request: NextRequest) {
       },
       hasLegacyData,
       clicksFromLegacyData,
+      deletedLinksCount,
+      nonLegacyMetrics: {
+        visitors: nonLegacyMetrics.visitors,
+        conversions: nonLegacyMetrics.conversions,
+        conversionRate: nonLegacyConversionRate,
+        clicks: nonLegacyMetrics.clicks,
+        ctr: nonLegacyCtr,
+      },
       dailyData,
       utmBreakdown,
     });
