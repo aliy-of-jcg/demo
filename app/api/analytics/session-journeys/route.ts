@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
     const limit = parseInt(searchParams.get('limit') || '50');
-    
+
     console.log(`🛤️ Session Journeys API - Fetching up to ${limit} sessions`);
 
     // Build WHERE clause for date filtering (using KST timezone)
@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all sessions with their complete page journeys
+    // GA-aligned session duration: time from first pageview to last pageview (excluding exit page time)
     const sessionsQuery = `
       WITH session_list AS (
         SELECT DISTINCT
@@ -31,7 +32,10 @@ export async function GET(request: NextRequest) {
           toString(toTimeZone(MIN(timestamp), 'Asia/Seoul')) as session_start,
           toString(toTimeZone(MAX(timestamp), 'Asia/Seoul')) as session_end,
           COUNT(*) as total_pages,
-          SUM(time_on_page) as duration,
+          -- GA Logic: Session duration = time from first pageview to last pageview (excluding exit page time)
+          -- Only count pageview events, not page_exit events
+          toUnixTimestamp(MAX(CASE WHEN event_type = 'pageview' THEN timestamp ELSE NULL END)) - 
+          toUnixTimestamp(MIN(CASE WHEN event_type = 'pageview' THEN timestamp ELSE NULL END)) as duration,
           MAX(CASE WHEN is_landing_page = 1 THEN page_url ELSE '' END) as landing_page,
           MAX(CASE WHEN is_exit_page = 1 THEN page_url ELSE '' END) as exit_page,
           MAX(utm_source) as utm_source,
@@ -76,7 +80,7 @@ export async function GET(request: NextRequest) {
     });
 
     const data = await result.json() as Array<any>;
-    
+
     // Process the results to format the page journey
     const sessions = data.map((session: any) => {
       // Parse all events (pageviews and page_exit events)
@@ -92,7 +96,7 @@ export async function GET(request: NextRequest) {
       }));
 
       // Check if session has ended (has a page_exit event with is_exit_page = 1)
-      const exitEvent = parsedPages.find((page: any) => 
+      const exitEvent = parsedPages.find((page: any) =>
         page.event_type === 'page_exit' && page.is_exit_page === 1
       );
 
@@ -125,7 +129,7 @@ export async function GET(request: NextRequest) {
         device_type: session.device_type,
         browser: session.browser,
         os: session.os,
-        duration: Math.round(session.duration || 0), // Use pre-calculated duration from SUM(time_on_page)
+        duration: Math.round(session.duration || 0), // GA-aligned: time from first pageview to last pageview (excluding exit page time)
         pages: pages,
         has_exit_event: !!exitEvent, // Add flag to indicate if session has ended
         exit_page_url: exitEvent ? exitEvent.page_url : null, // Store exit page URL
@@ -141,9 +145,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Session journeys API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );
