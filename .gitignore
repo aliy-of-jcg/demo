@@ -43,3 +43,5 @@ next-env.d.ts
 
 
 image-push.md
+
+deploy.sh

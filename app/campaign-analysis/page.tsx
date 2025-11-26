@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
-import {ExportToPDFButton} from '@/components/export-to-pdf-button';
+import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
 
@@ -33,12 +33,42 @@ interface DailyData {
   cost: number;
 }
 
+interface UtmDailyData {
+  date: string;
+  visitors: number;
+  conversions: number;
+  conversionRate: string;
+}
+
+interface UtmMetrics {
+  clicks: number;
+  visitors: number;
+  conversions: number;
+  conversionRate: string;
+  ctr: string;
+}
+
+interface UtmBreakdown {
+  id: number;
+  name: string;
+  tracking_code: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_content: string;
+  status: string;
+  budget: number;
+  spent: number;
+  metrics: UtmMetrics;
+  dailyData: UtmDailyData[];
+}
+
 interface ApiResponse {
   success: boolean;
   campaign: CampaignData;
   platforms: string[];
   metrics: MetricsData;
   dailyData: DailyData[];
+  utmBreakdown: UtmBreakdown[];
 }
 
 interface Campaign {
@@ -51,7 +81,8 @@ export default function CampaignAnalysisPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<string>('');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
+  const [viewMode, setViewMode] = useState<'chart' | 'table' | 'utm'>('chart');
+  const [expandedUtms, setExpandedUtms] = useState<Set<number>>(new Set());
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -70,11 +101,22 @@ export default function CampaignAnalysisPage() {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    
+
     setDateRange({
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
     });
+  };
+
+  // Toggle UTM row expansion
+  const toggleUtmExpansion = (utmId: number) => {
+    const newExpanded = new Set(expandedUtms);
+    if (newExpanded.has(utmId)) {
+      newExpanded.delete(utmId);
+    } else {
+      newExpanded.add(utmId);
+    }
+    setExpandedUtms(newExpanded);
   };
 
   // Fetch campaigns list on mount
@@ -111,11 +153,11 @@ export default function CampaignAnalysisPage() {
         });
         const response = await fetch(`/api/analytics/campaign-analysis?${params}`);
         const result = await response.json();
-        
+
         if (!result.success) {
           throw new Error(result.error || 'Failed to fetch data');
         }
-        
+
         setData(result);
       } catch (err) {
         console.error('Error fetching campaign analysis data:', err);
@@ -144,19 +186,19 @@ export default function CampaignAnalysisPage() {
 
   // Filter platforms based on selection
   const displayedPlatforms = data?.platforms || [];
-  const filteredPlatforms = selectedPlatform === 'all' 
-    ? displayedPlatforms 
+  const filteredPlatforms = selectedPlatform === 'all'
+    ? displayedPlatforms
     : displayedPlatforms.filter(p => p.toLowerCase() === selectedPlatform.toLowerCase());
 
   return (
-  <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       {/* Header */}
-    <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
-      </div>
-          
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
+        </div>
+
         <ExportToPDFButton
           element="[data-export-content]"
           filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
@@ -171,15 +213,15 @@ export default function CampaignAnalysisPage() {
           {/* Left: Date Range Picker */}
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -267,23 +309,30 @@ export default function CampaignAnalysisPage() {
         <div className="flex gap-2 bg-white p-1 rounded-lg shadow-sm border border-gray-200">
           <button
             onClick={() => setViewMode('chart')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-              viewMode === 'chart' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-transparent text-gray-700 hover:bg-gray-100'
-            }`}
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${viewMode === 'chart'
+              ? 'bg-blue-600 text-white'
+              : 'bg-transparent text-gray-700 hover:bg-gray-100'
+              }`}
           >
             {t('viewMode.chart')}
           </button>
           <button
             onClick={() => setViewMode('table')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-              viewMode === 'table' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-transparent text-gray-700 hover:bg-gray-100'
-            }`}
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${viewMode === 'table'
+              ? 'bg-blue-600 text-white'
+              : 'bg-transparent text-gray-700 hover:bg-gray-100'
+              }`}
           >
             {t('viewMode.table')}
+          </button>
+          <button
+            onClick={() => setViewMode('utm')}
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${viewMode === 'utm'
+              ? 'bg-blue-600 text-white'
+              : 'bg-transparent text-gray-700 hover:bg-gray-100'
+              }`}
+          >
+            UTM Comparison
           </button>
         </div>
       </div>
@@ -403,37 +452,37 @@ export default function CampaignAnalysisPage() {
                     <ResponsiveContainer width="100%" height={240}>
                       <LineChart data={data.dailyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis 
-                          dataKey="date" 
+                        <XAxis
+                          dataKey="date"
                           tick={{ fontSize: 9, fill: '#6b7280' }}
                           tickLine={false}
                           axisLine={{ stroke: '#e5e7eb' }}
                         />
-                        <YAxis 
+                        <YAxis
                           tick={{ fontSize: 9, fill: '#6b7280' }}
                           tickLine={false}
                           axisLine={{ stroke: '#e5e7eb' }}
                         />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'white', 
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
                             border: '1px solid #e5e7eb',
                             borderRadius: '6px',
                             fontSize: '11px'
                           }}
                         />
-                        <Line 
-                          type="monotone" 
-                          dataKey="visitors" 
-                          stroke="#3b82f6" 
+                        <Line
+                          type="monotone"
+                          dataKey="visitors"
+                          stroke="#3b82f6"
                           strokeWidth={2}
                           dot={{ fill: '#3b82f6', r: 2 }}
                           activeDot={{ r: 4 }}
                         />
-                        <Line 
-                          type="monotone" 
-                          dataKey="conversions" 
-                          stroke="#10b981" 
+                        <Line
+                          type="monotone"
+                          dataKey="conversions"
+                          stroke="#10b981"
                           strokeWidth={2}
                           dot={{ fill: '#10b981', r: 2 }}
                           activeDot={{ r: 4 }}
@@ -454,28 +503,28 @@ export default function CampaignAnalysisPage() {
                     <ResponsiveContainer width="100%" height={240}>
                       <BarChart data={data.dailyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis 
-                          dataKey="date" 
+                        <XAxis
+                          dataKey="date"
                           tick={{ fontSize: 9, fill: '#6b7280' }}
                           tickLine={false}
                           axisLine={{ stroke: '#e5e7eb' }}
                         />
-                        <YAxis 
+                        <YAxis
                           tick={{ fontSize: 9, fill: '#6b7280' }}
                           tickLine={false}
                           axisLine={{ stroke: '#e5e7eb' }}
                         />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: 'white', 
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'white',
                             border: '1px solid #e5e7eb',
                             borderRadius: '6px',
                             fontSize: '11px'
                           }}
                           formatter={(value: number) => [`₩${(value / 10000).toFixed(0)}만`, 'Cost']}
                         />
-                        <Bar 
-                          dataKey="cost" 
+                        <Bar
+                          dataKey="cost"
                           fill="#f59e0b"
                           radius={[4, 4, 0, 0]}
                         />
@@ -500,7 +549,7 @@ export default function CampaignAnalysisPage() {
                   <div className="p-3 sm:p-4 border-b border-gray-200">
                     <h3 className="text-sm sm:text-base font-semibold text-gray-900">{t('table.title')}</h3>
                   </div>
-                  
+
                   {/* Desktop Table View */}
                   <div className="hidden lg:block overflow-x-auto">
                     <table className="w-full">
@@ -534,7 +583,7 @@ export default function CampaignAnalysisPage() {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {/* Mobile/Tablet Card View */}
                   <div className="lg:hidden divide-y divide-gray-200">
                     {data.dailyData.map((row, idx) => (
@@ -569,6 +618,247 @@ export default function CampaignAnalysisPage() {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center mb-4 sm:mb-6">
                   <p className="text-gray-500">{t('empty.noData')}</p>
                   <p className="text-xs sm:text-sm text-gray-400 mt-1">{t('empty.hint')}</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* UTM Comparison View */}
+          {viewMode === 'utm' && (
+            <>
+              {data.utmBreakdown && data.utmBreakdown.length > 0 ? (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+                  <div className="p-3 sm:p-4 border-b border-gray-200">
+                    <h3 className="text-sm sm:text-base font-semibold text-gray-900">UTM Performance Comparison</h3>
+                    <p className="text-xs text-gray-500 mt-1">Click on any row to see daily visitor trends</p>
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UTM Name</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medium</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Content</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clicks</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visitors</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conversions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conv. Rate</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CTR</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {data.utmBreakdown.map((utm) => (
+                          <>
+                            <tr
+                              key={utm.id}
+                              className="hover:bg-gray-50 transition-colors cursor-pointer"
+                              onClick={() => toggleUtmExpansion(utm.id)}
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <div className="flex items-center gap-2">
+                                  <svg
+                                    className={`w-4 h-4 text-gray-400 transition-transform ${expandedUtms.has(utm.id) ? 'rotate-90' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
+                                  {utm.name}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{utm.utm_source || '-'}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{utm.utm_medium || '-'}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{utm.utm_content || '-'}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{utm.metrics.clicks.toLocaleString()}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{utm.metrics.visitors.toLocaleString()}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{utm.metrics.conversions}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{utm.metrics.conversionRate}%</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{utm.metrics.ctr}%</td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded ${utm.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                  {utm.status}
+                                </span>
+                              </td>
+                            </tr>
+                            {expandedUtms.has(utm.id) && utm.dailyData.length > 0 && (
+                              <tr>
+                                <td colSpan={10} className="px-6 py-4 bg-gray-50">
+                                  <div className="mb-2">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Daily Visitors & Conversions - {utm.name}</h4>
+                                  </div>
+                                  <ResponsiveContainer width="100%" height={200}>
+                                    <LineChart data={utm.dailyData}>
+                                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                      <XAxis
+                                        dataKey="date"
+                                        tick={{ fontSize: 9, fill: '#6b7280' }}
+                                        tickLine={false}
+                                        axisLine={{ stroke: '#e5e7eb' }}
+                                      />
+                                      <YAxis
+                                        tick={{ fontSize: 9, fill: '#6b7280' }}
+                                        tickLine={false}
+                                        axisLine={{ stroke: '#e5e7eb' }}
+                                      />
+                                      <Tooltip
+                                        contentStyle={{
+                                          backgroundColor: 'white',
+                                          border: '1px solid #e5e7eb',
+                                          borderRadius: '6px',
+                                          fontSize: '11px'
+                                        }}
+                                      />
+                                      <Legend
+                                        wrapperStyle={{ fontSize: '11px' }}
+                                      />
+                                      <Line
+                                        type="monotone"
+                                        dataKey="visitors"
+                                        stroke="#3b82f6"
+                                        strokeWidth={2}
+                                        dot={{ fill: '#3b82f6', r: 2 }}
+                                        activeDot={{ r: 4 }}
+                                        name="Visitors"
+                                      />
+                                      <Line
+                                        type="monotone"
+                                        dataKey="conversions"
+                                        stroke="#10b981"
+                                        strokeWidth={2}
+                                        dot={{ fill: '#10b981', r: 2 }}
+                                        activeDot={{ r: 4 }}
+                                        name="Conversions"
+                                      />
+                                    </LineChart>
+                                  </ResponsiveContainer>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile/Tablet Card View */}
+                  <div className="lg:hidden divide-y divide-gray-200">
+                    {data.utmBreakdown.map((utm) => (
+                      <div key={utm.id} className="p-4">
+                        <div
+                          className="flex items-center justify-between mb-3 cursor-pointer"
+                          onClick={() => toggleUtmExpansion(utm.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <svg
+                              className={`w-4 h-4 text-gray-400 transition-transform ${expandedUtms.has(utm.id) ? 'rotate-90' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <span className="text-sm font-semibold text-gray-900">{utm.name}</span>
+                          </div>
+                          <span className={`px-2 py-1 text-xs font-medium rounded ${utm.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                            {utm.status}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 mb-3">
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">
+                            {utm.utm_source || 'N/A'}
+                          </span>
+                          <span className="px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-800">
+                            {utm.utm_medium || 'N/A'}
+                          </span>
+                          {utm.utm_content && (
+                            <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
+                              {utm.utm_content}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-500 text-xs">Clicks</span>
+                            <p className="font-medium text-gray-900">{utm.metrics.clicks.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">Visitors</span>
+                            <p className="font-medium text-gray-900">{utm.metrics.visitors.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">Conversions</span>
+                            <p className="font-medium text-green-600">{utm.metrics.conversions}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">Conv. Rate</span>
+                            <p className="font-medium text-gray-900">{utm.metrics.conversionRate}%</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">CTR</span>
+                            <p className="font-medium text-gray-900">{utm.metrics.ctr}%</p>
+                          </div>
+                        </div>
+
+                        {expandedUtms.has(utm.id) && utm.dailyData.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-3">Daily Trends</h4>
+                            <ResponsiveContainer width="100%" height={200}>
+                              <LineChart data={utm.dailyData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis
+                                  dataKey="date"
+                                  tick={{ fontSize: 9, fill: '#6b7280' }}
+                                  tickLine={false}
+                                  axisLine={{ stroke: '#e5e7eb' }}
+                                />
+                                <YAxis
+                                  tick={{ fontSize: 9, fill: '#6b7280' }}
+                                  tickLine={false}
+                                  axisLine={{ stroke: '#e5e7eb' }}
+                                />
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '6px',
+                                    fontSize: '11px'
+                                  }}
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="visitors"
+                                  stroke="#3b82f6"
+                                  strokeWidth={2}
+                                  dot={{ fill: '#3b82f6', r: 2 }}
+                                  name="Visitors"
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="conversions"
+                                  stroke="#10b981"
+                                  strokeWidth={2}
+                                  dot={{ fill: '#10b981', r: 2 }}
+                                  name="Conversions"
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center mb-4 sm:mb-6">
+                  <p className="text-gray-500">No UTM codes found for this campaign</p>
+                  <p className="text-xs sm:text-sm text-gray-400 mt-1">Create UTM codes to start tracking</p>
                 </div>
               )}
             </>

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     // 2. Get all tracking codes for this campaign (include hidden for historical analytics)
     const [trackingCodes] = await pool.query<RowDataPacket[]>(
-      'SELECT tracking_code, utm_campaign, utm_source, utm_medium FROM utm_codes WHERE campaign_id = ?',
+      'SELECT id, name, tracking_code, utm_campaign, utm_source, utm_medium, utm_content, status, budget, spent FROM utm_codes WHERE campaign_id = ?',
       [campaignId]
     );
 
@@ -350,6 +350,119 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
+    // 8. Get per-UTM breakdown with metrics and daily data
+    const utmBreakdown = await Promise.all(
+      trackingCodes
+        .filter(tc => tc.status !== 'hidden') // Only show active/inactive UTMs
+        .map(async (tc) => {
+          const trackingCode = tc.tracking_code;
+
+          // Build WHERE clause for this specific UTM
+          let utmWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
+
+          if (startDate && endDate) {
+            utmWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+          } else {
+            if (startDate) {
+              utmWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+            }
+            if (endDate) {
+              utmWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+            }
+          }
+
+          // Get visitors and conversions for this UTM
+          const utmVisitQuery = `
+            SELECT 
+              COUNT(DISTINCT user_id) as unique_visitors,
+              countIf(event_type = 'conversion') as conversions
+            FROM analytics.visit_logs
+            WHERE ${utmWhereClause}
+          `;
+
+          const utmVisitResult = await clickhouse.query({
+            query: utmVisitQuery,
+            format: 'JSONEachRow',
+          });
+
+          const utmVisitData = await utmVisitResult.json() as Array<{ unique_visitors: number; conversions: number }>;
+          const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
+          const utmConversions = utmVisitData[0]?.conversions || 0;
+
+          // Get clicks for this UTM
+          let utmClickWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
+
+          if (startDate && endDate) {
+            utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+          } else {
+            if (startDate) {
+              utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+            }
+            if (endDate) {
+              utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+            }
+          }
+
+          const utmClickQuery = `
+            SELECT COUNT(*) as total_clicks
+            FROM analytics.tracking_events
+            WHERE ${utmClickWhereClause}
+          `;
+
+          const utmClickResult = await clickhouse.query({
+            query: utmClickQuery,
+            format: 'JSONEachRow',
+          });
+
+          const utmClickData = await utmClickResult.json() as Array<{ total_clicks: number }>;
+          const utmClicks = utmClickData[0]?.total_clicks || 0;
+
+          // Get daily data for this UTM
+          const utmDailyQuery = `
+            SELECT 
+              toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
+              COUNT(DISTINCT user_id) as visitors,
+              countIf(event_type = 'conversion') as conversions
+            FROM analytics.visit_logs
+            WHERE ${utmWhereClause}
+            GROUP BY date
+            ORDER BY date ASC
+          `;
+
+          const utmDailyResult = await clickhouse.query({
+            query: utmDailyQuery,
+            format: 'JSONEachRow',
+          });
+
+          const utmDailyJson = await utmDailyResult.json() as Array<{ date: string; visitors: number; conversions: number }>;
+
+          return {
+            id: tc.id,
+            name: tc.name,
+            tracking_code: trackingCode,
+            utm_source: tc.utm_source,
+            utm_medium: tc.utm_medium,
+            utm_content: tc.utm_content,
+            status: tc.status,
+            budget: parseFloat(tc.budget) || 0,
+            spent: parseFloat(tc.spent) || 0,
+            metrics: {
+              clicks: utmClicks,
+              visitors: utmVisitors,
+              conversions: utmConversions,
+              conversionRate: utmVisitors > 0 ? ((utmConversions / utmVisitors) * 100).toFixed(2) : '0.00',
+              ctr: utmClicks > 0 ? ((utmVisitors / utmClicks) * 100).toFixed(2) : '0.00',
+            },
+            dailyData: utmDailyJson.map(row => ({
+              date: row.date,
+              visitors: row.visitors || 0,
+              conversions: row.conversions || 0,
+              conversionRate: (row.visitors || 0) > 0 ? (((row.conversions || 0) / (row.visitors || 0)) * 100).toFixed(2) : '0.00',
+            })),
+          };
+        })
+    );
+
     return NextResponse.json({
       success: true,
       campaign: {
@@ -372,6 +485,7 @@ export async function GET(request: NextRequest) {
       hasLegacyData,
       clicksFromLegacyData,
       dailyData,
+      utmBreakdown,
     });
 
   } catch (error) {
