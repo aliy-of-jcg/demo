@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye, Info } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
@@ -29,6 +29,8 @@ interface Campaign {
   visitors?: number;
   ctr?: string;
   conversion_rate?: string;
+  hasLegacyData?: boolean;
+  clicksFromLegacyData?: number;
 }
 
 interface Summary {
@@ -61,10 +63,10 @@ export default function CampaignsPage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const t = useTranslations('campaigns');
-  
+
   // Get locale from pathname or default to 'en'
   const locale = pathname?.split('/')[1] || 'en';
-  
+
   const statusLabels: Record<string, string> = {
     active: t('status.active'),
     waiting: t('status.waiting'),
@@ -75,7 +77,7 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Initialize from URL params (only on first render)
   const [isInitialized, setIsInitialized] = useState(false);
   const [page, setPage] = useState(() => {
@@ -86,7 +88,7 @@ export default function CampaignsPage() {
     const urlLimit = searchParams.get('limit');
     return urlLimit && [10, 20, 50].includes(parseInt(urlLimit)) ? parseInt(urlLimit) : 10;
   });
-  
+
   const [total, setTotal] = useState(0);
   const [searchInput, setSearchInput] = useState(''); // Immediate input value
   const debouncedSearch = useDebounce(searchInput, 500); // Debounced search value
@@ -137,11 +139,11 @@ export default function CampaignsPage() {
   // Update URL when page or limit changes (but not on initial render)
   useEffect(() => {
     if (!isInitialized) return;
-    
+
     const params = new URLSearchParams();
     params.set('page', page.toString());
     params.set('limit', limit.toString());
-    
+
     router.replace(`/campaigns?${params.toString()}`, { scroll: false });
   }, [page, limit, isInitialized, router]);
 
@@ -177,11 +179,11 @@ export default function CampaignsPage() {
       });
 
       const response = await fetch(`/api/campaigns?${params}`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
 
       if (data.success) {
@@ -269,7 +271,7 @@ export default function CampaignsPage() {
   const handleCopyTrackingLink = async (trackingCode: string) => {
     const baseUrl = window.location.origin;
     const shortUrl = `${baseUrl}/t/${trackingCode}`;
-    
+
     const success = await copyToClipboard(shortUrl);
     if (success) {
       setCopiedTrackingCode(trackingCode);
@@ -279,7 +281,7 @@ export default function CampaignsPage() {
       toast.error(t('toast.copyFailed'));
     }
   };
-  
+
 
   const handleOpenTrackingLink = (trackingCode: string) => {
     const baseUrl = window.location.origin;
@@ -295,7 +297,7 @@ export default function CampaignsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
-        <Link 
+        <Link
           href="/campaigns/new"
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
         >
@@ -441,277 +443,300 @@ export default function CampaignsPage() {
         <div className="hidden lg:block">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
-            <colgroup><col className="w-[18%]" /><col className="w-[12%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[12%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[8%]" /><col className="w-[7%]" /></colgroup>
-            <thead className="bg-gray-50">
-              <tr>
-                <th 
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center gap-1">
-                    {t('table.campaignName')}
-                    {sortBy === 'name' && (
-                      sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('table.course')}
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('table.media')}
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('table.adType')}
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('table.status')}
-                </th>
-                <th 
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('start_date')}
-                >
-                  <div className="flex items-center gap-1">
-                    {t('table.period')}
-                    {sortBy === 'start_date' && (
-                      sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th 
-                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('budget')}
-                >
-                  <div className="flex items-center gap-1">
-                    {t('table.budget')}
-                    {sortBy === 'budget' && (
-                      sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-                    )}
-                  </div>
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('table.performance')}
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('table.link')}
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {t('table.action')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
+              <colgroup><col className="w-[18%]" /><col className="w-[12%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[8%]" /><col className="w-[12%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[8%]" /><col className="w-[7%]" /></colgroup>
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  <th
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-1">
+                      {t('table.campaignName')}
+                      {sortBy === 'name' && (
+                        sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                      )}
                     </div>
-                  </td>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('table.course')}
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('table.media')}
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('table.adType')}
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('table.status')}
+                  </th>
+                  <th
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('start_date')}
+                  >
+                    <div className="flex items-center gap-1">
+                      {t('table.period')}
+                      {sortBy === 'start_date' && (
+                        sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                      )}
+                    </div>
+                  </th>
+                  <th
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('budget')}
+                  >
+                    <div className="flex items-center gap-1">
+                      {t('table.budget')}
+                      {sortBy === 'budget' && (
+                        sortOrder === 'ASC' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('table.performance')}
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('table.link')}
+                  </th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('table.action')}
+                  </th>
                 </tr>
-              ) : campaigns.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
-                    {t('empty.noCampaigns')}
-                  </td>
-                </tr>
-              ) : (
-                campaigns.map((campaign) => (
-                  <tr key={campaign.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-3">
-                      <Link href={`/campaigns/${campaign.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm truncate block" title={campaign.name}>
-                        {campaign.name}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-900">
-                      <div className="truncate" title={campaign.course_name}>
-                      {campaign.course_name}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      {campaign.platforms && campaign.platforms.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {campaign.platforms.slice(0, 2).map((platform, idx) => (
-                            <span 
-                              key={idx}
-                              className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${sourceColors[platform.utm_source] || 'bg-gray-100 text-gray-800'}`}
-                            >
-                              {platform.utm_source}
-                            </span>
-                          ))}
-                          {campaign.platforms.length > 2 && (
-                            <span className="text-xs text-gray-500">+{campaign.platforms.length - 2}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${sourceColors[campaign.source] || 'bg-gray-100 text-gray-800'}`}>
-                          {campaign.source}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-900">
-                      <div className="truncate">
-                      {campaign.platforms && campaign.platforms.length > 0 ? (
-                          campaign.platforms[0].utm_medium
-                      ) : (
-                        campaign.medium
-                      )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[campaign.status] || 'bg-gray-100 text-gray-800'}`}>
-                        {statusLabels[campaign.status] || campaign.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-900">
-                      <div>{new Date(campaign.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                      <div className="text-gray-500">~ {new Date(campaign.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-900">
-                      <div className="font-medium">₩{(campaign.budget / 10000).toFixed(0)}만</div>
-                      <div className="text-xs text-gray-500">
-                        {((campaign.spent / campaign.budget) * 100).toFixed(0)}% used
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                        <div className="text-xs">
-                        <div className="text-gray-900">
-                          {(campaign.clicks ?? 0) > 0 ? (
-                            <>{(campaign.clicks ?? 0).toLocaleString()} {t('table.clicks')}</>
-                          ) : (
-                            <span className="text-gray-400">{t('table.noData')}</span>
-                          )}
-                        </div>
-                        <div className="text-gray-500 text-xs">
-                          {(campaign.visitors ?? 0).toLocaleString()} {t('summary.visitors')}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      {campaign.tracking_codes && campaign.tracking_codes.length > 0 ? (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={async () => {
-                              const success = await copyToClipboard(`${window.location.origin}/t/${campaign.tracking_codes![0]}`);
-                              if (success) {
-                                setCopiedTrackingCode(campaign.tracking_codes![0]);
-                                setTimeout(() => setCopiedTrackingCode(null), 2000);
-                              }
-                            }}
-                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
-                            title={t('table.copyTrackingLink')}
-                          >
-                            {copiedTrackingCode === campaign.tracking_codes[0] ? (
-                              <Check className="w-4 h-4 text-green-600" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
-                          <a
-                            href={`${window.location.origin}/t/${campaign.tracking_codes[0]}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
-                            title={t('table.openTrackingLink')}
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                          {campaign.tracking_codes.length > 1 && (
-                            <span className="text-xs text-gray-500">+{campaign.tracking_codes.length - 1}</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">{t('table.noLinks')}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1">
-                        <Link
-                          href={`/campaigns/${campaign.id}`}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
-                          title={t('table.viewDetails')}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
-                        <div className="relative" ref={actionMenuOpen === campaign.id ? menuRef : null}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const button = e.currentTarget as HTMLElement;
-                              const rect = button.getBoundingClientRect();
-                              setMenuPosition({
-                                top: rect.bottom + 4,
-                                right: window.innerWidth - rect.right
-                              });
-                              setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id);
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded hover:bg-gray-100"
-                            title={t('table.moreActions')}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                          {actionMenuOpen === campaign.id && menuPosition && (
-                            <>
-                              <div 
-                                className="fixed inset-0 z-40" 
-                                onClick={() => setActionMenuOpen(null)}
-                              />
-                              <div 
-                                className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60]"
-                                style={{
-                                  top: `${menuPosition.top}px`,
-                                  right: `${menuPosition.right}px`
-                                }}
-                              >
-                                <div className="py-1">
-                                  <button
-                                    type="button"
-                                    onMouseDown={(e) => {
-                                      e.stopPropagation();
-                                      setActionMenuOpen(null);
-                                      router.push(`/campaigns/${campaign.id}/edit`);
-                                    }}
-                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                    {t('actions.edit')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onMouseDown={(e) => {
-                                      e.stopPropagation();
-                                      setActionMenuOpen(null);
-                                      handleDuplicate(campaign.id);
-                                    }}
-                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                                  >
-                                    <Copy className="w-4 h-4" />
-                                    {t('actions.duplicate')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onMouseDown={(e) => {
-                                      e.stopPropagation();
-                                      setActionMenuOpen(null);
-                                      handleDelete(campaign.id);
-                                    }}
-                                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                    {t('actions.delete')}
-                                  </button>
-                                </div>
-                              </div>
-                            </>
-                          )}
-                        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                       </div>
                     </td>
                   </tr>
-                ))
+                ) : campaigns.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                      {t('empty.noCampaigns')}
+                    </td>
+                  </tr>
+                ) : (
+                  campaigns.map((campaign) => (
+                    <tr key={campaign.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <Link href={`/campaigns/${campaign.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm truncate block flex-1" title={campaign.name}>
+                            {campaign.name}
+                          </Link>
+                          {campaign.hasLegacyData && (
+                            <div className="group relative flex-shrink-0">
+                              <Info className="w-4 h-4 text-amber-500 cursor-help" />
+                              <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-10 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
+                                <div className="flex items-start gap-1.5">
+                                  <span>⚠️</span>
+                                  <div>
+                                    {campaign.clicksFromLegacyData && campaign.clicksFromLegacyData > 0 ? (
+                                      <div>
+                                        <div className="font-medium mb-0.5">Includes deleted links</div>
+                                        <div className="text-gray-300">+ {campaign.clicksFromLegacyData.toLocaleString()} clicks from deleted link{campaign.clicksFromLegacyData !== 1 ? 's' : ''}</div>
+                                      </div>
+                                    ) : (
+                                      <div>Includes data from deleted links</div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="absolute left-2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-900">
+                        <div className="truncate" title={campaign.course_name}>
+                          {campaign.course_name}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        {campaign.platforms && campaign.platforms.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {campaign.platforms.slice(0, 2).map((platform, idx) => (
+                              <span
+                                key={idx}
+                                className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${sourceColors[platform.utm_source] || 'bg-gray-100 text-gray-800'}`}
+                              >
+                                {platform.utm_source}
+                              </span>
+                            ))}
+                            {campaign.platforms.length > 2 && (
+                              <span className="text-xs text-gray-500">+{campaign.platforms.length - 2}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${sourceColors[campaign.source] || 'bg-gray-100 text-gray-800'}`}>
+                            {campaign.source}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-900">
+                        <div className="truncate">
+                          {campaign.platforms && campaign.platforms.length > 0 ? (
+                            campaign.platforms[0].utm_medium
+                          ) : (
+                            campaign.medium
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[campaign.status] || 'bg-gray-100 text-gray-800'}`}>
+                          {statusLabels[campaign.status] || campaign.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-gray-900">
+                        <div>{new Date(campaign.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        <div className="text-gray-500">~ {new Date(campaign.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-900">
+                        <div className="font-medium">₩{(campaign.budget / 10000).toFixed(0)}만</div>
+                        <div className="text-xs text-gray-500">
+                          {((campaign.spent / campaign.budget) * 100).toFixed(0)}% used
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="text-xs">
+                          <div className="text-gray-900">
+                            {(campaign.clicks ?? 0) > 0 ? (
+                              <>{(campaign.clicks ?? 0).toLocaleString()} {t('table.clicks')}</>
+                            ) : (
+                              <span className="text-gray-400">{t('table.noData')}</span>
+                            )}
+                          </div>
+                          <div className="text-gray-500 text-xs">
+                            {(campaign.visitors ?? 0).toLocaleString()} {t('summary.visitors')}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        {campaign.tracking_codes && campaign.tracking_codes.length > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={async () => {
+                                const success = await copyToClipboard(`${window.location.origin}/t/${campaign.tracking_codes![0]}`);
+                                if (success) {
+                                  setCopiedTrackingCode(campaign.tracking_codes![0]);
+                                  setTimeout(() => setCopiedTrackingCode(null), 2000);
+                                }
+                              }}
+                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
+                              title={t('table.copyTrackingLink')}
+                            >
+                              {copiedTrackingCode === campaign.tracking_codes[0] ? (
+                                <Check className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </button>
+                            <a
+                              href={`${window.location.origin}/t/${campaign.tracking_codes[0]}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
+                              title={t('table.openTrackingLink')}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                            {campaign.tracking_codes.length > 1 && (
+                              <span className="text-xs text-gray-500">+{campaign.tracking_codes.length - 1}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">{t('table.noLinks')}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={`/campaigns/${campaign.id}`}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded hover:bg-gray-100"
+                            title={t('table.viewDetails')}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                          <div className="relative" ref={actionMenuOpen === campaign.id ? menuRef : null}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const button = e.currentTarget as HTMLElement;
+                                const rect = button.getBoundingClientRect();
+                                setMenuPosition({
+                                  top: rect.bottom + 4,
+                                  right: window.innerWidth - rect.right
+                                });
+                                setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id);
+                              }}
+                              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded hover:bg-gray-100"
+                              title={t('table.moreActions')}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                            {actionMenuOpen === campaign.id && menuPosition && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={() => setActionMenuOpen(null)}
+                                />
+                                <div
+                                  className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60]"
+                                  style={{
+                                    top: `${menuPosition.top}px`,
+                                    right: `${menuPosition.right}px`
+                                  }}
+                                >
+                                  <div className="py-1">
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        setActionMenuOpen(null);
+                                        router.push(`/campaigns/${campaign.id}/edit`);
+                                      }}
+                                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                      {t('actions.edit')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        setActionMenuOpen(null);
+                                        handleDuplicate(campaign.id);
+                                      }}
+                                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                                    >
+                                      <Copy className="w-4 h-4" />
+                                      {t('actions.duplicate')}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        setActionMenuOpen(null);
+                                        handleDelete(campaign.id);
+                                      }}
+                                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      {t('actions.delete')}
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -732,62 +757,85 @@ export default function CampaignsPage() {
               <div key={campaign.id} className="p-4 hover:bg-gray-50">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
-                    <Link href={`/campaigns/${campaign.id}`} className="text-base font-semibold text-blue-600 hover:text-blue-800 block truncate">
-                      {campaign.name}
-                    </Link>
+                    <div className="flex items-center gap-1.5">
+                      <Link href={`/campaigns/${campaign.id}`} className="text-base font-semibold text-blue-600 hover:text-blue-800 block truncate flex-1">
+                        {campaign.name}
+                      </Link>
+                      {campaign.hasLegacyData && (
+                        <div className="group relative flex-shrink-0">
+                          <Info className="w-4 h-4 text-amber-500 cursor-help" />
+                          <div className="absolute right-0 bottom-full mb-2 hidden group-hover:block z-10 w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
+                            <div className="flex items-start gap-1.5">
+                              <span>⚠️</span>
+                              <div>
+                                {campaign.clicksFromLegacyData && campaign.clicksFromLegacyData > 0 ? (
+                                  <div>
+                                    <div className="font-medium mb-0.5">Includes deleted links</div>
+                                    <div className="text-gray-300">+ {campaign.clicksFromLegacyData.toLocaleString()} clicks from deleted link{campaign.clicksFromLegacyData !== 1 ? 's' : ''}</div>
+                                  </div>
+                                ) : (
+                                  <div>Includes data from deleted links</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="absolute right-2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 mt-1">{campaign.course_name}</p>
                   </div>
                   <div className="relative ml-2" ref={actionMenuOpen === campaign.id ? menuRef : null}>
-                        <button
-                          onClick={() => setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id)}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          <MoreVertical className="w-5 h-5" />
-                        </button>
-                        {actionMenuOpen === campaign.id && (
-                          <>
-                            <div 
-                              className="fixed inset-0 z-40" 
-                              onClick={() => setActionMenuOpen(null)}
-                            />
-                            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActionMenuOpen(null);
-                                  router.push(`/campaigns/${campaign.id}/edit`);
-                                }}
-                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                              >
-                                <Edit className="w-4 h-4" />
-                                {t('actions.edit')}
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActionMenuOpen(null);
-                                  handleDuplicate(campaign.id);
-                                }}
-                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                              >
-                                <Copy className="w-4 h-4" />
-                                {t('actions.duplicate')}
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActionMenuOpen(null);
-                                  handleDelete(campaign.id);
-                                }}
-                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                {t('actions.delete')}
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                    <button
+                      onClick={() => setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id)}
+                      className="p-1 text-gray-400 hover:text-gray-600"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                    {actionMenuOpen === campaign.id && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setActionMenuOpen(null)}
+                        />
+                        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionMenuOpen(null);
+                              router.push(`/campaigns/${campaign.id}/edit`);
+                            }}
+                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                          >
+                            <Edit className="w-4 h-4" />
+                            {t('actions.edit')}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionMenuOpen(null);
+                              handleDuplicate(campaign.id);
+                            }}
+                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                          >
+                            <Copy className="w-4 h-4" />
+                            {t('actions.duplicate')}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionMenuOpen(null);
+                              handleDelete(campaign.id);
+                            }}
+                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            {t('actions.delete')}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm mb-3">
@@ -797,7 +845,7 @@ export default function CampaignsPage() {
                       {campaign.platforms && campaign.platforms.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {campaign.platforms.map((platform, idx) => (
-                            <span 
+                            <span
                               key={idx}
                               className={`px-2 py-0.5 text-xs font-medium rounded-full ${sourceColors[platform.utm_source] || 'bg-gray-100 text-gray-800'}`}
                             >
@@ -865,7 +913,7 @@ export default function CampaignsPage() {
                           </div>
                         ))}
                         {campaign.tracking_codes.length > 2 && (
-                          <Link 
+                          <Link
                             href={`/campaigns/${campaign.id}`}
                             className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                           >
@@ -897,7 +945,7 @@ export default function CampaignsPage() {
           )}
         </div>
 
-              {/* Pagination */}
+        {/* Pagination */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-4 sm:px-6 py-4 mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <span className="text-gray-700">{t('pagination.total', { count: total })}</span>
@@ -918,11 +966,10 @@ export default function CampaignsPage() {
               <button
                 key={pageNum}
                 onClick={() => setPage(pageNum)}
-                className={`px-3 py-1 rounded text-sm ${
-                  page === pageNum
+                className={`px-3 py-1 rounded text-sm ${page === pageNum
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 {pageNum}
               </button>
@@ -931,7 +978,7 @@ export default function CampaignsPage() {
         </div>
       </div>
 
-    
+
 
 
       {/* Footer with extra spacing */}
