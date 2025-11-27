@@ -925,7 +925,9 @@
       "totalSessions": "Total Sessions",
       "uniqueVisitors": "Unique Visitors",
       "pageviews": "Pageviews",
-      "conversions": "Conversions"
+      "conversions": "Conversions",
+      "validDomainsOnly": "Valid domains only",
+      "validDomainsTooltip": "All metrics only include data from valid, trackable domains. Internal domains and invalid URLs are excluded."
     },
     "filters": {
       "allWebsites": "All Websites",

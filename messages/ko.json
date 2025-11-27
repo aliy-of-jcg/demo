@@ -925,7 +925,9 @@
       "totalSessions": "총 세션",
       "uniqueVisitors": "고유 방문자",
       "pageviews": "페이지뷰",
-      "conversions": "전환"
+      "conversions": "전환",
+      "validDomainsOnly": "유효한 도메인만",
+      "validDomainsTooltip": "모든 지표는 유효하고 추적 가능한 도메인의 데이터만 포함합니다. 내부 도메인 및 유효하지 않은 URL은 제외됩니다."
     },
     "filters": {
       "allWebsites": "모든 웹사이트",
