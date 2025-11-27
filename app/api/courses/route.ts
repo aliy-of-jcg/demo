@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status') || '';
-    
+
     const pool = getPool();
-    
+
     // Build WHERE conditions for filtering
     let whereConditions = 'WHERE courses.status != \'hidden\''; // Exclude hidden courses by default
     const queryParams: any[] = [];
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     let courses: Course[] = [];
-    
+
     try {
       // Get paginated courses
       const query = `SELECT * FROM courses ${whereConditions} ORDER BY courses.name ASC LIMIT ${limit} OFFSET ${offset}`;
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       FROM courses
       ${whereConditions}
     `;
-    
+
     const [summaryResult] = await pool.execute(summaryQuery, countParams) as [SummaryData[], any];
     const summary = summaryResult[0];
 
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     // Get total active campaigns per course from MySQL (only for matching courses)
     let campaignsMap = new Map<number, number>();
     let totalCampaigns = 0;
-    
+
     if (allMatchingCourseIds.length > 0) {
       const placeholders = allMatchingCourseIds.map(() => '?').join(',');
       const campaignsQuery = `
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
         WHERE status = 'active' AND course_id IN (${placeholders})
         GROUP BY course_id
       `;
-      
+
       const [campaignsResult] = await pool.execute(campaignsQuery, allMatchingCourseIds) as [CampaignData[], any];
       campaignsResult.forEach((row) => {
         campaignsMap.set(row.course_id, row.active_campaigns);
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
       const [utmCodes] = await pool.execute(
         `SELECT tracking_code, campaign_id FROM utm_codes WHERE tracking_code != '' AND status != 'hidden'`
       ) as [Array<{ tracking_code: string; campaign_id: number }>, any];
-      
+
       // Get course_id for each campaign
       if (utmCodes.length > 0) {
         const campaignIds = Array.from(new Set(utmCodes.map(utm => utm.campaign_id)));
@@ -163,12 +163,12 @@ export async function GET(request: NextRequest) {
           `SELECT id, course_id FROM campaigns WHERE id IN (${placeholders})`,
           campaignIds
         ) as [Array<{ id: number; course_id: number }>, any];
-        
+
         const campaignToCourseId = new Map<number, number>();
         campaignRows.forEach((row: { id: number; course_id: number }) => {
           campaignToCourseId.set(row.id, row.course_id);
         });
-        
+
         utmCodes.forEach((utm: { tracking_code: string; campaign_id: number }) => {
           const courseId = campaignToCourseId.get(utm.campaign_id);
           if (courseId) {
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.warn('⚠️ Failed to map tracking codes to course IDs:', error);
     }
-    
+
     let visitsMap = new Map<number, number>();
     try {
       // First, try to get visits by course_id directly (if course_id is populated)
@@ -187,18 +187,18 @@ export async function GET(request: NextRequest) {
         const directCourseVisitsQuery = `
           SELECT 
             course_id,
-            COUNT(DISTINCT user_id) as total_visits
+            countDistinct(user_id) as total_visits
           FROM analytics.visit_logs
           WHERE course_id > 0
           GROUP BY course_id
         `;
-        
+
         const directResult = await clickhouse.query({
           query: directCourseVisitsQuery,
           format: 'JSONEachRow'
 
         });
-        
+
         const directVisitsData = await directResult.json() as Array<{ course_id: number; total_visits: number }>;
         directVisitsData.forEach((row) => {
           const currentVisits = visitsMap.get(row.course_id) || 0;
@@ -208,38 +208,38 @@ export async function GET(request: NextRequest) {
         // Ignore if this query fails, continue with tracking_code approach
         console.warn('⚠️ Direct course_id query failed, using tracking_code approach:', directError);
       }
-      
+
       // Also query visits by tracking_code and map to course_id
       const visitsQuery = `
         SELECT 
           tracking_code,
-          COUNT(DISTINCT user_id) as total_visits
+          countDistinct(user_id) as total_visits
         FROM analytics.visit_logs
         WHERE tracking_code != ''
         GROUP BY tracking_code
       `;
-      
+
       const visitsResult = await clickhouse.query({
         query: visitsQuery,
         format: 'JSONEachRow'
       });
-      
+
       const visitsData = await visitsResult.json() as Array<{ tracking_code: string; total_visits: number }>;
       visitsData.forEach((row) => {
         // Try exact match first
         let courseId = trackingCodeToCourseId.get(row.tracking_code);
-        
+
         // If no exact match, try trimming whitespace
         if (!courseId) {
           courseId = trackingCodeToCourseId.get(row.tracking_code.trim());
         }
-        
+
         if (courseId) {
           const currentVisits = visitsMap.get(courseId) || 0;
           visitsMap.set(courseId, currentVisits + row.total_visits);
         }
       });
-      
+
       // Fallback: Also try matching by UTM parameters if tracking_code didn't work
       // Get all campaigns with their UTM parameters
       try {
@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
              SELECT id FROM campaigns WHERE course_id IS NOT NULL
            )`
         ) as [Array<{ campaign_id: number; utm_campaign: string; utm_source: string; utm_medium: string }>, any];
-        
+
         if (utmCampaigns.length > 0) {
           // Get course_id for these campaigns
           const campaignIds = utmCampaigns.map(uc => uc.campaign_id);
@@ -259,45 +259,45 @@ export async function GET(request: NextRequest) {
             `SELECT id, course_id FROM campaigns WHERE id IN (${placeholders})`,
             campaignIds
           ) as [Array<{ id: number; course_id: number }>, any];
-          
+
           const campaignToCourseIdMap = new Map<number, number>();
           campaignRows.forEach((row: { id: number; course_id: number }) => {
             campaignToCourseIdMap.set(row.id, row.course_id);
           });
-          
+
           // Query visits by UTM parameters
           const utmVisitsQuery = `
             SELECT 
               utm_campaign,
               utm_source,
               utm_medium,
-              COUNT(DISTINCT user_id) as total_visits
+              countDistinct(user_id) as total_visits
             FROM analytics.visit_logs
             WHERE utm_campaign != '' AND tracking_code = ''
             GROUP BY utm_campaign, utm_source, utm_medium
           `;
-          
+
           try {
             const utmVisitsResult = await clickhouse.query({
               query: utmVisitsQuery,
               format: 'JSONEachRow'
             });
-            
-            const utmVisitsData = await utmVisitsResult.json() as Array<{ 
-              utm_campaign: string; 
-              utm_source: string; 
-              utm_medium: string; 
-              total_visits: number 
+
+            const utmVisitsData = await utmVisitsResult.json() as Array<{
+              utm_campaign: string;
+              utm_source: string;
+              utm_medium: string;
+              total_visits: number
             }>;
-            
+
             utmVisitsData.forEach((row) => {
               // Find matching campaign by UTM parameters
-              const matchingCampaign = utmCampaigns.find(uc => 
+              const matchingCampaign = utmCampaigns.find(uc =>
                 uc.utm_campaign === row.utm_campaign &&
                 uc.utm_source === row.utm_source &&
                 uc.utm_medium === row.utm_medium
               );
-              
+
               if (matchingCampaign) {
                 const courseId = campaignToCourseIdMap.get(matchingCampaign.campaign_id);
                 if (courseId) {
@@ -351,8 +351,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching courses:', error);
     return NextResponse.json(
-      { 
-        success: true, 
+      {
+        success: true,
         courses: [],
         summary: {
           total_courses: 0,

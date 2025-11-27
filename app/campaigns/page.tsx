@@ -534,11 +534,16 @@ export default function CampaignsPage() {
                                   <div>
                                     {campaign.clicksFromLegacyData && campaign.clicksFromLegacyData > 0 ? (
                                       <div>
-                                        <div className="font-medium mb-0.5">Includes deleted links</div>
-                                        <div className="text-gray-300">+ {campaign.clicksFromLegacyData.toLocaleString()} clicks from deleted link{campaign.clicksFromLegacyData !== 1 ? 's' : ''}</div>
+                                        <div className="font-medium mb-0.5">{t('legacyData.includesDeletedLinks')}</div>
+                                        <div className="text-gray-300">
+                                          {t('legacyData.clicksFromDeletedLinks', {
+                                            count: campaign.clicksFromLegacyData.toLocaleString(),
+                                            plural: campaign.clicksFromLegacyData !== 1 ? t('legacyData.links') : t('legacyData.link')
+                                          })}
+                                        </div>
                                       </div>
                                     ) : (
-                                      <div>Includes data from deleted links</div>
+                                      <div>{t('legacyData.includesDataFromDeleted')}</div>
                                     )}
                                   </div>
                                 </div>
@@ -770,11 +775,16 @@ export default function CampaignsPage() {
                               <div>
                                 {campaign.clicksFromLegacyData && campaign.clicksFromLegacyData > 0 ? (
                                   <div>
-                                    <div className="font-medium mb-0.5">Includes deleted links</div>
-                                    <div className="text-gray-300">+ {campaign.clicksFromLegacyData.toLocaleString()} clicks from deleted link{campaign.clicksFromLegacyData !== 1 ? 's' : ''}</div>
+                                    <div className="font-medium mb-0.5">{t('legacyData.includesDeletedLinks')}</div>
+                                    <div className="text-gray-300">
+                                      {t('legacyData.clicksFromDeletedLinks', {
+                                        count: campaign.clicksFromLegacyData.toLocaleString(),
+                                        plural: campaign.clicksFromLegacyData !== 1 ? t('legacyData.links') : t('legacyData.link')
+                                      })}
+                                    </div>
                                   </div>
                                 ) : (
-                                  <div>Includes data from deleted links</div>
+                                  <div>{t('legacyData.includesDataFromDeleted')}</div>
                                 )}
                               </div>
                             </div>
@@ -967,8 +977,8 @@ export default function CampaignsPage() {
                 key={pageNum}
                 onClick={() => setPage(pageNum)}
                 className={`px-3 py-1 rounded text-sm ${page === pageNum
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
               >
                 {pageNum}

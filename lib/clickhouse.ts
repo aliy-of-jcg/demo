@@ -97,7 +97,7 @@ export const initClickHouseSchema = async () => {
     SETTINGS index_granularity = 8192
     `,
   });
-  
+
   // Add tracking_code column to existing visit_logs table if it doesn't exist
   try {
     await clickhouse.command({
@@ -121,8 +121,8 @@ export const initClickHouseSchema = async () => {
           SELECT 
             toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
             campaign_id,
-            COUNT(DISTINCT user_id) as unique_visitors,
-            COUNT(DISTINCT session_id) as sessions,
+            countDistinct(user_id) as unique_visitors,
+            countDistinct(session_id) as sessions,
             countIf(event_type = 'conversion') as conversions,
             SUM(conversion_value) as revenue
           GROUP BY date, campaign_id
@@ -141,7 +141,7 @@ export const initClickHouseSchema = async () => {
               WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'
               ELSE utm_source
             END as channel,
-            COUNT(DISTINCT user_id) as visitors,
+            countDistinct(user_id) as visitors,
             countIf(event_type = 'conversion') as conversions,
             SUM(conversion_value) as revenue
           GROUP BY date, channel
@@ -159,7 +159,7 @@ export const initClickHouseSchema = async () => {
             conversion_type,
             countIf(conversion_type != '' AND event_type = 'conversion') as count,
             sumIf(conversion_value, conversion_type != '' AND event_type = 'conversion') as total_value,
-            uniqIf(user_id, conversion_type != '' AND event_type = 'conversion') as unique_users
+            countDistinctIf(user_id, conversion_type != '' AND event_type = 'conversion') as unique_users
           GROUP BY date, conversion_type
         )
       `
@@ -176,8 +176,8 @@ export const initClickHouseSchema = async () => {
             utm_source,
             utm_medium,
             utm_campaign,
-            uniqIf(session_id, tracking_code != '') as sessions,
-            uniqIf(user_id, tracking_code != '') as users,
+            countDistinctIf(session_id, tracking_code != '') as sessions,
+            countDistinctIf(user_id, tracking_code != '') as users,
             countIf(tracking_code != '' AND event_type = 'conversion') as conversions
           GROUP BY date, tracking_code, utm_source, utm_medium, utm_campaign
         )
@@ -197,45 +197,45 @@ export interface TrackingEvent {
   id: string;
   tracking_code: string;
   campaign_name: string;
-  
+
   // UTM Parameters
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
   utm_content?: string;
   utm_term?: string;
-  
+
   // Referrer Data
   referrer?: string;
   referrer_domain?: string;
   referrer_source?: string;
   referrer_is_known?: number;
-  
+
   // User Data
   ip_address?: string;
   user_agent?: string;
-  
+
   // Device Info
   device_type?: string;
   device_vendor?: string;
   device_model?: string;
-  
+
   // Browser Info
   browser?: string;
   browser_version?: string;
-  
+
   // OS Info
   os?: string;
   os_version?: string;
-  
+
   // Engine
   engine?: string;
-  
+
   // App Detection
   is_mobile_app?: number;
   app_name?: string;
   is_bot?: number;
-  
+
   // Location
   country?: string;
   city?: string;

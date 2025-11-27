@@ -189,6 +189,13 @@
       "moreActions": "More actions",
       "noLinks": "No links"
     },
+    "legacyData": {
+      "includesDeletedLinks": "Includes deleted links",
+      "clicksFromDeletedLinks": "+ {count} clicks from deleted {plural}",
+      "includesDataFromDeleted": "Includes data from deleted links",
+      "link": "link",
+      "links": "links"
+    },
     "status": {
       "active": "Active",
       "waiting": "Waiting",

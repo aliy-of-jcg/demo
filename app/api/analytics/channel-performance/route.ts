@@ -30,7 +30,7 @@ interface ChannelSummary {
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    
+
     // Get date range from query parameters (default: last 30 days)
     const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
     const startDate = searchParams.get('start') || (() => {
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Group by utm_source, utm_medium from visit_logs (actual traffic)
     // NOT by campaigns.source (configuration)
     // ============================================================
-    
+
     // Step 1: Get actual traffic data grouped by UTM parameters
     // Note: Now using tracking_code to link back to campaigns reliably
     const trafficQuery = `
@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
         utm_source,
         utm_medium,
         utm_campaign,
-        COUNT(DISTINCT session_id) as sessions,
-        COUNT(DISTINCT user_id) as users,
+        countDistinct(session_id) as sessions,
+        countDistinct(user_id) as users,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs
       WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
@@ -74,24 +74,24 @@ export async function GET(request: NextRequest) {
     });
 
     const trafficData = await trafficResult.json() as any[];
-    
+
     // Step 1.5: Get direct traffic data (utm_source = 'Direct' or '(direct)' for legacy data)
     const directTrafficQuery = `
       SELECT 
-        COUNT(DISTINCT session_id) as sessions,
-        COUNT(DISTINCT user_id) as users,
+        countDistinct(session_id) as sessions,
+        countDistinct(user_id) as users,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs
       WHERE 
         (utm_source = 'Direct' OR utm_source = '(direct)' OR utm_source = '')
         AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
     `;
-    
+
     const directTrafficResult = await clickhouse.query({
       query: directTrafficQuery,
       format: 'JSONEachRow'
     });
-    
+
     const directTrafficData = await directTrafficResult.json() as any[];
     const directSessions = parseInt(directTrafficData[0]?.sessions) || 0;
     const directUsers = parseInt(directTrafficData[0]?.users) || 0;
@@ -112,10 +112,10 @@ export async function GET(request: NextRequest) {
     const trackingCodes = Array.from(new Set(trafficData
       .map(t => t.tracking_code)
       .filter(code => code && code !== '')));
-    
+
     let campaignMap = new Map();
     let campaignNameMap = new Map(); // Fallback: map by campaign name for legacy data
-    
+
     if (trackingCodes.length > 0) {
       const placeholders = trackingCodes.map(() => '?').join(',');
       const [campaigns] = await pool.execute(`
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
           status: c.status,
           ad_cost: parseFloat(c.ad_cost) || 0
         });
-        
+
         // Also store by name for fallback matching
         if (!campaignNameMap.has(c.campaign_name)) {
           campaignNameMap.set(c.campaign_name, {
@@ -150,14 +150,14 @@ export async function GET(request: NextRequest) {
         }
       });
     }
-    
+
     // FALLBACK: For legacy data without tracking codes, get campaigns by name
     // This handles visits logged before we added the _tc parameter
     const campaignNamesWithoutCodes = Array.from(new Set(trafficData
       .filter(t => !t.tracking_code || t.tracking_code === '')
       .map(t => t.utm_campaign)
       .filter(name => name && name !== '')));
-    
+
     if (campaignNamesWithoutCodes.length > 0) {
       const namePlaceholders = campaignNamesWithoutCodes.map(() => '?').join(',');
       const [campaignsByName] = await pool.execute(`
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
         FROM campaigns c
         WHERE c.name IN (${namePlaceholders})
       `, campaignNamesWithoutCodes);
-      
+
       (campaignsByName as any[]).forEach(c => {
         if (!campaignNameMap.has(c.campaign_name)) {
           campaignNameMap.set(c.campaign_name, {
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
     if (trackingCodes.length > 0) {
       try {
         const escapedCodes = trackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-        
+
         const clicksQuery = `
           SELECT 
             tracking_code,
@@ -219,23 +219,23 @@ export async function GET(request: NextRequest) {
     const enrichedData: CampaignData[] = trafficData.map(traffic => {
       // Try to get campaign by tracking_code first (most reliable)
       let campaign = campaignMap.get(traffic.tracking_code);
-      
+
       // FALLBACK: If no tracking_code or not found, try matching by campaign name
       // This handles legacy data logged before we added the _tc parameter
       if (!campaign && traffic.utm_campaign) {
         campaign = campaignNameMap.get(traffic.utm_campaign);
       }
-      
+
       // If still not found, create unknown campaign entry
       if (!campaign) {
-        campaign = { 
+        campaign = {
           campaign_id: 0,
-          name: traffic.utm_campaign || 'Unknown Campaign', 
+          name: traffic.utm_campaign || 'Unknown Campaign',
           status: 'active',
-          ad_cost: 0 
+          ad_cost: 0
         };
       }
-      
+
       const clicks = clicksMap.get(traffic.tracking_code) || 0;
       const sessions = parseInt(traffic.sessions) || 0;
       const users = parseInt(traffic.users) || 0;
@@ -263,7 +263,7 @@ export async function GET(request: NextRequest) {
     // Step 4.5: Add Direct channel if there's direct traffic
     if (directUsers > 0) {
       const directConversionRate = directUsers > 0 ? (directConversions / directUsers) * 100 : 0;
-      
+
       enrichedData.push({
         campaign_id: 0, // Special ID for direct traffic
         campaign_name: 'Direct Traffic',
@@ -282,12 +282,12 @@ export async function GET(request: NextRequest) {
     // Step 4.75: CONSOLIDATE multiple tracking codes for the same campaign
     // A campaign can have multiple UTM codes, but should appear as ONE row in the report
     const campaignAggregateMap = new Map<string, CampaignData>();
-    
+
     enrichedData.forEach(item => {
       // Create unique key: campaign_id + source + medium
       // This groups all tracking codes for the same campaign together
       const key = `${item.campaign_id}_${item.source}_${item.medium}`;
-      
+
       if (campaignAggregateMap.has(key)) {
         // Aggregate with existing campaign data
         const existing = campaignAggregateMap.get(key)!;
@@ -295,12 +295,12 @@ export async function GET(request: NextRequest) {
         existing.conversions += item.conversions;
         existing.clicks += item.clicks;
         existing.ad_cost += item.ad_cost;
-        
+
         // Recalculate metrics based on aggregated data
-        existing.conversion_rate = existing.visits > 0 
+        existing.conversion_rate = existing.visits > 0
           ? parseFloat(((existing.conversions / existing.visits) * 100).toFixed(2))
           : 0;
-        existing.ctr = existing.clicks > 0 
+        existing.ctr = existing.clicks > 0
           ? parseFloat(((existing.visits / existing.clicks) * 100).toFixed(2))
           : 0;
       } else {
@@ -308,13 +308,13 @@ export async function GET(request: NextRequest) {
         campaignAggregateMap.set(key, { ...item });
       }
     });
-    
+
     // Convert aggregated map back to array
     const consolidatedData = Array.from(campaignAggregateMap.values());
 
     // Step 5: Group by ACTUAL utm_source (channel) from traffic data
     const channelMap = new Map<string, CampaignData[]>();
-    
+
     consolidatedData.forEach(item => {
       const channel = item.source || 'other';  // ← From visit_logs, NOT campaigns.source
       if (!channelMap.has(channel)) {
@@ -329,10 +329,10 @@ export async function GET(request: NextRequest) {
       const totalConversions = campaigns.reduce((sum, c) => sum + c.conversions, 0);
       const totalAdCost = campaigns.reduce((sum, c) => sum + c.ad_cost, 0);
       const totalClicks = campaigns.reduce((sum, c) => sum + c.clicks, 0);
-      
+
       // Calculate CTR correctly: (Total Visits / Total Clicks) * 100
-      const avgCTR = totalClicks > 0 
-        ? (totalVisits / totalClicks) * 100 
+      const avgCTR = totalClicks > 0
+        ? (totalVisits / totalClicks) * 100
         : 0;
 
       return {

@@ -189,6 +189,13 @@
       "moreActions": "더 많은 작업",
       "noLinks": "링크 없음"
     },
+    "legacyData": {
+      "includesDeletedLinks": "삭제된 링크 포함",
+      "clicksFromDeletedLinks": "삭제된 {plural}에서 + {count} 클릭",
+      "includesDataFromDeleted": "삭제된 링크의 데이터 포함",
+      "link": "링크",
+      "links": "링크"
+    },
     "status": {
       "active": "활성",
       "waiting": "대기 중",

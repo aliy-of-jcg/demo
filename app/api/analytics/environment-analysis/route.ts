@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
-    
+
     console.log(`🌍 Environment Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
 
     // Build WHERE clause for date filtering (using KST timezone)
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const deviceQuery = `
       SELECT 
         device_type,
-        COUNT(DISTINCT user_id) as visitors,
+        countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM (
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const osQuery = `
       SELECT 
         os,
-        COUNT(DISTINCT user_id) as visitors,
+        countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM (
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     const browserQuery = `
       SELECT 
         browser,
-        COUNT(DISTINCT user_id) as visitors,
+        countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM (
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     const resolutionQuery = `
       SELECT 
         screen_resolution,
-        COUNT(DISTINCT user_id) as visitors,
+        countDistinct(user_id) as visitors,
         COUNT(*) as pageviews
       FROM analytics.visit_logs
       WHERE ${whereClause}
@@ -175,9 +175,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Environment analysis API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );

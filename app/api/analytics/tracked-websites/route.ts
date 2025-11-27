@@ -20,7 +20,7 @@ interface WebsiteData {
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    
+
     // Get date range from query parameters (default: last 90 days)
     const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
     const startDate = searchParams.get('start') || (() => {
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
     const query = `
       SELECT 
         normalized_domain as domain,
-        COUNT(DISTINCT session_id) as total_sessions,
-        COUNT(DISTINCT user_id) as unique_visitors,
+        countDistinct(session_id) as total_sessions,
+        countDistinct(user_id) as unique_visitors,
         SUM(CASE WHEN event_type = 'pageview' THEN 1 ELSE 0 END) as total_pageviews,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as total_conversions,
         MIN(timestamp) as first_seen,
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const enrichedWebsites = websites.map(website => {
       const isEnabled = domainStatusMap.get(website.domain) ?? true; // Default to enabled if not in MySQL
       let status: 'Active' | 'Inactive' | 'Disabled';
-      
+
       if (!isEnabled) {
         status = 'Disabled';
       } else if (website.is_active) {
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       } else {
         status = 'Inactive';
       }
-      
+
       return {
         ...website,
         is_enabled: isEnabled,
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     try {
       const totalVisitorsQuery = await clickhouse.query({
         query: `
-          SELECT COUNT(DISTINCT user_id) as unique_visitors
+          SELECT countDistinct(user_id) as unique_visitors
           FROM analytics.visit_logs
           WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
             AND page_url != ''
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
         `,
         format: 'JSONEachRow'
       });
-      
+
       const totalVisitorsResult = await totalVisitorsQuery.json() as Array<{ unique_visitors: number }>;
       total_visitors = totalVisitorsResult[0]?.unique_visitors || 0;
     } catch (error) {

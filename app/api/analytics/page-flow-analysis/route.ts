@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const domain = searchParams.get('domain');
     const search = searchParams.get('search');
-    
+
     console.log(`🔗 Page Flow Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Limit: ${limit}, Domain: ${domain || 'all'}, Search: ${search || 'none'}`);
 
     // Build WHERE clause for date filtering
@@ -61,9 +61,9 @@ export async function GET(request: NextRequest) {
           WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'
           ELSE utm_source
         END as utm_source,
-        COUNT(DISTINCT session_id) as total_sessions,
+        countDistinct(session_id) as total_sessions,
         COUNT(*) as total_pageviews,
-        ROUND(COUNT(*) / COUNT(DISTINCT session_id), 2) as avg_pageviews_per_session
+        ROUND(COUNT(*) / countDistinct(session_id), 2) as avg_pageviews_per_session
       FROM analytics.visit_logs
       WHERE ${whereClause}
         AND event_type = 'pageview'
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
     // 4. Exit Pages with exit count and exit rate
     const exitPagesQuery = `
       WITH total_sessions AS (
-        SELECT COUNT(DISTINCT session_id) as cnt
+        SELECT countDistinct(session_id) as cnt
         FROM analytics.visit_logs
         WHERE ${whereClause}
       )
@@ -202,15 +202,15 @@ export async function GET(request: NextRequest) {
       session_id: string;
       max_sequence: number;
     }>;
-    
+
     const sessionDepths = sessionDepthJson.map((row) => row.max_sequence || 1);
     const totalSessions = sessionDepths.length;
-    const avgSessionDepth = totalSessions > 0 
+    const avgSessionDepth = totalSessions > 0
       ? (sessionDepths.reduce((sum: number, depth: number) => sum + depth, 0) / totalSessions).toFixed(2)
       : '0.00';
 
     // Calculate average pageviews per session
-    const avgPageviewsPerSession = totalSessions > 0 
+    const avgPageviewsPerSession = totalSessions > 0
       ? (totalPageviews / totalSessions).toFixed(2)
       : '0.00';
 
@@ -234,9 +234,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Page flow analysis API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );

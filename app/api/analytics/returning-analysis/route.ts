@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
 
     // First, get total visitors (to match performance dashboard)
     const totalVisitorsQuery = `
-      SELECT COUNT(DISTINCT user_id) as total_visitors
+      SELECT countDistinct(user_id) as total_visitors
       FROM analytics.visit_logs
       WHERE ${whereClause}
     `;
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     const newVsReturningQuery = `
       SELECT 
         visitor_type,
-        uniqExact(user_id) as visitors,
+        countDistinct(user_id) as visitors,
         SUM(pageviews) as pageviews,
         SUM(conversions) as conversions,
         AVG(avg_time_on_page) as avg_time_on_page
@@ -238,7 +238,7 @@ export async function GET(request: NextRequest) {
       FROM (
         SELECT 
           user_id,
-          uniqExact(visit_count) as visits_in_range
+          countDistinct(visit_count) as visits_in_range
         FROM analytics.visit_logs
         WHERE ${whereClause}
         GROUP BY user_id
@@ -372,8 +372,8 @@ export async function GET(request: NextRequest) {
     const dailyTrendQuery = `
       SELECT 
         date,
-        uniqExactIf(user_id, visitor_type = 'new') as new_visitors,
-        uniqExactIf(user_id, visitor_type = 'returning') as returning_visitors
+        countDistinctIf(user_id, visitor_type = 'new') as new_visitors,
+        countDistinctIf(user_id, visitor_type = 'returning') as returning_visitors
       FROM (
         SELECT 
           vl.user_id,

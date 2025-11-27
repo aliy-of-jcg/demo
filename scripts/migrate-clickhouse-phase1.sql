@@ -114,8 +114,8 @@ ADD PROJECTION IF NOT EXISTS campaign_date_projection (
   SELECT 
     toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
     campaign_id,
-    COUNT(DISTINCT user_id) as unique_visitors,
-    COUNT(DISTINCT session_id) as sessions,
+    countDistinct(user_id) as unique_visitors,
+    countDistinct(session_id) as sessions,
     countIf(event_type = 'conversion') as conversions,
     SUM(conversion_value) as revenue
   GROUP BY date, campaign_id
@@ -131,7 +131,7 @@ ADD PROJECTION IF NOT EXISTS channel_date_projection (
       WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'
       ELSE utm_source
     END as channel,
-    COUNT(DISTINCT user_id) as visitors,
+    countDistinct(user_id) as visitors,
     countIf(event_type = 'conversion') as conversions,
     SUM(conversion_value) as revenue
   GROUP BY date, channel
@@ -146,7 +146,7 @@ ADD PROJECTION IF NOT EXISTS conversion_date_projection (
     conversion_type,
     countIf(conversion_type != '' AND event_type = 'conversion') as count,
     sumIf(conversion_value, conversion_type != '' AND event_type = 'conversion') as total_value,
-    uniqIf(user_id, conversion_type != '' AND event_type = 'conversion') as unique_users
+    countDistinctIf(user_id, conversion_type != '' AND event_type = 'conversion') as unique_users
   GROUP BY date, conversion_type
 );
 
@@ -161,7 +161,7 @@ ADD PROJECTION IF NOT EXISTS tracking_code_date_projection (
     utm_medium,
     utm_campaign,
     uniqIf(session_id, tracking_code != '') as sessions,
-    uniqIf(user_id, tracking_code != '') as users,
+    countDistinctIf(user_id, tracking_code != '') as users,
     countIf(tracking_code != '' AND event_type = 'conversion') as conversions
   GROUP BY date, tracking_code, utm_source, utm_medium, utm_campaign
 );

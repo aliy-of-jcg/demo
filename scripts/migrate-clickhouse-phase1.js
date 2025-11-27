@@ -56,10 +56,10 @@ async function verifyDataIntegrity() {
   console.log('\n🔍 Verifying data integrity...');
   const oldCount = await getRowCount('analytics.visit_logs');
   const newCount = await getRowCount('analytics.visit_logs_new');
-  
+
   console.log(`   Old table rows: ${oldCount}`);
   console.log(`   New table rows: ${newCount}`);
-  
+
   if (oldCount === newCount) {
     console.log('✅ Row counts match!');
     return true;
@@ -147,7 +147,7 @@ async function main() {
   try {
     // Step 0: Check migration state and clean up any leftover tables
     console.log('\n🔍 Checking migration state...');
-    
+
     // Check if visit_logs_old exists (from previous migration)
     let oldTableExists = false;
     try {
@@ -203,10 +203,10 @@ async function main() {
 
     // Step 0.5: Get the actual schema from existing table
     const existingColumns = await getTableSchema('analytics.visit_logs');
-    
+
     // Step 1: Create new partitioned table using the actual schema
     const createTableQuery = await buildCreateTableQuery(existingColumns);
-    
+
     await executeQuery(createTableQuery, 'Step 1: Create new partitioned table');
 
     // Verify the new table has the same number of columns
@@ -222,7 +222,7 @@ async function main() {
     // Step 2: Copy data
     console.log('\n📦 Step 2: Copying data from old table to new table...');
     console.log('   This may take a while depending on data size...');
-    
+
     // Build column list for explicit INSERT to avoid column mismatch issues
     const columnNames = existingColumns.map(col => col.name).join(', ');
     const copyQuery = `INSERT INTO analytics.visit_logs_new (${columnNames}) SELECT ${columnNames} FROM analytics.visit_logs`;
@@ -238,7 +238,7 @@ async function main() {
     // Step 4: Swap tables
     console.log('\n⚠️  Step 4: Swapping tables...');
     console.log('   This will rename the old table to visit_logs_old');
-    
+
     // Check if visit_logs_old already exists (from previous migration)
     let oldBackupExists = false;
     try {
@@ -250,7 +250,7 @@ async function main() {
     } catch (error) {
       // Table doesn't exist, which is fine
     }
-    
+
     if (oldBackupExists) {
       console.log('   ⚠️  visit_logs_old already exists. Dropping it first...');
       await clickhouse.command({
@@ -258,7 +258,7 @@ async function main() {
       });
       console.log('   ✅ Dropped old backup table');
     }
-    
+
     const swapQuery = `
       RENAME TABLE 
         analytics.visit_logs TO analytics.visit_logs_old,
@@ -276,8 +276,8 @@ async function main() {
             SELECT 
               toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
               campaign_id,
-              COUNT(DISTINCT user_id) as unique_visitors,
-              COUNT(DISTINCT session_id) as sessions,
+              countDistinct(user_id) as unique_visitors,
+              countDistinct(session_id) as sessions,
               countIf(event_type = 'conversion') as conversions,
               SUM(conversion_value) as revenue
             GROUP BY date, campaign_id
@@ -296,7 +296,7 @@ async function main() {
                 WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'
                 ELSE utm_source
               END as channel,
-              COUNT(DISTINCT user_id) as visitors,
+              countDistinct(user_id) as visitors,
               countIf(event_type = 'conversion') as conversions,
               SUM(conversion_value) as revenue
             GROUP BY date, channel
@@ -314,7 +314,7 @@ async function main() {
               conversion_type,
               countIf(conversion_type != '' AND event_type = 'conversion') as count,
               sumIf(conversion_value, conversion_type != '' AND event_type = 'conversion') as total_value,
-              uniqIf(user_id, conversion_type != '' AND event_type = 'conversion') as unique_users
+              countDistinctIf(user_id, conversion_type != '' AND event_type = 'conversion') as unique_users
             GROUP BY date, conversion_type
           )
         `,
@@ -332,7 +332,7 @@ async function main() {
               utm_medium,
               utm_campaign,
               uniqIf(session_id, tracking_code != '') as sessions,
-              uniqIf(user_id, tracking_code != '') as users,
+              countDistinctIf(user_id, tracking_code != '') as users,
               countIf(tracking_code != '' AND event_type = 'conversion') as conversions
             GROUP BY date, tracking_code, utm_source, utm_medium, utm_campaign
           )

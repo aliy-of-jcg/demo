@@ -240,7 +240,7 @@ export async function GET(request: NextRequest) {
                 // Fallback: only legacy data available (use campaign_id OR utm_campaign)
                 const utmCampaignsList = utmCampaignsForCampaign.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
                 visitorsQuery = `
-                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  SELECT countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
                   WHERE (campaign_id = ${campaignId} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
                   .join(',');
                 const utmCampaignsList = utmCampaignsForCampaign.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
                 visitorsQuery = `
-                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  SELECT countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
                   WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -263,7 +263,7 @@ export async function GET(request: NextRequest) {
                   .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
                   .join(',');
                 visitorsQuery = `
-                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  SELECT countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
                   WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}))
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -271,7 +271,7 @@ export async function GET(request: NextRequest) {
               } else {
                 // No tracking codes, use campaign_id only
                 visitorsQuery = `
-                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  SELECT countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
                   WHERE campaign_id = ${campaignId}
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -487,7 +487,7 @@ export async function GET(request: NextRequest) {
                       utm_campaign,
                       utm_source,
                       utm_medium,
-                      COUNT(DISTINCT user_id) as unique_visitors
+                      countDistinct(user_id) as unique_visitors
                     FROM analytics.visit_logs
                     WHERE utm_campaign != '' AND (tracking_code = '' OR tracking_code IS NULL)
                     GROUP BY utm_campaign, utm_source, utm_medium
@@ -634,7 +634,7 @@ export async function GET(request: NextRequest) {
                 // Fallback: only legacy data available (use campaign_id OR utm_campaign)
                 const utmCampaignsList = utmCampaigns.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
                 visitorsQuery = `
-                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  SELECT countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
                   WHERE (campaign_id = ${campaignId} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -646,7 +646,7 @@ export async function GET(request: NextRequest) {
                   .join(',');
                 const utmCampaignsList = utmCampaigns.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
                 visitorsQuery = `
-                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  SELECT countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
                   WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -657,7 +657,7 @@ export async function GET(request: NextRequest) {
                   .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
                   .join(',');
                 visitorsQuery = `
-                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  SELECT countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
                   WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}))
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -665,7 +665,7 @@ export async function GET(request: NextRequest) {
               } else {
                 // No tracking codes, use campaign_id only
                 visitorsQuery = `
-                  SELECT COUNT(DISTINCT user_id) as unique_visitors
+                  SELECT countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
                   WHERE campaign_id = ${campaignId}
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -770,7 +770,7 @@ export async function GET(request: NextRequest) {
       try {
         const allChannelVisitorsQuery = await clickhouse.query({
           query: `
-        SELECT COUNT(DISTINCT user_id) as unique_visitors
+        SELECT countDistinct(user_id) as unique_visitors
         FROM analytics.visit_logs
         `,
           format: 'JSONEachRow'

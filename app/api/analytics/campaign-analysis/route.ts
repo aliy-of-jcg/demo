@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
     // This ensures each user is counted only once per campaign, matching the campaigns page behavior
     const visitMetricsQuery = `
       SELECT 
-        COUNT(DISTINCT user_id) as unique_visitors,
+        countDistinct(user_id) as unique_visitors,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs
       WHERE ${whereClause}
@@ -327,7 +327,7 @@ export async function GET(request: NextRequest) {
     const dailyQuery = `
       SELECT 
         toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
-        COUNT(DISTINCT user_id) as visitors,
+        countDistinct(user_id) as visitors,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs
       WHERE ${whereClause}
@@ -378,7 +378,7 @@ export async function GET(request: NextRequest) {
           // Get visitors and conversions for this UTM
           const utmVisitQuery = `
             SELECT 
-              COUNT(DISTINCT user_id) as unique_visitors,
+              countDistinct(user_id) as unique_visitors,
               countIf(event_type = 'conversion') as conversions
             FROM analytics.visit_logs
             WHERE ${utmWhereClause}
@@ -425,7 +425,7 @@ export async function GET(request: NextRequest) {
           const utmDailyQuery = `
             SELECT 
               toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
-              COUNT(DISTINCT user_id) as visitors,
+              countDistinct(user_id) as visitors,
               countIf(event_type = 'conversion') as conversions
             FROM analytics.visit_logs
             WHERE ${utmWhereClause}

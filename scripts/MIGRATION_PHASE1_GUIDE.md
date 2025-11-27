@@ -125,12 +125,12 @@ After migration, test your queries:
 
 ```sql
 -- Test date-range query (should be faster)
-SELECT COUNT(DISTINCT user_id) 
+SELECT countDistinct(user_id) 
 FROM analytics.visit_logs 
 WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN '2024-01-01' AND '2024-01-31';
 
 -- Test campaign query
-SELECT campaign_id, COUNT(DISTINCT user_id)
+SELECT campaign_id, countDistinct(user_id)
 FROM analytics.visit_logs
 WHERE campaign_id = 1
 GROUP BY campaign_id;

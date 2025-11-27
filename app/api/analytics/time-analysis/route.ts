@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
-    
+
     console.log(`⏰ Time Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
 
     // Build WHERE clause for date filtering (using KST timezone)
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const hourlyQuery = `
       SELECT 
         toHour(toTimeZone(timestamp, 'Asia/Seoul')) as hour,
-        COUNT(DISTINCT user_id) as visitors,
+        countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     });
 
     const hourlyJson = await hourlyResult.json() as TimeAnalysisData[];
-    
+
     // Fill in missing hours with 0
     const hourlyData: HourlyData[] = Array.from({ length: 24 }, (_, i) => {
       const hourData = hourlyJson.find((row: TimeAnalysisData) => row.hour === i);
@@ -94,8 +94,8 @@ export async function GET(request: NextRequest) {
         visitors: hourData?.visitors || 0,
         pageviews: hourData?.pageviews || 0,
         conversions: hourData?.conversions || 0,
-        conversionRate: hourData && hourData.visitors > 0 
-          ? ((hourData.conversions / hourData.visitors) * 100).toFixed(2) 
+        conversionRate: hourData && hourData.visitors > 0
+          ? ((hourData.conversions / hourData.visitors) * 100).toFixed(2)
           : '0.00',
       };
     });
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
     const dayOfWeekQuery = `
       SELECT 
         toDayOfWeek(toTimeZone(timestamp, 'Asia/Seoul')) as day_of_week,
-        COUNT(DISTINCT user_id) as visitors,
+        countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs
@@ -119,9 +119,9 @@ export async function GET(request: NextRequest) {
     });
 
     const dayOfWeekJson = await dayOfWeekResult.json() as TimeAnalysisData[];
-    
+
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    
+
     // Fill in missing days with 0
     const dayOfWeekData: DayOfWeekData[] = Array.from({ length: 7 }, (_, i) => {
       const dayIndex = i + 1; // ClickHouse: 1=Monday, 7=Sunday
@@ -132,8 +132,8 @@ export async function GET(request: NextRequest) {
         visitors: dayData?.visitors || 0,
         pageviews: dayData?.pageviews || 0,
         conversions: dayData?.conversions || 0,
-        conversionRate: dayData && dayData.visitors > 0 
-          ? ((dayData.conversions / dayData.visitors) * 100).toFixed(2) 
+        conversionRate: dayData && dayData.visitors > 0
+          ? ((dayData.conversions / dayData.visitors) * 100).toFixed(2)
           : '0.00',
       };
     });
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     const dailyTrendQuery = `
       SELECT 
         toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
-        COUNT(DISTINCT user_id) as visitors,
+        countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs
@@ -156,19 +156,19 @@ export async function GET(request: NextRequest) {
       format: 'JSONEachRow',
     });
 
-    const dailyTrendJson = await dailyTrendResult.json() as { 
-      date: string; 
-      visitors: number; 
-      pageviews: number; 
-      conversions: number 
+    const dailyTrendJson = await dailyTrendResult.json() as {
+      date: string;
+      visitors: number;
+      pageviews: number;
+      conversions: number
     }[];
     const dailyTrendData: DailyTrendData[] = dailyTrendJson.map((row) => ({
       date: row.date,
       visitors: row.visitors,
       pageviews: row.pageviews,
       conversions: row.conversions,
-      conversionRate: row.visitors > 0 
-        ? ((row.conversions / row.visitors) * 100).toFixed(2) 
+      conversionRate: row.visitors > 0
+        ? ((row.conversions / row.visitors) * 100).toFixed(2)
         : '0.00',
     }));
 
@@ -205,9 +205,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Time-based analysis API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
       },
       { status: 500 }
     );

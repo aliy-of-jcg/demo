@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
     // Build WHERE clause
     const whereConditions = [`toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`];
     whereConditions.push(`event_type = 'conversion'`);
-    
+
     if (campaignId && campaignId !== 'all') {
       whereConditions.push(`campaign_id = ${campaignId}`);
     }
-    
+
     const whereClause = whereConditions.join(' AND ');
 
     // Get conversion summary by type
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         COUNT(*) as count,
         SUM(conversion_value) as total_value,
         AVG(conversion_value) as avg_value,
-        COUNT(DISTINCT user_id) as unique_users
+        countDistinct(user_id) as unique_users
       FROM analytics.visit_logs
       WHERE ${whereClause}
         AND conversion_type != ''
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     // Get conversion funnel (total visitors vs conversions)
     const funnelQuery = `
       SELECT 
-        COUNT(DISTINCT user_id) as total_visitors,
+        countDistinct(user_id) as total_visitors,
         countIf(event_type = 'conversion') as total_conversions,
         countIf(event_type = 'conversion' AND conversion_type = 'signup') as signup_conversions,
         countIf(event_type = 'conversion' AND conversion_type = 'purchase') as purchase_conversions,
