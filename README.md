@@ -32,6 +32,7 @@ Next.js 14로 구축된 포괄적인 마케팅 분석 및 캠페인 관리 플�
 - ⚡ **이중 데이터베이스 아키텍처** - 분석용 ClickHouse + 앱 데이터용 MySQL
 - 🔐 **인증 시스템** - 역할 기반 액세스 제어가 있는 안전한 JWT 기반 인증
 - 👥 **사용자 관리** - Owner, Admin, Observer, Regular 사용자 유형 지원
+- ⚙️ **시스템 관리** - Owner 전용 시스템 관리 메뉴 및 사용자 관리 기능
 - 📧 **이메일 통합** - Nodemailer를 사용한 자동 알림 및 비밀번호 재설정
 - 🔄 **세션 관리** - 쿠키 기반 세션을 사용한 방문자 추적
 - 📍 **IP 지리적 위치** - 자동 국가/도시 감지
@@ -178,6 +179,7 @@ demo/
 │   │   ├── track/         # 외부 추적 엔드포인트
 │   │   ├── track-internal/# 내부 테스트 엔드포인트
 │   │   ├── tracked-websites/ # 추적 웹사이트 관리 API
+│   │   ├── users/         # 사용자 관리 API (Owner 전용)
 │   │   ├── health/        # 헬스 체크 엔드포인트
 │   │   └── utm-codes/     # UTM 코드 유틸리티
 │   ├── auth/              # 인증 페이지 (로그인/회원가입)
@@ -193,6 +195,7 @@ demo/
 │   ├── time-analysis/     # 시간 기반 분석 (KST)
 │   ├── tracked-websites/  # 추적 웹사이트 관리 및 통계
 │   ├── debug-sessions/    # 세션 디버깅 도구
+│   ├── user-management/   # 사용자 관리 페이지 (Owner 전용)
 │   ├── utm-tools/         # UTM 도구
 │   │   ├── page.tsx       # UTM 링크 목록
 │   │   └── generator/     # UTM 링크 생성기
@@ -288,6 +291,7 @@ CosMos AI는 실시간 분석과 안정적인 애플리케이션 데이터 관�
 - `/api/performance/*` - 대시보드 성능 지표
 - `/api/utm-codes/*` - UTM 코드 유틸리티
 - `/api/tracked-websites/*` - 추적 웹사이트 관리
+- `/api/users/*` - 사용자 관리 (Owner 전용)
 - `/api/health` - 시스템 헬스 체크
 - `/t/[code]` - 짧은 URL 추적 리디렉션
 
@@ -444,6 +448,10 @@ NEXTAUTH_URL=http://localhost:3000
 
 #### 2. 사용자 역할 및 권한
 - **Owner** - 전체 시스템 액세스 (데이터베이스를 통해 수동 할당)
+  - 시스템 관리 메뉴 액세스
+  - 사용자 관리 기능 (사용자 보기, 업데이트, 삭제)
+  - 사용자 유형 및 상태 수정 가능
+  - 모든 다른 기능에 대한 전체 액세스
 - **Admin** - 캠페인 관리, 분석 보기, 데이터 내보내기
 - **Observer** - 분석 및 대시보드에 대한 읽기 전용 액세스
 - **Regular** - 기본 보기 액세스
@@ -571,6 +579,15 @@ window.CosmosTracker.trackConversion({
 - 세션 디버깅 페이지
 - 실시간 세션 데이터 검증
 - 추적 링크 테스트 및 검증
+
+**시스템 관리 (Owner 전용)**
+- 포괄적인 사용자 관리 기능이 있는 사용자 관리 페이지
+- 필터링 및 검색 기능이 있는 모든 사용자 보기
+- 사용자 유형 업데이트 (Admin, Observer, Regular)
+- 사용자 상태 관리 (Pending, Active, Stopped, Blocked)
+- 사용자 삭제 (소프트 삭제)
+- 사용자 통계 대시보드 (전체, 활성, 대기 중, 차단됨)
+- 마지막 로그인 추적 및 계정 생성 날짜
 
 **PDF 내보내기**
 - 모든 분석 대시보드를 PDF로 내보내기

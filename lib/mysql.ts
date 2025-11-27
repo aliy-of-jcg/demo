@@ -2,76 +2,76 @@ import mysql from 'mysql2/promise';
 
 // MySQL connection configuration
 const config = {
-  host: process.env.MYSQL_HOST || 'localhost',
-  port: parseInt(process.env.MYSQL_PORT || '3306'),
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
-  waitForConnections: true,
-  connectionLimit: 50, // Increased from 10 to 50
-  maxIdle: 10, // Maximum idle connections
-  idleTimeout: 60000, // Close idle connections after 60 seconds
-  queueLimit: 0,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 0,
+    host: process.env.MYSQL_HOST || 'localhost',
+    port: parseInt(process.env.MYSQL_PORT || '3306'),
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE,
+    timezone: '+00:00', // Set connection timezone to UTC for proper TIMESTAMP handling
+    waitForConnections: true,
+    connectionLimit: 50, // Increased from 10 to 50
+    maxIdle: 10, // Maximum idle connections
+    idleTimeout: 60000, // Close idle connections after 60 seconds
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
 };
 
 // Create connection pool
 let pool: mysql.Pool | null = null;
 
 export function getPool(): mysql.Pool {
-  if (!pool) {
-    pool = mysql.createPool(config);
-  }
-  return pool;
+    if (!pool) {
+        pool = mysql.createPool(config);
+    }
+    return pool;
 }
 
 export async function query<T = any>(
-  sql: string,
-  params?: any[]
+    sql: string,
+    params?: any[]
 ): Promise<T> {
-  const connection = await getPool().getConnection();
-  try {
-    const [rows] = await connection.execute(sql, params);
-    return rows as T;
-  } finally {
-    connection.release();
-  }
+    const connection = await getPool().getConnection();
+    try {
+        // Set connection timezone to UTC to ensure TIMESTAMP values are retrieved in UTC
+        await connection.execute("SET time_zone = '+00:00'");
+        const [rows] = await connection.execute(sql, params);
+        return rows as T;
+    } finally {
+        connection.release();
+    }
 }
 
 export async function queryOne<T = any>(
-  sql: string,
-  params?: any[]
+    sql: string,
+    params?: any[]
 ): Promise<T | null> {
-  const rows = await query<T[]>(sql, params);
-  return rows.length > 0 ? rows[0] : null;
+    const rows = await query<T[]>(sql, params);
+    return rows.length > 0 ? rows[0] : null;
 }
 
 export async function testConnection(): Promise<boolean> {
-  try {
-    const connection = await getPool().getConnection();
-    connection.release();
-    return true;
-  } catch (error) {
-    console.error('MySQL connection failed:', error);
-    return false;
-  }
+    try {
+        const connection = await getPool().getConnection();
+        connection.release();
+        return true;
+    } catch (error) {
+        console.error('MySQL connection failed:', error);
+        return false;
+    }
 }
 
 /**
  * Initialize MySQL database schema
  * Creates tables if they don't exist (idempotent)
- * 
+ *
  * Note: This uses inline SQL instead of reading from file to work in standalone builds.
  * The Docker init script handles file-based initialization.
  * Each CREATE TABLE is executed separately to avoid multi-statement issues.
  */
 export async function initMySQLSchema(): Promise<void> {
-  try {
-    // Execute each CREATE TABLE statement separately
-    // This avoids issues with multi-statement queries
-
-    const createUsersTable = `
+    try {
+        const createUsersTable = `
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         uuid VARCHAR(36) NOT NULL UNIQUE,
@@ -92,7 +92,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-    const createSessionsTable = `
+        const createSessionsTable = `
       CREATE TABLE IF NOT EXISTS sessions (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -106,7 +106,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-    const createPasswordResetTable = `
+        const createPasswordResetTable = `
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -123,7 +123,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-    const createCoursesTable = `
+        const createCoursesTable = `
       CREATE TABLE IF NOT EXISTS courses (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -140,7 +140,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-    const createCampaignsTable = `
+        const createCampaignsTable = `
       CREATE TABLE IF NOT EXISTS campaigns (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -167,7 +167,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-    const createUtmCodesTable = `
+        const createUtmCodesTable = `
       CREATE TABLE IF NOT EXISTS utm_codes (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -197,21 +197,24 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-    // Execute each statement separately
-    // Order matters: courses must be created before campaigns, campaigns before utm_codes
-    await query(createUsersTable);
-    await query(createSessionsTable);
-    await query(createPasswordResetTable);
-    await query(createCoursesTable);
-    await query(createCampaignsTable);
-    await query(createUtmCodesTable);
+        // Order matters: courses must be created before campaigns, campaigns before utm_codes
+        await query(createUsersTable);
+        await query(createSessionsTable);
+        await query(createPasswordResetTable);
+        await query(createCoursesTable);
+        await query(createCampaignsTable);
+        await query(createUtmCodesTable);
 
-    console.log('✅ MySQL schema initialized successfully');
-  } catch (error) {
-    // If initialization fails, log but don't fail
-    // Docker init should handle it on first container start
-    console.warn('⚠️ MySQL schema initialization warning:', error instanceof Error ? error.message : String(error));
-    console.log('💡 Note: Tables should be created via Docker init or manually');
-  }
+        console.log('✅ MySQL schema initialized successfully');
+    } catch (error) {
+        // If initialization fails, log but don't fail
+        // Docker init should handle it on first container start
+        console.warn(
+            '⚠️ MySQL schema initialization warning:',
+            error instanceof Error ? error.message : String(error)
+        );
+        console.log('💡 Note: Tables should be created via Docker init or manually');
+    }
 }
+
 

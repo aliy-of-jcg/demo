@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Fetch all users except owners
-        // Convert timestamps from UTC to KST (Asia/Seoul, UTC+9) - same as ClickHouse conversion
+        // Get timestamps in UTC - will convert to KST in JavaScript
         const users = await query<any[]>(
             `SELECT 
         id,
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
         contact_number,
         user_type,
         status,
-        CONVERT_TZ(created_at, '+00:00', '+09:00') as created_at,
-        CONVERT_TZ(last_login_at, '+00:00', '+09:00') as last_login_at
+        created_at,
+        last_login_at
       FROM users
       WHERE user_type != 'owner' AND status != 'hidden'
       ORDER BY created_at DESC`,
@@ -46,7 +46,6 @@ export async function GET(req: NextRequest) {
             success: true,
             users,
         });
-
     } catch (error: any) {
         console.error('Error fetching users:', error);
         return NextResponse.json(

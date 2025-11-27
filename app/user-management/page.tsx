@@ -121,9 +121,15 @@ export default function UserManagementPage() {
 
 
     const handleDeleteUser = async (user: User) => {
+        const deleteMessage = t("actions.delete.text", { company_name: user.company_name });
+        const highlightedMessage = deleteMessage.replace(
+            user.company_name,
+            `<strong style="color: #ef4444; font-size: 1.1em; font-weight: 600;">${user.company_name}</strong>`
+        );
+
         const result = await Swal.fire({
             title: t("actions.delete.title"),
-            text: t("actions.delete.text", { email: user.email }),
+            html: highlightedMessage,
             icon: "warning",
             showCancelButton: true,
             confirmButtonText: t("actions.delete.confirm"),
@@ -239,15 +245,46 @@ export default function UserManagementPage() {
     };
 
     const formatCreatedDate = (dateString: string): string => {
-        const date = new Date(dateString);
+        // MySQL returns UTC timestamps (due to SET time_zone = '+00:00')
+        // Parse as UTC and convert to KST (UTC+9)
+        const utcDate = new Date(dateString.endsWith('Z') ? dateString : dateString + 'Z');
+        const kstTimestamp = utcDate.getTime() + (9 * 60 * 60 * 1000);
+        const kstDate = new Date(kstTimestamp);
 
-        if (isToday(date)) {
+        // Get current date in KST
+        const now = new Date();
+        const kstNowTimestamp = now.getTime() + (9 * 60 * 60 * 1000);
+        const kstNow = new Date(kstNowTimestamp);
+
+        // Extract date components using UTC methods to avoid browser timezone issues
+        // After adding 9 hours, use UTC methods to get the KST date components
+        const kstYear = kstDate.getUTCFullYear();
+        const kstMonth = kstDate.getUTCMonth();
+        const kstDay = kstDate.getUTCDate();
+
+        const todayYear = kstNow.getUTCFullYear();
+        const todayMonth = kstNow.getUTCMonth();
+        const todayDay = kstNow.getUTCDate();
+
+        // Compare dates
+        if (kstYear === todayYear && kstMonth === todayMonth && kstDay === todayDay) {
             return "today";
-        } else if (isYesterday(date)) {
-            return "yesterday";
         } else {
-            // Format as YYMMDD (e.g., 241215 for Dec 15, 2024)
-            return format(date, "yyMMdd");
+            // Calculate yesterday in KST
+            const yesterdayDate = new Date(kstNowTimestamp - (24 * 60 * 60 * 1000));
+            const yesterdayYear = yesterdayDate.getUTCFullYear();
+            const yesterdayMonth = yesterdayDate.getUTCMonth();
+            const yesterdayDay = yesterdayDate.getUTCDate();
+
+            if (kstYear === yesterdayYear && kstMonth === yesterdayMonth && kstDay === yesterdayDay) {
+                return "yesterday";
+            } else {
+                // Format as YY/MM/DD in KST
+                const year = kstYear.toString().slice(-2);
+                const month = String(kstMonth + 1).padStart(2, '0');
+                const day = String(kstDay).padStart(2, '0');
+                return `${year}/${month}/${day}`;
+            }
         }
     };
 

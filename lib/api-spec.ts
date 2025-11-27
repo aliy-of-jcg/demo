@@ -2,8 +2,8 @@ export const apiSpec = {
   openapi: "3.0.0",
   info: {
     title: "CosMos AI Analytics & Tracking API",
-    version: "2.1.0",
-    description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, and campaign management capabilities. Updated with 35+ active endpoints.",
+    version: "2.2.0",
+    description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, campaign management, and user administration capabilities. Updated with 38+ active endpoints including user management.",
     contact: {
       name: "CosMos AI Support",
       email: "support@cosmosai.com",
@@ -51,6 +51,10 @@ export const apiSpec = {
     {
       name: "System",
       description: "Health checks and system monitoring (1 endpoint)",
+    },
+    {
+      name: "User Management",
+      description: "User management and administration (Owner only) (3 endpoints)",
     },
   ],
   paths: {
@@ -1573,6 +1577,166 @@ export const apiSpec = {
       },
     },
 
+    // ==================== USER MANAGEMENT ====================
+    "/api/users": {
+      get: {
+        tags: ["User Management"],
+        summary: "Get all users",
+        description: "Retrieve list of all users (Owner only). Returns users with their types, statuses, and account information.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        responses: {
+          200: {
+            description: "Users retrieved successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    users: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "number", example: 1 },
+                          uuid: { type: "string", example: "uuid-user-123" },
+                          email: { type: "string", example: "user@example.com" },
+                          company_name: { type: "string", example: "Example Corp" },
+                          contact_number: { type: "string", example: "+821012345678" },
+                          user_type: { type: "string", enum: ["admin", "observer", "regular"], example: "regular" },
+                          status: { type: "string", enum: ["pending", "active", "stopped", "blocked"], example: "active" },
+                          created_at: { type: "string", format: "date-time" },
+                          last_login_at: { type: "string", format: "date-time", nullable: true },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
+          },
+          403: {
+            description: "Forbidden - Owner privileges required",
+          },
+        },
+      },
+    },
+
+    "/api/users/{id}": {
+      patch: {
+        tags: ["User Management"],
+        summary: "Update user",
+        description: "Update user type or status (Owner only). Cannot modify owner accounts.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+            example: 1,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  user_type: { type: "string", enum: ["admin", "observer", "regular"], example: "admin" },
+                  status: { type: "string", enum: ["pending", "active", "stopped", "blocked"], example: "active" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "User updated successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "User updated successfully" },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: "Invalid user type or status",
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
+          },
+          403: {
+            description: "Forbidden - Owner privileges required or cannot modify owner accounts",
+          },
+          404: {
+            description: "User not found",
+          },
+        },
+      },
+      delete: {
+        tags: ["User Management"],
+        summary: "Delete user",
+        description: "Soft delete a user by setting status to hidden (Owner only). Cannot delete owner accounts.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "integer" },
+            example: 1,
+          },
+        ],
+        responses: {
+          200: {
+            description: "User deleted successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "User deleted successfully" },
+                  },
+                },
+              },
+            },
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
+          },
+          403: {
+            description: "Forbidden - Owner privileges required or cannot delete owner accounts",
+          },
+          404: {
+            description: "User not found",
+          },
+        },
+      },
+    },
+
     // ==================== TRACKED WEBSITES ====================
     "/api/tracked-websites/toggle": {
       patch: {
@@ -1622,6 +1786,14 @@ export const apiSpec = {
     },
   },
   components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description: "JWT token obtained from /api/auth/login endpoint",
+      },
+    },
     schemas: {
       Error: {
         type: "object",

@@ -32,6 +32,7 @@ A comprehensive marketing analytics and campaign management platform built with 
 - ⚡ **Dual Database Architecture** - ClickHouse for analytics + MySQL for app data
 - 🔐 **Authentication System** - Secure JWT-based authentication with role-based access control
 - 👥 **User Management** - Support for Owner, Admin, Observer, and Regular user types
+- ⚙️ **System Management** - Owner-only system administration menu with user management capabilities
 - 📧 **Email Integration** - Automated notifications and password reset with Nodemailer
 - 🔄 **Session Management** - Visitor tracking with cookie-based sessions
 - 📍 **IP Geolocation** - Automatic country/city detection
@@ -178,6 +179,7 @@ demo/
 │   │   ├── track/         # External tracking endpoint
 │   │   ├── track-internal/# Internal testing endpoint
 │   │   ├── tracked-websites/ # Tracked websites management API
+│   │   ├── users/         # User management API (Owner only)
 │   │   ├── health/        # Health check endpoint
 │   │   └── utm-codes/     # UTM code utilities
 │   ├── auth/              # Authentication pages (login/signup)
@@ -193,6 +195,7 @@ demo/
 │   ├── time-analysis/     # Time-based analytics (KST)
 │   ├── tracked-websites/  # Tracked websites management and statistics
 │   ├── debug-sessions/    # Session debugging tools
+│   ├── user-management/   # User management page (Owner only)
 │   ├── utm-tools/         # UTM tools
 │   │   ├── page.tsx       # UTM link list
 │   │   └── generator/     # UTM link generator
@@ -288,6 +291,7 @@ CosMos AI uses a dual-database architecture optimized for both real-time analyti
 - `/api/performance/*` - Dashboard performance metrics
 - `/api/utm-codes/*` - UTM code utilities
 - `/api/tracked-websites/*` - Tracked websites management
+- `/api/users/*` - User management (Owner only)
 - `/api/health` - System health check
 - `/t/[code]` - Short URL tracking redirection
 
@@ -445,6 +449,10 @@ The `docker-compose.yml` configures two services:
 
 #### 2. User Roles & Permissions
 - **Owner** - Full system access (manually assigned via database)
+  - Access to System Management menu
+  - User management capabilities (view, update, delete users)
+  - Can modify user types and statuses
+  - Full access to all other features
 - **Admin** - Manage campaigns, view analytics, export data
 - **Observer** - View-only access to analytics and dashboards
 - **Regular** - Basic view access
@@ -572,6 +580,15 @@ Access various analytics modules:
 - Session debugging page
 - Real-time session data validation
 - Tracking link testing and verification
+
+**System Management (Owner Only)**
+- User Management page with comprehensive user administration
+- View all users with filtering and search capabilities
+- Update user types (Admin, Observer, Regular)
+- Manage user statuses (Pending, Active, Stopped, Blocked)
+- Delete users (soft delete)
+- User statistics dashboard (Total, Active, Pending, Blocked)
+- Last login tracking and account creation dates
 
 **PDF Export**
 - Export any analytics dashboard to PDF

@@ -1282,7 +1282,7 @@
       },
       "delete": {
         "title": "Delete User?",
-        "text": "Are you sure you want to delete {email}? This action cannot be undone.",
+        "text": "Are you sure you want to delete {company_name}? This action cannot be undone.",
         "confirm": "Yes, Delete",
         "cancel": "Cancel",
         "deleting": "Deleting user...",
