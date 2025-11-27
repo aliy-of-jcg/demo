@@ -1182,6 +1182,8 @@
     "utmList": "UTM List",
     "utmGenerator": "UTM Generator",
     "analyticsTrackingSystem": "Analytics & Tracking System",
+    "systemManagement": "System Management",
+    "userManagement": "User Management",
     "closeMenu": "Close menu",
     "logAnalysisItems": {
       "performanceDashboard": "Performance Dashboard",
@@ -1205,5 +1207,93 @@
       "observer": "Observer",
       "regular": "Regular"
     }
+  },
+  "userManagement": {
+    "title": "User Management",
+    "subtitle": "Manage user accounts, roles, and permissions",
+    "timezone": "KST (UTC+9)",
+    "summary": {
+      "totalUsers": "Total Users",
+      "activeUsers": "Active Users",
+      "pendingApprovals": "Pending Approvals",
+      "blockedUsers": "Blocked Users",
+      "allAccounts": "All accounts",
+      "currentlyActive": "Currently active",
+      "awaitingApproval": "Awaiting approval",
+      "accessRestricted": "Access restricted"
+    },
+    "filters": {
+      "searchPlaceholder": "Search by email, company name...",
+      "allTypes": "All Types",
+      "allStatuses": "All Statuses"
+    },
+    "table": {
+      "email": "Email",
+      "companyName": "Company",
+      "userType": "Type",
+      "status": "Status",
+      "lastLogin": "Last Login",
+      "createdAt": "Created",
+      "actions": "Actions",
+      "noUsers": "No users found",
+      "never": "Never",
+      "changeStatus": "Change Status",
+      "changeType": "Change Type",
+      "deleteUser": "Delete User"
+    },
+    "mobile": {
+      "company": "Company:",
+      "type": "Type:",
+      "status": "Status:",
+      "lastLogin": "Last Login:",
+      "created": "Created:"
+    },
+    "userTypes": {
+      "admin": "Admin",
+      "observer": "Observer",
+      "regular": "Regular"
+    },
+    "status": {
+      "pending": "Pending",
+      "active": "Active",
+      "stopped": "Stopped",
+      "blocked": "Blocked"
+    },
+    "actions": {
+      "changeStatus": {
+        "title": "Change User Status",
+        "text": "Change status for {email}?",
+        "selectStatus": "Select new status:",
+        "confirm": "Change Status",
+        "cancel": "Cancel",
+        "updating": "Updating status...",
+        "success": "User status updated successfully!",
+        "error": "Failed to update status"
+      },
+      "changeType": {
+        "title": "Change User Type",
+        "text": "Change user type for {email}?",
+        "selectType": "Select new user type:",
+        "confirm": "Change Type",
+        "cancel": "Cancel",
+        "updating": "Updating user type...",
+        "success": "User type updated successfully!",
+        "error": "Failed to update user type"
+      },
+      "delete": {
+        "title": "Delete User?",
+        "text": "Are you sure you want to delete {email}? This action cannot be undone.",
+        "confirm": "Yes, Delete",
+        "cancel": "Cancel",
+        "deleting": "Deleting user...",
+        "success": "User deleted successfully!",
+        "error": "Failed to delete user"
+      }
+    },
+    "errors": {
+      "loadFailed": "Failed to load users",
+      "unauthorized": "You do not have permission to access this page"
+    },
+    "loading": "Loading users..."
   }
 }
