@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(req: NextRequest) {
   try {
     const { token, password, confirmPassword } = await req.json();
-    
+
     console.log(`🔐 Reset Password API - Token: ${token ? token.substring(0, 10) + '...' : 'missing'}`);
 
     // Validation
@@ -91,11 +91,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check user status
-    if (tokenData.status !== 'active') {
+    // Check user status - handle hidden status specially (pretend account doesn't exist)
+    if (tokenData.status === 'hidden') {
       return NextResponse.json(
-        { success: false, message: 'Your account is not active' },
-        { status: 403 }
+        { success: false, message: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+
+    // Handle other non-active statuses with specific messages
+    if (tokenData.status !== 'active') {
+      let message: string;
+      let statusCode = 403;
+
+      switch (tokenData.status) {
+        case 'pending':
+          message = 'Your account is pending approval. Please contact your administrator or wait for activation.';
+          break;
+        case 'stopped':
+          message = 'Your account has been stopped. Please contact support for assistance.';
+          break;
+        case 'blocked':
+          message = 'Your account has been blocked. Please contact support if you believe this is an error.';
+          break;
+        default:
+          message = 'Invalid email or password';
+          statusCode = 401;
+      }
+
+      return NextResponse.json(
+        { success: false, message },
+        { status: statusCode }
       );
     }
 

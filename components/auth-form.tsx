@@ -19,7 +19,7 @@ export function AuthForm() {
   const tLogin = useTranslations('auth.login');
   const tSignup = useTranslations('auth.signup');
   const tErrors = useTranslations('auth.errors');
-  
+
   const [mode, setMode] = useState<AuthMode>("login");
   const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,7 +103,28 @@ export function AuthForm() {
         localStorage.setItem("user", JSON.stringify(data.user));
         router.push("/");
       } else {
-        setErrors({ form: data.message });
+        // Translate error codes from backend
+        let errorMessage = data.message;
+
+        switch (data.message) {
+          case 'ACCOUNT_PENDING':
+            errorMessage = tErrors('accountPending');
+            break;
+          case 'ACCOUNT_STOPPED':
+            errorMessage = tErrors('accountStopped');
+            break;
+          case 'ACCOUNT_BLOCKED':
+            errorMessage = tErrors('accountBlocked');
+            break;
+          case 'INVALID_CREDENTIALS':
+            errorMessage = tErrors('invalidCredentials');
+            break;
+          default:
+            // If it's already a translated message or unknown error
+            errorMessage = data.message;
+        }
+
+        setErrors({ form: errorMessage });
       }
     } catch (error) {
       setErrors({ form: tErrors('loginFailed') });
@@ -206,11 +227,10 @@ export function AuthForm() {
                 <button
                   type="button"
                   onClick={() => selectUserType("admin")}
-                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-indigo-500 hover:bg-indigo-50 ${
-                    selectedUserType === "admin"
+                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-indigo-500 hover:bg-indigo-50 ${selectedUserType === "admin"
                       ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600 ring-offset-2"
                       : "border-gray-200"
-                  }`}
+                    }`}
                 >
                   {selectedUserType === "admin" && (
                     <div className="absolute -right-1 -top-1 rounded-full bg-indigo-600 p-1">
@@ -224,11 +244,10 @@ export function AuthForm() {
                 <button
                   type="button"
                   onClick={() => selectUserType("observer")}
-                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-purple-500 hover:bg-purple-50 ${
-                    selectedUserType === "observer"
+                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-purple-500 hover:bg-purple-50 ${selectedUserType === "observer"
                       ? "border-purple-600 bg-purple-50 ring-2 ring-purple-600 ring-offset-2"
                       : "border-gray-200"
-                  }`}
+                    }`}
                 >
                   {selectedUserType === "observer" && (
                     <div className="absolute -right-1 -top-1 rounded-full bg-purple-600 p-1">
@@ -242,11 +261,10 @@ export function AuthForm() {
                 <button
                   type="button"
                   onClick={() => selectUserType("regular")}
-                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-green-500 hover:bg-green-50 ${
-                    selectedUserType === "regular"
+                  className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-green-500 hover:bg-green-50 ${selectedUserType === "regular"
                       ? "border-green-600 bg-green-50 ring-2 ring-green-600 ring-offset-2"
                       : "border-gray-200"
-                  }`}
+                    }`}
                 >
                   {selectedUserType === "regular" && (
                     <div className="absolute -right-1 -top-1 rounded-full bg-green-600 p-1">
@@ -371,9 +389,8 @@ export function AuthForm() {
                   onChange={(e) =>
                     handleInputChange("confirmPassword", e.target.value)
                   }
-                  className={`pl-10 pr-10 ${
-                    errors.confirmPassword ? "border-red-500" : ""
-                  }`}
+                  className={`pl-10 pr-10 ${errors.confirmPassword ? "border-red-500" : ""
+                    }`}
                 />
                 <button
                   type="button"

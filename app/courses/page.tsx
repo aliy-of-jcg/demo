@@ -47,11 +47,11 @@ export default function CoursesPage() {
     if (!duration || duration.trim() === '') return '-';
     const num = parseInt(duration);
     if (isNaN(num)) return duration; // Return as-is if not a number
-    return num === 1 
-      ? `${num} ${t('modal.duration.month')}` 
+    return num === 1
+      ? `${num} ${t('modal.duration.month')}`
       : `${num} ${t('modal.duration.months')}`;
   };
-  
+
   const statusLabels: Record<string, string> = {
     active: t('status.active'),
     waiting: t('status.waiting'),
@@ -62,7 +62,7 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Initialize from URL params (only on first render)
   const [isInitialized, setIsInitialized] = useState(false);
   const [page, setPage] = useState(() => {
@@ -122,11 +122,11 @@ export default function CoursesPage() {
   // Update URL when page or limit changes (but not on initial render)
   useEffect(() => {
     if (!isInitialized) return;
-    
+
     const params = new URLSearchParams();
     params.set('page', page.toString());
     params.set('limit', limit.toString());
-    
+
     router.replace(`/courses?${params.toString()}`, { scroll: false });
   }, [page, limit, isInitialized, router]);
 
@@ -384,7 +384,7 @@ export default function CoursesPage() {
               className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-          
+
           <div>
             <select
               value={statusFilter}
@@ -605,11 +605,10 @@ export default function CoursesPage() {
               <button
                 key={pageNum}
                 onClick={() => setPage(pageNum)}
-                className={`px-3 py-1 rounded text-sm ${
-                  page === pageNum
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-3 py-1 rounded text-sm ${page === pageNum
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 {pageNum}
               </button>

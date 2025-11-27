@@ -49,18 +49,44 @@ export async function POST(req: NextRequest) {
 
     if (users.length === 0) {
       return NextResponse.json(
-        { valid: false, message: 'User not found' },
+        { valid: false, message: 'Invalid email or password' },
         { status: 401 }
       );
     }
 
     const user = users[0];
 
-    // Check if user is still active
-    if (user.status !== 'active') {
+    // Check user status - handle hidden status specially (pretend account doesn't exist)
+    if (user.status === 'hidden') {
       return NextResponse.json(
-        { valid: false, message: 'User account is not active' },
-        { status: 403 }
+        { valid: false, message: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+
+    // Handle other non-active statuses with specific messages
+    if (user.status !== 'active') {
+      let message: string;
+      let statusCode = 403;
+
+      switch (user.status) {
+        case 'pending':
+          message = 'Your account is pending approval. Please contact your administrator or wait for activation.';
+          break;
+        case 'stopped':
+          message = 'Your account has been stopped. Please contact support for assistance.';
+          break;
+        case 'blocked':
+          message = 'Your account has been blocked. Please contact support if you believe this is an error.';
+          break;
+        default:
+          message = 'Invalid email or password';
+          statusCode = 401;
+      }
+
+      return NextResponse.json(
+        { valid: false, message },
+        { status: statusCode }
       );
     }
 

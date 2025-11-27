@@ -70,7 +70,7 @@ export async function initMySQLSchema(): Promise<void> {
   try {
     // Execute each CREATE TABLE statement separately
     // This avoids issues with multi-statement queries
-    
+
     const createUsersTable = `
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -80,7 +80,7 @@ export async function initMySQLSchema(): Promise<void> {
         password_hash VARCHAR(255) NOT NULL,
         contact_number VARCHAR(50) NOT NULL,
         user_type ENUM('owner', 'admin', 'observer', 'regular') NOT NULL DEFAULT 'regular',
-        status ENUM('active', 'inactive', 'pending') DEFAULT 'active',
+        status ENUM('active', 'pending', 'stopped', 'blocked', 'hidden') DEFAULT 'active',
         last_login_at TIMESTAMP NULL DEFAULT NULL,
         created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -205,7 +205,7 @@ export async function initMySQLSchema(): Promise<void> {
     await query(createCoursesTable);
     await query(createCampaignsTable);
     await query(createUtmCodesTable);
-    
+
     console.log('✅ MySQL schema initialized successfully');
   } catch (error) {
     // If initialization fails, log but don't fail

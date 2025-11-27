@@ -8,7 +8,7 @@ export async function GET(
   try {
     const id = params.id;
     const pool = getPool();
-    
+
     const [courses] = await pool.execute(
       'SELECT * FROM courses WHERE id = ?',
       [id]
@@ -115,25 +115,25 @@ export async function DELETE(
   try {
     const id = params.id;
     const pool = getPool();
-    
+
     // Check if course has active campaigns
     const [campaigns] = await pool.execute(
       'SELECT COUNT(*) as count FROM campaigns WHERE course_id = ? AND status != ?',
       [id, 'hidden']
     );
-    
+
     const campaignCount = (campaigns as any)[0].count;
-    
+
     if (campaignCount > 0) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: `Cannot delete course with ${campaignCount} active campaign${campaignCount > 1 ? 's' : ''}. Please delete or reassign the campaign${campaignCount > 1 ? 's' : ''} first.` 
+        {
+          success: false,
+          error: `Cannot delete course with ${campaignCount} active campaign${campaignCount > 1 ? 's' : ''}. Please delete or reassign the campaign${campaignCount > 1 ? 's' : ''} first.`
         },
         { status: 400 }
       );
     }
-    
+
     // Soft delete - set status to 'hidden' instead of deleting
     await pool.execute(
       'UPDATE courses SET status = ? WHERE id = ?',

@@ -47,7 +47,11 @@
       "userTypeRequired": "사용자 유형을 선택해주세요",
       "passwordsNoMatch": "비밀번호가 일치하지 않습니다",
       "loginFailed": "로그인에 실패했습니다. 다시 시도해주세요.",
-      "signupFailed": "가입에 실패했습니다. 다시 시도해주세요."
+      "signupFailed": "가입에 실패했습니다. 다시 시도해주세요.",
+      "accountPending": "계정 승인 대기 중입니다. 관리자에게 문의하거나 활성화를 기다려주세요.",
+      "accountStopped": "계정이 중지되었습니다. 지원팀에 문의해주세요.",
+      "accountBlocked": "계정이 차단되었습니다. 오류로 생각되시면 지원팀에 문의해주세요.",
+      "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다"
     },
     "footer": {
       "appName": "CosMos AI",

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   contact_number VARCHAR(50) NOT NULL,
   user_type ENUM('owner', 'admin', 'observer', 'regular') NOT NULL DEFAULT 'regular',
-  status ENUM('active', 'inactive', 'pending') DEFAULT 'active',
+  status ENUM('active', 'pending', 'stopped', 'blocked', 'hidden') DEFAULT 'active',
   last_login_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

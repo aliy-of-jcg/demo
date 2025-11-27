@@ -47,7 +47,11 @@
       "userTypeRequired": "Please select a user type",
       "passwordsNoMatch": "Passwords do not match",
       "loginFailed": "Login failed. Please try again.",
-      "signupFailed": "Signup failed. Please try again."
+      "signupFailed": "Signup failed. Please try again.",
+      "accountPending": "Your account is pending approval. Please contact your administrator or wait for activation.",
+      "accountStopped": "Your account has been stopped. Please contact support for assistance.",
+      "accountBlocked": "Your account has been blocked. Please contact support if you believe this is an error.",
+      "invalidCredentials": "Invalid email or password"
     },
     "footer": {
       "appName": "CosMos AI",
@@ -459,7 +463,7 @@
       "text": "Are you sure you want to delete this course?",
       "confirm": "Yes, delete it!",
       "cancel": "Cancel",
-      "hasCampaigns": "Cannot delete course with {count} active campaign{plural}. Please delete or reassign the campaign{plural} first.",
+      "hasCampaigns": "Cannot delete course with {count} active {plural}. Please delete or reassign the {plural} first.",
       "hasCampaignsSingular": "campaign",
       "hasCampaignsPlural": "campaigns"
     }

@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     const body: LoginRequest = await req.json();
     const { email, password } = body;
-    
+
     console.log(`🔐 Login API - Email: ${email}`);
 
     // Validation
@@ -35,20 +35,48 @@ export async function POST(req: NextRequest) {
       [email]
     );
 
+    // For hidden status or non-existent users, return generic error (prevent account enumeration)
     if (users.length === 0) {
       return NextResponse.json(
-        { success: false, message: 'Invalid email or password' } as LoginResponse,
+        { success: false, message: 'INVALID_CREDENTIALS', errorCode: 'INVALID_CREDENTIALS' } as LoginResponse,
         { status: 401 }
       );
     }
 
     const user = users[0];
 
-    // Check user status
-    if (user.status !== 'active') {
+    // Check user status - handle hidden status specially (pretend account doesn't exist)
+    if (user.status === 'hidden') {
+      // Return generic error to prevent account enumeration
       return NextResponse.json(
-        { success: false, message: 'Your account is not active' } as LoginResponse,
-        { status: 403 }
+        { success: false, message: 'INVALID_CREDENTIALS', errorCode: 'INVALID_CREDENTIALS' } as LoginResponse,
+        { status: 401 }
+      );
+    }
+
+    // Handle other non-active statuses with specific error codes
+    if (user.status !== 'active') {
+      let errorCode: string;
+      let statusCode = 403;
+
+      switch (user.status) {
+        case 'pending':
+          errorCode = 'ACCOUNT_PENDING';
+          break;
+        case 'stopped':
+          errorCode = 'ACCOUNT_STOPPED';
+          break;
+        case 'blocked':
+          errorCode = 'ACCOUNT_BLOCKED';
+          break;
+        default:
+          errorCode = 'INVALID_CREDENTIALS';
+          statusCode = 401;
+      }
+
+      return NextResponse.json(
+        { success: false, message: errorCode, errorCode } as LoginResponse,
+        { status: statusCode }
       );
     }
 
@@ -56,7 +84,7 @@ export async function POST(req: NextRequest) {
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
       return NextResponse.json(
-        { success: false, message: 'Invalid email or password' } as LoginResponse,
+        { success: false, message: 'INVALID_CREDENTIALS', errorCode: 'INVALID_CREDENTIALS' } as LoginResponse,
         { status: 401 }
       );
     }
