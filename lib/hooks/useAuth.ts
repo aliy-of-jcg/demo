@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { UserType, UserStatus } from '@/lib/types';
 
@@ -47,7 +47,6 @@ let authCheckPromise: Promise<void> | null = null;
 export function useAuth(requireAuth: boolean = true): UseAuthReturn {
     const router = useRouter();
     const pathname = usePathname();
-    const hasCheckedRef = useRef(false);
     const [authState, setAuthState] = useState<AuthState>({
         user: null,
         isLoading: true,
@@ -179,7 +178,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
         await checkAuth();
     }, [checkAuth]);
 
-    // Check auth on mount and when pathname changes
+    // Check auth on mount and when pathname changes (re-validate on every navigation)
     useEffect(() => {
         // Skip auth check for public pages
         const isPublicPage = pathname?.includes('/auth') ||
@@ -196,22 +195,16 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
             return;
         }
 
-        // Only check if we haven't checked for this pathname yet
-        if (hasCheckedRef.current) {
-            return;
-        }
-
+        // Re-validate auth on every route change to pick up permission/status changes
         // Small delay to prevent chunk loading race condition
         const timeout = setTimeout(() => {
-            hasCheckedRef.current = true;
             checkAuth();
         }, 100);
 
         return () => {
             clearTimeout(timeout);
-            hasCheckedRef.current = false;
         };
-    }, [pathname, requireAuth]); // Removed checkAuth from deps to prevent re-runs
+    }, [pathname, requireAuth, checkAuth]); // Include checkAuth to re-validate on navigation
 
     // Try to load user from localStorage on mount (for faster initial render)
     useEffect(() => {

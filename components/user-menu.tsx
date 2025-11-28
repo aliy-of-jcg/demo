@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { User, LogOut, Settings, Building2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 interface UserData {
   id: number;
@@ -16,21 +17,27 @@ interface UserData {
 export function UserMenu() {
   const t = useTranslations('userMenu');
   const router = useRouter();
-  const [user, setUser] = useState<UserData | null>(null);
+  const { user: authUser, refreshAuth } = useAuth(false); // Use useAuth hook to get latest user data
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Load user from localStorage
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error("Failed to parse user data:", error);
-      }
+  // Convert authUser to UserData format for compatibility
+  const user: UserData | null = authUser ? {
+    id: authUser.id,
+    uuid: authUser.uuid,
+    email: authUser.email,
+    company_name: authUser.company_name,
+    user_type: authUser.user_type,
+  } : null;
+
+  // Refresh auth status when user icon is clicked
+  const handleIconClick = async () => {
+    setIsOpen(!isOpen);
+    // If opening the menu, refresh auth to get latest status/permissions
+    if (!isOpen) {
+      await refreshAuth();
     }
-  }, []);
+  };
 
   useEffect(() => {
     // Close menu when clicking outside
@@ -85,7 +92,7 @@ export function UserMenu() {
     <div className="relative z-50" ref={menuRef}>
       {/* User Avatar Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleIconClick}
         className="flex items-center gap-2 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 p-2 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
         aria-label={t('userMenu')}
       >
@@ -97,7 +104,7 @@ export function UserMenu() {
         <>
           {/* Backdrop for mobile */}
           <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
-          
+
           {/* Dropdown - Opens below and slightly to the left to stay within sidebar */}
           <div className="absolute right-0 top-full mt-2 w-56 rounded-lg bg-white shadow-2xl border border-gray-200 z-50 overflow-hidden">
             {/* User Info Header */}
