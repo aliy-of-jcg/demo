@@ -53,6 +53,12 @@
       "accountBlocked": "Your account has been blocked. Please contact support if you believe this is an error.",
       "invalidCredentials": "Invalid email or password"
     },
+    "accessDenied": {
+      "title": "Access Denied",
+      "message": "You need to be promoted to <strong>Admin</strong> to access this feature.",
+      "contactMessage": "Please contact your administrator to request access.",
+      "goToDashboard": "Go to Dashboard"
+    },
     "footer": {
       "appName": "CosMos AI",
       "appDescription": "Advanced tracking and analytics platform for modern businesses",

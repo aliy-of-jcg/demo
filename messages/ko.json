@@ -53,6 +53,12 @@
       "accountBlocked": "계정이 차단되었습니다. 오류로 생각되시면 지원팀에 문의해주세요.",
       "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다"
     },
+    "accessDenied": {
+      "title": "액세스 거부됨",
+      "message": "이 기능에 액세스하려면 <strong>관리자</strong>로 승급되어야 합니다.",
+      "contactMessage": "액세스를 요청하려면 관리자에게 문의하세요.",
+      "goToDashboard": "대시보드로 이동"
+    },
     "footer": {
       "appName": "CosMos AI",
       "appDescription": "현대 비즈니스를 위한 고급 추적 및 분석 플랫폼",

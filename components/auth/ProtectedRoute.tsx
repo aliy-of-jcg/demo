@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { usePermission } from '@/lib/hooks/usePermission';
 import type { FullPermission } from '@/lib/permissions/types';
@@ -41,6 +42,7 @@ export function ProtectedRoute({
     showAccessDeniedMessage = false,
 }: ProtectedRouteProps) {
     const router = useRouter();
+    const t = useTranslations('auth');
     const { user, isAuthenticated, isLoading } = useAuth();
     const { hasPermission, hasAnyPermission, hasAllPermissions, canAccess } = usePermission();
 
@@ -93,7 +95,7 @@ export function ProtectedRoute({
     if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="text-gray-500">Loading...</div>
+                <div className="text-gray-500">{t('login.loading')}</div>
             </div>
         );
     }
@@ -120,24 +122,40 @@ export function ProtectedRoute({
 
     if (!hasAccess) {
         if (showAccessDeniedMessage) {
+            // Get translations and filter out any literal key paths that next-intl might return
+            const getTranslation = (key: string) => {
+                const translation = t(key);
+                // If next-intl returns the full key path (fallback), return empty string
+                if (translation && (translation.includes('auth.accessDenied') || translation.startsWith('accessDenied.'))) {
+                    return '';
+                }
+                return translation;
+            };
+
+            const title = getTranslation('accessDenied.title') || 'Access Denied';
+            const message = getTranslation('accessDenied.message') || 'You need to be promoted to <strong>Admin</strong> to access this feature.';
+            const contactMessage = getTranslation('accessDenied.contactMessage') || 'Please contact your administrator to request access.';
+            const goToDashboard = getTranslation('accessDenied.goToDashboard') || 'Go to Dashboard';
+
             return (
                 <div className="flex h-[60vh] items-center justify-center p-4">
                     <div className="text-center max-w-md">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
                             <Lock className="h-8 w-8 text-red-600" />
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-                        <p className="text-gray-600 mb-2">
-                            You need to be promoted to <strong>Admin</strong> to access this feature.
-                        </p>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
+                        <p
+                            className="text-gray-600 mb-2"
+                            dangerouslySetInnerHTML={{ __html: message }}
+                        />
                         <p className="text-sm text-gray-500 mb-6">
-                            Please contact your administrator to request access.
+                            {contactMessage}
                         </p>
                         <button
                             onClick={() => router.push('/')}
                             className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                         >
-                            Go to Dashboard
+                            {goToDashboard}
                         </button>
                     </div>
                 </div>
