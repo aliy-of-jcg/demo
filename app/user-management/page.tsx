@@ -26,7 +26,7 @@ interface User {
     last_login_at: string | null;
 }
 
-export default function UserManagementPage() {
+function UserManagementPageContent() {
     const t = useTranslations("userManagement");
     const router = useRouter();
     const { hasPermission } = usePermission();
@@ -276,7 +276,7 @@ export default function UserManagementPage() {
     };
 
     return (
-        <ProtectedRoute permission="users:read">
+        <div>
             {loading && (
                 <div className="flex h-[60vh] items-center justify-center">
                     <div className="text-center">
@@ -612,6 +612,14 @@ export default function UserManagementPage() {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+export default function UserManagementPage() {
+    return (
+        <ProtectedRoute permission="users:read">
+            <UserManagementPageContent />
         </ProtectedRoute>
     );
 }

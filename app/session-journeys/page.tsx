@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  ArrowRight, 
-  Clock, 
-  Globe, 
-  Monitor, 
+import {
+  ArrowRight,
+  Clock,
+  Globe,
+  Monitor,
   MapPin,
   RefreshCw,
   Calendar,
@@ -15,6 +15,7 @@ import {
   LogOut
 } from "lucide-react";
 import { useTranslations } from 'next-intl';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface Page {
   page_url: string;
@@ -70,7 +71,7 @@ export default function SessionJourneysPage() {
         limit: '50'
       });
 
-      const response = await fetch(`/api/analytics/session-journeys?${params}`);
+      const response = await fetchWithAuth(`/api/analytics/session-journeys?${params}`);
       const data = await response.json();
 
       if (data.success) {
@@ -174,7 +175,7 @@ export default function SessionJourneysPage() {
             </div>
             <div className="text-sm text-gray-600">{t('stats.totalSessions')}</div>
           </div>
-          
+
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
             <div className="flex items-center gap-3 mb-2">
               <Globe className="w-8 h-8 text-green-600" />
@@ -189,7 +190,7 @@ export default function SessionJourneysPage() {
             <div className="flex items-center gap-3 mb-2">
               <Clock className="w-8 h-8 text-purple-600" />
               <div className="text-3xl font-bold text-gray-900">
-                {sessions.length > 0 
+                {sessions.length > 0
                   ? formatDuration(Math.round(sessions.reduce((sum, s) => sum + s.duration, 0) / sessions.length))
                   : '0s'}
               </div>
@@ -276,11 +277,10 @@ export default function SessionJourneysPage() {
                         <div className={`flex items-start gap-4 ${session.has_exit_event ? 'pb-8' : ''} ${(index !== session.pages.length - 1 || session.has_exit_event) ? 'border-l-2 border-gray-200 ml-3' : ''}`}>
                           {/* Sequence Number with Icon Overlay */}
                           <div className="relative flex-shrink-0">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${
-                              page.is_landing_page === 1
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${page.is_landing_page === 1
                                 ? 'bg-green-500 text-white'
                                 : 'bg-blue-500 text-white'
-                            }`}>
+                              }`}>
                               {page.page_sequence}
                             </div>
                             {/* Landing Icon */}
@@ -337,7 +337,7 @@ export default function SessionJourneysPage() {
                             <LogOut className="w-4 h-4" />
                           </div>
                         </div>
-                        
+
                         <div className="flex-1 bg-red-50 rounded-lg p-4 border border-red-200">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">

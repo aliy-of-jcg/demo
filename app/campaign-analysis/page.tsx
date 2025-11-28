@@ -6,6 +6,7 @@ import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface CampaignData {
   id: number;
@@ -163,7 +164,7 @@ export default function CampaignAnalysisPage() {
           start_date: dateRange.start,
           end_date: dateRange.end
         });
-        const response = await fetch(`/api/analytics/campaign-analysis?${params}`);
+        const response = await fetchWithAuth(`/api/analytics/campaign-analysis?${params}`);
         const result = await response.json();
 
         if (!result.success) {

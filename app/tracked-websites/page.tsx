@@ -8,6 +8,7 @@ import Swal from 'sweetalert2';
 import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface WebsiteData {
   domain: string;
@@ -143,7 +144,7 @@ export default function TrackedWebsitesPage() {
         start: dateRange.start,
         end: dateRange.end
       });
-      const response = await fetch(`/api/analytics/tracked-websites?${params}`);
+      const response = await fetchWithAuth(`/api/analytics/tracked-websites?${params}`);
       const result = await response.json();
 
       if (!result.success) {

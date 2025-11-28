@@ -6,6 +6,7 @@ import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface Campaign {
   campaign_id: number;
@@ -61,7 +62,7 @@ export default function ChannelPerformancePage() {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    
+
     setDateRange({
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
@@ -78,13 +79,13 @@ export default function ChannelPerformancePage() {
           start: dateRange.start,
           end: dateRange.end
         });
-        const response = await fetch(`/api/analytics/channel-performance?${params}`);
+        const response = await fetchWithAuth(`/api/analytics/channel-performance?${params}`);
         const result = await response.json();
-        
+
         if (!result.success) {
           throw new Error(result.error || 'Failed to fetch data');
         }
-        
+
         setData(result);
       } catch (err) {
         console.error('Error fetching channel performance data:', err);
@@ -153,15 +154,15 @@ export default function ChannelPerformancePage() {
           {/* Left: Date Range Picker */}
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -221,7 +222,7 @@ export default function ChannelPerformancePage() {
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 10 }} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: any, name: string) => {
                       if (name === 'adCost') return [formatCurrency(value), t('chart.adCost')];
                       return [value, name === 'visits' ? t('chart.visits') : name === 'conversions' ? t('chart.conversions') : name];
@@ -247,221 +248,221 @@ export default function ChannelPerformancePage() {
 
           {/* Channel Sections - Detailed Tables */}
           {data.channels.length > 0 && data.channels.map((channelData, idx) => {
-              const colors = getChannelColor(channelData.channel);
-              const visibleCampaigns = channelData.campaigns.filter((campaign) => campaign.status !== "hidden");
+            const colors = getChannelColor(channelData.channel);
+            const visibleCampaigns = channelData.campaigns.filter((campaign) => campaign.status !== "hidden");
 
-              return (
-                <div key={idx} className={`bg-white rounded-lg shadow-sm border ${colors.border} mb-4 sm:mb-6`}>
-                  {/* Channel Header */}
-                  <div className={`p-4 sm:p-6 ${colors.bg} border-b ${colors.border}`}>
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      <div>
-                        <h2 className={`text-xl sm:text-2xl font-bold ${colors.text} capitalize`}>
-                          {channelData.channel}
-                        </h2>
-                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                          {visibleCampaigns.length} {visibleCampaigns.length !== 1 ? t('table.campaigns') : t('table.campaign')}
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 text-left lg:text-right">
-                        <div>
-                          <p className="text-xs text-gray-600">{t('metrics.totalVisits')}</p>
-                          <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{channelData.total_visits.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-600">{t('metrics.totalConversions')}</p>
-                          <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{channelData.total_conversions}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-600">{t('metrics.totalAdCost')}</p>
-                          <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{formatCurrency(channelData.total_ad_cost)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-600">{t('metrics.avgCTR')}</p>
-                          <p className={`text-base sm:text-lg lg:text-xl font-bold ${colors.text}`}>{channelData.avg_ctr}%</p>
-                        </div>
-                      </div>
+            return (
+              <div key={idx} className={`bg-white rounded-lg shadow-sm border ${colors.border} mb-4 sm:mb-6`}>
+                {/* Channel Header */}
+                <div className={`p-4 sm:p-6 ${colors.bg} border-b ${colors.border}`}>
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                      <h2 className={`text-xl sm:text-2xl font-bold ${colors.text} capitalize`}>
+                        {channelData.channel}
+                      </h2>
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                        {visibleCampaigns.length} {visibleCampaigns.length !== 1 ? t('table.campaigns') : t('table.campaign')}
+                      </p>
                     </div>
-                  </div>
-
-                  {/* Campaign Table */}
-                  {/* Desktop Table View */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('table.campaign')}
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('table.adType')}
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('table.visits')}
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('table.conversions')}
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('table.convRate')}
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('table.adCost')}
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('table.ctr')}
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            {t('table.status')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {visibleCampaigns.map((campaign, campaignIdx) => {
-                          const statusStyle = getStatusBadge(campaign.status);
-                          const costPerConversion = campaign.conversions > 0 ? campaign.ad_cost / campaign.conversions : 0;
-                          
-                          return (
-                            <tr key={campaignIdx} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-gray-900">{campaign.campaign_name}</div>
-                                <div className="text-xs text-gray-500">ID: {campaign.campaign_id}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
-                                {campaign.medium}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {campaign.visits.toLocaleString()}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {campaign.conversions}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                                {campaign.conversion_rate}%
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {formatCurrency(campaign.ad_cost)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
-                                {campaign.ctr}%
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
-                                  {campaign.status}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      {/* Channel Totals Row */}
-                      <tfoot className="bg-gray-100 font-semibold">
-                        <tr>
-                          <td colSpan={2} className="px-6 py-4 text-sm text-gray-900">
-                            {t('table.channelTotal')}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {channelData.total_visits.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {channelData.total_conversions}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-green-600">
-                            {channelData.total_visits > 0 
-                              ? ((channelData.total_conversions / channelData.total_visits) * 100).toFixed(2)
-                              : '0.00'}%
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {formatCurrency(channelData.total_ad_cost)}
-                          </td>
-                          <td className="px-6 py-4 text-sm text-blue-600">
-                            {channelData.avg_ctr}%
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            -
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                  
-                  {/* Mobile/Tablet Card View */}
-                  <div className="lg:hidden divide-y divide-gray-200">
-                    {visibleCampaigns.map((campaign, campaignIdx) => {
-                      const statusStyle = getStatusBadge(campaign.status);
-                      
-                      return (
-                        <div key={campaignIdx} className="p-4 hover:bg-gray-50">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h3 className="text-sm font-semibold text-gray-900 mb-1">{campaign.campaign_name}</h3>
-                              <p className="text-xs text-gray-500">ID: {campaign.campaign_id}</p>
-                              <p className="text-xs text-gray-600 capitalize mt-1">Type: {campaign.medium}</p>
-                            </div>
-                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text} ml-2`}>
-                              {campaign.status}
-                            </span>
-                          </div>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div>
-                              <span className="text-gray-500 text-xs">{t('mobile.visits')}</span>
-                              <p className="font-medium text-gray-900">{campaign.visits.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 text-xs">{t('mobile.conversions')}</span>
-                              <p className="font-medium text-gray-900">{campaign.conversions}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 text-xs">{t('mobile.convRate')}</span>
-                              <p className="font-medium text-green-600">{campaign.conversion_rate}%</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 text-xs">{t('mobile.ctr')}</span>
-                              <p className="font-medium text-blue-600">{campaign.ctr}%</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-500 text-xs">{t('mobile.adCost')}</span>
-                              <p className="font-medium text-gray-900">{formatCurrency(campaign.ad_cost)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Mobile Totals Card */}
-                    <div className="bg-gray-100 p-4">
-                      <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('table.channelTotal')}</h3>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <span className="text-gray-600 text-xs">{t('mobile.visits')}</span>
-                          <p className="font-semibold text-gray-900">{channelData.total_visits.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 text-xs">{t('mobile.conversions')}</span>
-                          <p className="font-semibold text-gray-900">{channelData.total_conversions}</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 text-xs">{t('mobile.convRate')}</span>
-                          <p className="font-semibold text-green-600">
-                            {channelData.total_visits > 0 
-                              ? ((channelData.total_conversions / channelData.total_visits) * 100).toFixed(2)
-                              : '0.00'}%
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 text-xs">{t('mobile.ctr')}</span>
-                          <p className="font-semibold text-blue-600">{channelData.avg_ctr}%</p>
-                        </div>
-                        <div>
-                          <span className="text-gray-600 text-xs">{t('mobile.adCost')}</span>
-                          <p className="font-semibold text-gray-900">{formatCurrency(channelData.total_ad_cost)}</p>
-                        </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 text-left lg:text-right">
+                      <div>
+                        <p className="text-xs text-gray-600">{t('metrics.totalVisits')}</p>
+                        <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{channelData.total_visits.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600">{t('metrics.totalConversions')}</p>
+                        <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{channelData.total_conversions}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600">{t('metrics.totalAdCost')}</p>
+                        <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{formatCurrency(channelData.total_ad_cost)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600">{t('metrics.avgCTR')}</p>
+                        <p className={`text-base sm:text-lg lg:text-xl font-bold ${colors.text}`}>{channelData.avg_ctr}%</p>
                       </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+
+                {/* Campaign Table */}
+                {/* Desktop Table View */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.campaign')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.adType')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.visits')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.conversions')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.convRate')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.adCost')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.ctr')}
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.status')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {visibleCampaigns.map((campaign, campaignIdx) => {
+                        const statusStyle = getStatusBadge(campaign.status);
+                        const costPerConversion = campaign.conversions > 0 ? campaign.ad_cost / campaign.conversions : 0;
+
+                        return (
+                          <tr key={campaignIdx} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">{campaign.campaign_name}</div>
+                              <div className="text-xs text-gray-500">ID: {campaign.campaign_id}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
+                              {campaign.medium}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {campaign.visits.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {campaign.conversions}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                              {campaign.conversion_rate}%
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {formatCurrency(campaign.ad_cost)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 font-medium">
+                              {campaign.ctr}%
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
+                                {campaign.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    {/* Channel Totals Row */}
+                    <tfoot className="bg-gray-100 font-semibold">
+                      <tr>
+                        <td colSpan={2} className="px-6 py-4 text-sm text-gray-900">
+                          {t('table.channelTotal')}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {channelData.total_visits.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {channelData.total_conversions}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-green-600">
+                          {channelData.total_visits > 0
+                            ? ((channelData.total_conversions / channelData.total_visits) * 100).toFixed(2)
+                            : '0.00'}%
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {formatCurrency(channelData.total_ad_cost)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-blue-600">
+                          {channelData.avg_ctr}%
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          -
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Mobile/Tablet Card View */}
+                <div className="lg:hidden divide-y divide-gray-200">
+                  {visibleCampaigns.map((campaign, campaignIdx) => {
+                    const statusStyle = getStatusBadge(campaign.status);
+
+                    return (
+                      <div key={campaignIdx} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-1">{campaign.campaign_name}</h3>
+                            <p className="text-xs text-gray-500">ID: {campaign.campaign_id}</p>
+                            <p className="text-xs text-gray-600 capitalize mt-1">Type: {campaign.medium}</p>
+                          </div>
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text} ml-2`}>
+                            {campaign.status}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.visits')}</span>
+                            <p className="font-medium text-gray-900">{campaign.visits.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.conversions')}</span>
+                            <p className="font-medium text-gray-900">{campaign.conversions}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.convRate')}</span>
+                            <p className="font-medium text-green-600">{campaign.conversion_rate}%</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.ctr')}</span>
+                            <p className="font-medium text-blue-600">{campaign.ctr}%</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs">{t('mobile.adCost')}</span>
+                            <p className="font-medium text-gray-900">{formatCurrency(campaign.ad_cost)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Mobile Totals Card */}
+                  <div className="bg-gray-100 p-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3">{t('table.channelTotal')}</h3>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-600 text-xs">{t('mobile.visits')}</span>
+                        <p className="font-semibold text-gray-900">{channelData.total_visits.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 text-xs">{t('mobile.conversions')}</span>
+                        <p className="font-semibold text-gray-900">{channelData.total_conversions}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 text-xs">{t('mobile.convRate')}</span>
+                        <p className="font-semibold text-green-600">
+                          {channelData.total_visits > 0
+                            ? ((channelData.total_conversions / channelData.total_visits) * 100).toFixed(2)
+                            : '0.00'}%
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 text-xs">{t('mobile.ctr')}</span>
+                        <p className="font-semibold text-blue-600">{channelData.avg_ctr}%</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 text-xs">{t('mobile.adCost')}</span>
+                        <p className="font-semibold text-gray-900">{formatCurrency(channelData.total_ad_cost)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

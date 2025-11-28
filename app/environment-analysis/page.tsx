@@ -6,6 +6,7 @@ import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useTranslations } from 'next-intl';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface EnvironmentItem {
   device?: string;
@@ -48,7 +49,7 @@ export default function EnvironmentAnalysisPage() {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    
+
     setDateRange({
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
@@ -65,13 +66,13 @@ export default function EnvironmentAnalysisPage() {
           start_date: dateRange.start,
           end_date: dateRange.end
         });
-        const response = await fetch(`/api/analytics/environment-analysis?${params}`);
+        const response = await fetchWithAuth(`/api/analytics/environment-analysis?${params}`);
         const result = await response.json();
-        
+
         if (!result.success) {
           throw new Error(result.error || 'Failed to fetch data');
         }
-        
+
         setData(result);
       } catch (err) {
         console.error('Error fetching environment analysis data:', err);
@@ -106,15 +107,15 @@ export default function EnvironmentAnalysisPage() {
           {/* Left: Date Range Picker */}
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -247,7 +248,7 @@ export default function EnvironmentAnalysisPage() {
                   // Calculate weighted average conversion rate based on visitor counts
                   const totalVisitors = data.devices.reduce((sum, item) => sum + item.visitors, 0);
                   const totalConversions = data.devices.reduce((sum, item) => sum + (item.conversions || 0), 0);
-                  const avgRate = totalVisitors > 0 
+                  const avgRate = totalVisitors > 0
                     ? ((totalConversions / totalVisitors) * 100).toFixed(2)
                     : '0.00';
                   return avgRate + '%';
@@ -287,8 +288,8 @@ export default function EnvironmentAnalysisPage() {
                       const percentage = total > 0 ? ((device.visitors / total) * 100).toFixed(0) : '0';
                       return (
                         <div key={idx} className="flex items-center gap-2 min-w-0">
-                          <div 
-                            className="w-3 h-3 rounded-sm flex-shrink-0" 
+                          <div
+                            className="w-3 h-3 rounded-sm flex-shrink-0"
                             style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                           ></div>
                           <span className="text-xs text-gray-700 truncate flex-1 capitalize">{device.device || 'Unknown'}</span>
@@ -414,8 +415,8 @@ export default function EnvironmentAnalysisPage() {
                       const percentage = total > 0 ? ((browser.visitors / total) * 100).toFixed(0) : '0';
                       return (
                         <div key={idx} className="flex items-center gap-2 min-w-0">
-                          <div 
-                            className="w-3 h-3 rounded-sm flex-shrink-0" 
+                          <div
+                            className="w-3 h-3 rounded-sm flex-shrink-0"
                             style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                           ></div>
                           <span className="text-xs text-gray-700 truncate flex-1">{browser.browser || 'Unknown'}</span>

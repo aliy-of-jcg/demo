@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
+import { requirePermission } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
 export const dynamic = 'force-dynamic';
 
 // DEBUG: Only track these domains
 const DEBUG_DOMAINS = ['aptdecor.uz', 'gatoradestore.uz'];
 
-export async function GET(request: NextRequest) {
+export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('start_date');
@@ -163,5 +165,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 

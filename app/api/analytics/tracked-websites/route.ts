@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
+import { requirePermission } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +19,7 @@ interface WebsiteData {
   status: 'Active' | 'Inactive' | 'Disabled';
 }
 
-export async function GET(request: NextRequest) {
+export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
 
@@ -173,5 +175,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 

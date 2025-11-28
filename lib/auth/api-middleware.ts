@@ -204,11 +204,12 @@ export function requireAuth(handler: ApiRouteHandler): (req: NextRequest) => Pro
  */
 export function requirePermission(
     permission: FullPermission,
-    handler: ApiRouteHandler
+    handler: ApiRouteHandler,
+    options?: { requireActive?: boolean }
 ): (req: NextRequest) => Promise<NextResponse> {
     return withAuth(handler, {
         permissions: [permission],
-        requireActive: true,
+        requireActive: options?.requireActive !== false, // Default to true, but allow override
     });
 }
 

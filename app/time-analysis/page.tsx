@@ -6,6 +6,7 @@ import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface HourlyData {
   hour: number;
@@ -45,7 +46,7 @@ interface ApiResponse {
 
 export default function TimeAnalysisPage() {
   const t = useTranslations('timeAnalysis');
-  
+
   // Map English day names to translation keys
   const translateDay = (day: string): string => {
     const dayMap: Record<string, string> = {
@@ -59,7 +60,7 @@ export default function TimeAnalysisPage() {
     };
     return dayMap[day] || day;
   };
-  
+
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -78,7 +79,7 @@ export default function TimeAnalysisPage() {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    
+
     setDateRange({
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
@@ -95,13 +96,13 @@ export default function TimeAnalysisPage() {
           start_date: dateRange.start,
           end_date: dateRange.end
         });
-        const response = await fetch(`/api/analytics/time-analysis?${params}`);
+        const response = await fetchWithAuth(`/api/analytics/time-analysis?${params}`);
         const result = await response.json();
-        
+
         if (!result.success) {
           throw new Error(result.error || 'Failed to fetch data');
         }
-        
+
         setData(result);
       } catch (err) {
         console.error('Error fetching time analysis data:', err);
@@ -143,15 +144,15 @@ export default function TimeAnalysisPage() {
           {/* Left: Date Range Picker */}
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -188,7 +189,7 @@ export default function TimeAnalysisPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
       )}
-      
+
       {/* Error State */}
       {error && !loading && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -237,13 +238,13 @@ export default function TimeAnalysisPage() {
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={data.hourly}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="hour" 
+                  <XAxis
+                    dataKey="hour"
                     tick={{ fontSize: 10 }}
                     tickFormatter={(hour) => `${hour.toString().padStart(2, '0')}:00`}
                   />
                   <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip 
+                  <Tooltip
                     labelFormatter={(hour) => `Hour: ${hour.toString().padStart(2, '0')}:00 ${t('timezone')}`}
                     contentStyle={{ fontSize: '12px' }}
                   />

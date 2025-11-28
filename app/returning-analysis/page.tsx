@@ -6,6 +6,7 @@ import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface NewVsReturningData {
   new: {
@@ -71,7 +72,7 @@ export default function ReturningAnalysisPage() {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    
+
     setDateRange({
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
@@ -88,13 +89,13 @@ export default function ReturningAnalysisPage() {
           start_date: dateRange.start,
           end_date: dateRange.end
         });
-        const response = await fetch(`/api/analytics/returning-analysis?${params}`);
+        const response = await fetchWithAuth(`/api/analytics/returning-analysis?${params}`);
         const result = await response.json();
-        
+
         if (!result.success) {
           throw new Error(result.error || 'Failed to fetch data');
         }
-        
+
         setData(result);
       } catch (err) {
         console.error('Error fetching returning visitor analysis data:', err);
@@ -129,15 +130,15 @@ export default function ReturningAnalysisPage() {
           {/* Left: Date Range Picker */}
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -231,7 +232,7 @@ export default function ReturningAnalysisPage() {
                         <Cell fill="#3b82f6" />
                         <Cell fill="#10b981" />
                       </Pie>
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: any, name: string) => [
                           `${value.toLocaleString()} ${t('table.visitors').toLowerCase()}`,
                           name === t('metrics.new') ? t('insights.newVisitors') : t('insights.returningVisitors')
@@ -241,7 +242,7 @@ export default function ReturningAnalysisPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                
+
                 {/* Legend */}
                 <div className="flex flex-row sm:flex-col gap-3 sm:gap-4">
                   <div className="flex items-center gap-2">

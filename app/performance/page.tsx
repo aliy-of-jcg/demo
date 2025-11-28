@@ -6,6 +6,7 @@ import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface PerformanceData {
   metrics: {
@@ -30,7 +31,7 @@ interface PerformanceData {
 
 export default function PerformanceAnalysisPage() {
   const t = useTranslations('performance');
-  
+
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -46,10 +47,10 @@ export default function PerformanceAnalysisPage() {
 
   // Quick date range selection
   const setQuickRange = (days: number) => {
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - days);
-    
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+
     setDateRange({
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
@@ -66,21 +67,21 @@ export default function PerformanceAnalysisPage() {
           start: dateRange.start,
           end: dateRange.end
         });
-        const response = await fetch(`/api/analytics/performance?${params}`);
-      const result = await response.json();
-      
+        const response = await fetchWithAuth(`/api/analytics/performance?${params}`);
+        const result = await response.json();
+
         if (!result.success) {
           throw new Error(result.error || t('errors.fetchFailed'));
         }
-        
+
         setData(result);
       } catch (err) {
         console.error('Error fetching performance data:', err);
         setError(err instanceof Error ? err.message : t('errors.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  };
+      } finally {
+        setLoading(false);
+      }
+    };
 
     fetchData();
   }, [dateRange]);
@@ -160,14 +161,14 @@ export default function PerformanceAnalysisPage() {
           {/* Left: Date Range Picker */}
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-            <input 
+            <input
               type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
-            <input 
+            <input
               type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
@@ -268,10 +269,10 @@ export default function PerformanceAnalysisPage() {
               </p>
               <p className="text-xs text-gray-500 mt-1">{t('metrics.revenueDesc')}</p>
             </div>
-      </div>
+          </div>
 
           {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             {/* Visitor Trend Chart */}
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
@@ -279,59 +280,59 @@ export default function PerformanceAnalysisPage() {
                 <span className="text-xs text-gray-500">{t('charts.visitorTrend.subtitle')}</span>
               </div>
               <div className="h-48 sm:h-56 lg:h-64">{lineChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={lineChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 10 }}
-                        stroke="#9CA3AF"
-                      />
-                      <YAxis 
-                        tick={{ fontSize: 10 }}
-                        stroke="#9CA3AF"
-                      />
-                  <Tooltip 
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          padding: '8px 12px',
-                          fontSize: '12px'
-                        }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="current" 
-                        stroke="#3B82F6" 
-                        strokeWidth={2}
-                        name={t('charts.visitorTrend.currentPeriod')}
-                        dot={{ fill: '#3B82F6', r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="previous" 
-                        stroke="#10B981" 
-                        strokeWidth={2}
-                        name={t('charts.visitorTrend.previousPeriod')}
-                        dot={{ fill: '#10B981', r: 3 }}
-                        activeDot={{ r: 5 }}
-                        strokeDasharray="5 5"
-                      />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-                  <div className="flex items-center justify-center h-full text-gray-400">
-                <div className="text-center">
-                      <TrendingUp className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-xs sm:text-sm">{t('charts.visitorTrend.noData')}</p>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={lineChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10 }}
+                      stroke="#9CA3AF"
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10 }}
+                      stroke="#9CA3AF"
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        padding: '8px 12px',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="current"
+                      stroke="#3B82F6"
+                      strokeWidth={2}
+                      name={t('charts.visitorTrend.currentPeriod')}
+                      dot={{ fill: '#3B82F6', r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="previous"
+                      stroke="#10B981"
+                      strokeWidth={2}
+                      name={t('charts.visitorTrend.previousPeriod')}
+                      dot={{ fill: '#10B981', r: 3 }}
+                      activeDot={{ r: 5 }}
+                      strokeDasharray="5 5"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400">
+                  <div className="text-center">
+                    <TrendingUp className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-xs sm:text-sm">{t('charts.visitorTrend.noData')}</p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
               </div>
             </div>
 
@@ -361,7 +362,7 @@ export default function PerformanceAnalysisPage() {
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                           </Pie>
-                          <Tooltip 
+                          <Tooltip
                             contentStyle={{
                               backgroundColor: 'white',
                               border: '1px solid #e5e7eb',
@@ -377,13 +378,13 @@ export default function PerformanceAnalysisPage() {
                         <p className="text-xs text-gray-500">{t('charts.channelDistribution.total')}</p>
                       </div>
                     </div>
-                    
+
                     {/* Legend */}
                     <div className="flex-1 grid grid-cols-2 gap-2 sm:gap-3 w-full">
                       {pieChartData.map((item, idx) => (
                         <div key={idx} className="flex items-center gap-2 min-w-0">
-                          <div 
-                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm flex-shrink-0" 
+                          <div
+                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm flex-shrink-0"
                             style={{ backgroundColor: item.color }}
                           ></div>
                           <span className="text-xs text-gray-600 truncate flex-1">{item.name}</span>
@@ -397,16 +398,16 @@ export default function PerformanceAnalysisPage() {
                     <p className="text-xs sm:text-sm">{t('charts.channelDistribution.noData')}</p>
                   </div>
                 )}
-                </div>
               </div>
-      </div>
+            </div>
+          </div>
 
           {/* Channel Performance Table */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-4 sm:p-6 border-b border-gray-200">
               <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('table.title')}</h2>
             </div>
-            
+
             {/* Desktop Table View */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
@@ -469,7 +470,7 @@ export default function PerformanceAnalysisPage() {
                 </tbody>
               </table>
             </div>
-            
+
             {/* Mobile/Tablet Card View */}
             <div className="lg:hidden divide-y divide-gray-200">
               {channelDataWithColors.length > 0 ? (
@@ -510,7 +511,7 @@ export default function PerformanceAnalysisPage() {
                 </div>
               )}
             </div>
-            </div>
+          </div>
         </div>
       )}
 

@@ -7,6 +7,7 @@ import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useTranslations } from 'next-intl';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface PageData {
   page: string;
@@ -69,7 +70,7 @@ export default function PageFlowAnalysisPage() {
     const end = new Date();
     const start = new Date();
     start.setDate(start.getDate() - days);
-    
+
     setDateRange({
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
@@ -85,9 +86,9 @@ export default function PageFlowAnalysisPage() {
           start: dateRange.start,
           end: dateRange.end
         });
-        const response = await fetch(`/api/analytics/tracked-websites?${params}`);
+        const response = await fetchWithAuth(`/api/analytics/tracked-websites?${params}`);
         const result = await response.json();
-        
+
         if (result.success && result.websites) {
           setDomains(result.websites.map((w: { domain: string }) => ({ domain: w.domain })));
         }
@@ -112,22 +113,22 @@ export default function PageFlowAnalysisPage() {
           end_date: dateRange.end,
           limit: limit.toString()
         });
-        
+
         if (selectedDomain) {
           params.set('domain', selectedDomain);
         }
-        
+
         if (debouncedSearch) {
           params.set('search', debouncedSearch);
         }
-        
-        const response = await fetch(`/api/analytics/page-flow-analysis?${params}`);
+
+        const response = await fetchWithAuth(`/api/analytics/page-flow-analysis?${params}`);
         const result = await response.json();
-        
+
         if (!result.success) {
           throw new Error(result.error || 'Failed to fetch data');
         }
-        
+
         setData(result);
       } catch (err) {
         console.error('Error fetching page flow analysis data:', err);
@@ -178,15 +179,15 @@ export default function PageFlowAnalysisPage() {
           {/* Left: Date Range Picker */}
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
-            <input 
-              type="date" 
+            <input
+              type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -269,16 +270,16 @@ export default function PageFlowAnalysisPage() {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={data.utmBreakdown}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="utm_source" 
+                  <XAxis
+                    dataKey="utm_source"
                     label={{ value: t('utmChart.utmSource'), position: 'insideBottom', offset: -5, style: { fontSize: 11 } }}
                     tick={{ fontSize: 10 }}
                   />
-                  <YAxis 
+                  <YAxis
                     label={{ value: t('utmChart.avgPagesPerSession'), angle: -90, position: 'insideLeft', style: { fontSize: 11 } }}
                     tick={{ fontSize: 10 }}
                   />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: any, name: string) => {
                       if (name === 'avg_pageviews_per_session') return [value, t('utmChart.avgPagesPerSession')];
                       return [value, name];
@@ -286,15 +287,15 @@ export default function PageFlowAnalysisPage() {
                     labelFormatter={(label) => `${t('utmChart.utmSource')}: ${label}`}
                     contentStyle={{ fontSize: '12px' }}
                   />
-                  <Bar 
-                    dataKey="avg_pageviews_per_session" 
-                    fill="#3b82f6" 
+                  <Bar
+                    dataKey="avg_pageviews_per_session"
+                    fill="#3b82f6"
                     name={t('utmChart.avgPagesPerSession')}
                     radius={[8, 8, 0, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>
-              
+
               {/* Page Filters - Search, Domain Filter, and Limit Selector */}
               <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">

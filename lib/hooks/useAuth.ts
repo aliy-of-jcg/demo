@@ -216,19 +216,34 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
     // Try to load user from localStorage on mount (for faster initial render)
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
-        if (storedUser && !authState.user) {
+        const token = localStorage.getItem('auth_token');
+
+        if (storedUser && token && !authState.user && authState.isLoading) {
             try {
                 const user = JSON.parse(storedUser) as AuthUser;
                 setAuthState((prev) => ({
                     ...prev,
                     user,
                     isAuthenticated: true,
+                    isLoading: false, // Set loading to false when we have cached user
                 }));
             } catch (error) {
                 console.error('Error parsing stored user:', error);
+                // If parsing fails, ensure loading state is cleared
+                setAuthState((prev) => ({
+                    ...prev,
+                    isLoading: false,
+                }));
             }
+        } else if (!token && authState.isLoading) {
+            // No token, clear loading state immediately
+            setAuthState((prev) => ({
+                ...prev,
+                isLoading: false,
+                isAuthenticated: false,
+            }));
         }
-    }, [authState.user]);
+    }, [authState.user, authState.isLoading]);
 
     return {
         ...authState,
