@@ -4,7 +4,7 @@ import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
 
-export async function GET(request: NextRequest) {
+export const GET = requirePermission('utm_codes:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || '';
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 export const POST = requirePermission('utm_codes:create', async (request: NextRequest, context: AuthContext) => {
   try {

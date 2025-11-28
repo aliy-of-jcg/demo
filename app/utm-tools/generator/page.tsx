@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 function UTMGeneratorPageContent() {
   const t = useTranslations('utmTools.generator');
@@ -57,7 +58,7 @@ function UTMGeneratorPageContent() {
   const fetchCampaigns = async () => {
     try {
       // Fetch campaigns with source and medium
-      const campaignsRes = await fetch('/api/campaigns?limit=1000');
+      const campaignsRes = await fetchWithAuth('/api/campaigns?limit=1000');
       const campaignsData = await campaignsRes.json();
       if (campaignsData.success && campaignsData.campaigns) {
         setCampaigns(campaignsData.campaigns.map((c: any) => ({
@@ -75,7 +76,7 @@ function UTMGeneratorPageContent() {
   const fetchUTMData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/utm-codes/${editId}`);
+      const response = await fetchWithAuth(`/api/utm-codes/${editId}`);
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -229,7 +230,7 @@ function UTMGeneratorPageContent() {
       const url = isEditMode ? `/api/utm-codes/${editId}` : `/api/utm-codes`;
       const method = isEditMode ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await fetchWithAuth(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json',

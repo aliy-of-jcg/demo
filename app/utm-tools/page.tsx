@@ -11,6 +11,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface UTMCode {
   id: number;
@@ -75,7 +76,7 @@ export default function UTMListPage() {
       params.set('page', page.toString());
       params.set('limit', limit.toString());
 
-      const response = await fetch(`/api/utm-codes?${params.toString()}`, {
+      const response = await fetchWithAuth(`/api/utm-codes?${params.toString()}`, {
         cache: 'no-store'
       });
       const data = await response.json();
@@ -174,7 +175,7 @@ export default function UTMListPage() {
     toast.promise(
       (async () => {
         // Hard delete - actually remove from database
-        const response = await fetch(`/api/utm-codes/${id}`, {
+        const response = await fetchWithAuth(`/api/utm-codes/${id}`, {
           method: 'DELETE'
         });
 
@@ -217,7 +218,7 @@ export default function UTMListPage() {
 
     toast.promise(
       (async () => {
-        const response = await fetch(`/api/utm-codes/${id}`, {
+        const response = await fetchWithAuth(`/api/utm-codes/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus })
@@ -646,8 +647,8 @@ export default function UTMListPage() {
                   key={pageNum}
                   onClick={() => setPage(pageNum)}
                   className={`px-3 py-1 rounded text-sm ${page === pageNum
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   {pageNum}

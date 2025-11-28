@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
+import { requirePermission } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
-export async function GET(request: NextRequest) {
+export const GET = requirePermission('campaigns:read', async (request: NextRequest, context: AuthContext) => {
   const searchParams = request.nextUrl.searchParams;
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '10');
@@ -862,7 +864,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   }
-}
+});
 
 export async function POST(request: NextRequest) {
   try {

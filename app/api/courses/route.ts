@@ -41,7 +41,7 @@ interface TotalVisitsData {
   total: number;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = requirePermission('courses:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search') || '';
@@ -373,7 +373,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   }
-}
+});
 
 export const POST = requirePermission('courses:create', async (request: NextRequest, context: AuthContext) => {
   try {

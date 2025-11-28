@@ -13,6 +13,7 @@ import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
 import type { UserType } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
 
 interface User {
     id: number;
@@ -84,13 +85,7 @@ function UserManagementPageContent() {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem("auth_token");
-            const response = await fetch("/api/users", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
+            const response = await fetchWithAuth("/api/users");
             const data = await response.json();
 
             if (data.success) {
@@ -126,14 +121,9 @@ function UserManagementPageContent() {
 
         if (result.isConfirmed) {
             try {
-                const token = localStorage.getItem("auth_token");
-
                 toast.promise(
-                    fetch(`/api/users/${user.id}`, {
+                    fetchWithAuth(`/api/users/${user.id}`, {
                         method: "DELETE",
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
                     }).then(async (response) => {
                         const data = await response.json();
                         if (!data.success) {
@@ -156,14 +146,11 @@ function UserManagementPageContent() {
 
     const updateUser = async (userId: number, updates: any, loadingMessage: string) => {
         try {
-            const token = localStorage.getItem("auth_token");
-
             toast.promise(
-                fetch(`/api/users/${userId}`, {
+                fetchWithAuth(`/api/users/${userId}`, {
                     method: "PATCH",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                     body: JSON.stringify(updates),
                 }).then(async (response) => {

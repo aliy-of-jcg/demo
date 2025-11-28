@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface Course {
   id: number;
@@ -31,11 +32,11 @@ export default function EditCampaignPage() {
   const router = useRouter();
   const params = useParams();
   const campaignId = params.id as string;
-  
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingCampaign, setFetchingCampaign] = useState(true);
-  
+
   // Refs for scrolling to error fields
   const fieldRefs = {
     name: useRef<HTMLInputElement>(null),
@@ -46,7 +47,7 @@ export default function EditCampaignPage() {
     end_date: useRef<HTMLInputElement>(null),
     budget: useRef<HTMLInputElement>(null)
   };
-  
+
   const [formData, setFormData] = useState({
     name: '',
     course_id: '',
@@ -89,7 +90,7 @@ export default function EditCampaignPage() {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('/api/courses');
+      const response = await fetchWithAuth('/api/courses');
       const data = await response.json();
       if (data.success) {
         setCourses(data.courses);
@@ -102,9 +103,9 @@ export default function EditCampaignPage() {
   const fetchCampaign = async () => {
     try {
       setFetchingCampaign(true);
-      const response = await fetch(`/api/campaigns/${campaignId}`);
+      const response = await fetchWithAuth(`/api/campaigns/${campaignId}`);
       const data = await response.json();
-      
+
       if (data.success && data.campaign) {
         const campaign = data.campaign;
         setFormData({
@@ -170,20 +171,20 @@ export default function EditCampaignPage() {
     }
 
     setErrors(newErrors);
-    
+
     // Scroll to first error field
     if (Object.keys(newErrors).length > 0) {
       const firstErrorField = Object.keys(newErrors)[0] as keyof typeof fieldRefs;
       if (fieldRefs[firstErrorField]?.current) {
-        fieldRefs[firstErrorField].current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
+        fieldRefs[firstErrorField].current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
         });
         fieldRefs[firstErrorField].current?.focus();
       }
       toast.error('Please fill in all required fields correctly');
     }
-    
+
     return Object.keys(newErrors).length === 0;
   };
 
@@ -198,7 +199,7 @@ export default function EditCampaignPage() {
 
     const updatePromise = (async () => {
       try {
-        const response = await fetch(`/api/campaigns/${campaignId}`, {
+        const response = await fetchWithAuth(`/api/campaigns/${campaignId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -250,7 +251,7 @@ export default function EditCampaignPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       {/* Header */}
       <div className="mb-6">
-        <Link 
+        <Link
           href="/campaigns"
           className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4"
         >
@@ -268,7 +269,7 @@ export default function EditCampaignPage() {
             {/* Basic Information */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -280,9 +281,8 @@ export default function EditCampaignPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter campaign name (letters, numbers, underscores only)"
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.name ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.name ? 'border-red-500' : 'border-gray-300'
+                      }`}
                   />
                   {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
                 </div>
@@ -295,9 +295,8 @@ export default function EditCampaignPage() {
                     ref={fieldRefs.course_id}
                     value={formData.course_id}
                     onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.course_id ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.course_id ? 'border-red-500' : 'border-gray-300'
+                      }`}
                   >
                     <option value="">Select a course</option>
                     {courses.map((course) => (
@@ -343,7 +342,7 @@ export default function EditCampaignPage() {
             {/* Media & Ad Type */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Media & Ad Type</h2>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -353,9 +352,8 @@ export default function EditCampaignPage() {
                     ref={fieldRefs.source}
                     value={formData.source}
                     onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.source ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.source ? 'border-red-500' : 'border-gray-300'
+                      }`}
                   >
                     <option value="select">Select media</option>
                     <option value="naver">Naver</option>
@@ -375,9 +373,8 @@ export default function EditCampaignPage() {
                     ref={fieldRefs.medium}
                     value={formData.medium}
                     onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.medium ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.medium ? 'border-red-500' : 'border-gray-300'
+                      }`}
                   >
                     <option value="select">Select ad type</option>
                     <option value="search">Search</option>
@@ -393,7 +390,7 @@ export default function EditCampaignPage() {
             {/* Period & Budget */}
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Period & Budget</h2>
-              
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -405,9 +402,8 @@ export default function EditCampaignPage() {
                       type="date"
                       value={formData.start_date}
                       onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.start_date ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.start_date ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.start_date && <p className="text-red-500 text-sm mt-1">{errors.start_date}</p>}
                   </div>
@@ -421,9 +417,8 @@ export default function EditCampaignPage() {
                       type="date"
                       value={formData.end_date}
                       onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.end_date ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.end_date ? 'border-red-500' : 'border-gray-300'
+                        }`}
                     />
                     {errors.end_date && <p className="text-red-500 text-sm mt-1">{errors.end_date}</p>}
                   </div>
@@ -439,9 +434,8 @@ export default function EditCampaignPage() {
                     value={formData.budget}
                     onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
                     placeholder="Enter total budget"
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.budget ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${errors.budget ? 'border-red-500' : 'border-gray-300'
+                      }`}
                   />
                   {errors.budget && <p className="text-red-500 text-sm mt-1">{errors.budget}</p>}
                   {formData.budget && (
@@ -459,7 +453,7 @@ export default function EditCampaignPage() {
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 sticky top-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Campaign Summary</h2>
-              
+
               <div className="space-y-4 mb-6">
                 <div>
                   <p className="text-sm text-gray-600">Media</p>

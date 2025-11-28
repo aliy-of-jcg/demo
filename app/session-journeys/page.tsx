@@ -278,8 +278,8 @@ export default function SessionJourneysPage() {
                           {/* Sequence Number with Icon Overlay */}
                           <div className="relative flex-shrink-0">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${page.is_landing_page === 1
-                                ? 'bg-green-500 text-white'
-                                : 'bg-blue-500 text-white'
+                              ? 'bg-green-500 text-white'
+                              : 'bg-blue-500 text-white'
                               }`}>
                               {page.page_sequence}
                             </div>

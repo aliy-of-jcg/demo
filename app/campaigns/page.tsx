@@ -12,6 +12,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface Campaign {
   id: number;
@@ -186,7 +187,7 @@ export default function CampaignsPage() {
         sort_order: sortOrder
       });
 
-      const response = await fetch(`/api/campaigns?${params}`);
+      const response = await fetchWithAuth(`/api/campaigns?${params}`);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -214,7 +215,7 @@ export default function CampaignsPage() {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('/api/courses');
+      const response = await fetchWithAuth('/api/courses');
       const data = await response.json();
 
       if (data.success) {
@@ -250,7 +251,7 @@ export default function CampaignsPage() {
 
     toast.promise(
       (async () => {
-        const response = await fetch(`/api/campaigns/${id}`, {
+        const response = await fetchWithAuth(`/api/campaigns/${id}`, {
           method: 'DELETE'
         });
 

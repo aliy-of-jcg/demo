@@ -9,6 +9,7 @@ import { PageFooter } from '@/components/page-footer';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface Course {
   id: number;
@@ -73,7 +74,7 @@ function NewCampaignPageContent() {
   const fetchDuplicateCampaign = async (id: string) => {
     setLoadingDuplicate(true);
     try {
-      const response = await fetch(`/api/campaigns/${id}`);
+      const response = await fetchWithAuth(`/api/campaigns/${id}`);
       const data = await response.json();
 
       if (data.success && data.campaign) {
@@ -164,7 +165,7 @@ function NewCampaignPageContent() {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('/api/courses');
+      const response = await fetchWithAuth('/api/courses');
       const data = await response.json();
       if (data.success) {
         setCourses(data.courses);
@@ -248,7 +249,7 @@ function NewCampaignPageContent() {
 
     toast.promise(
       (async () => {
-        const response = await fetch('/api/campaigns', {
+        const response = await fetchWithAuth('/api/campaigns', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

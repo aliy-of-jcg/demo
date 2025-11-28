@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface Course {
   id: number;
@@ -168,16 +169,35 @@ export default function CoursesPage() {
       if (statusFilter) {
         params.append('status', statusFilter);
       }
-      const response = await fetch(`/api/courses?${params}`);
+      const response = await fetchWithAuth(`/api/courses?${params}`);
+
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.success) {
-        setCourses(data.courses);
+        setCourses(data.courses || []);
         setSummary(data.summary);
         setTotal(data.pagination?.total || 0);
+      } else {
+        toast.error(data.error || t('actions.loadFailed'));
+        setCourses([]);
+        setSummary(null);
+        setTotal(0);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching courses:', error);
+      // If error is about authentication/authorization, fetchWithAuth already redirected
+      // For other errors, show message
+      if (error.message && !error.message.includes('Authentication failed')) {
+        toast.error(t('actions.loadFailed'));
+      }
+      setCourses([]);
+      setSummary(null);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -239,12 +259,10 @@ export default function CoursesPage() {
 
         const method = editingCourse ? 'PUT' : 'POST';
 
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(url, {
+        const response = await fetchWithAuth(url, {
           method,
           headers: {
             'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` })
           },
           body: JSON.stringify(formData)
         });
@@ -283,12 +301,8 @@ export default function CoursesPage() {
 
     toast.promise(
       (async () => {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`/api/courses/${id}`, {
+        const response = await fetchWithAuth(`/api/courses/${id}`, {
           method: 'DELETE',
-          headers: {
-            ...(token && { Authorization: `Bearer ${token}` })
-          }
         });
 
         const data = await response.json();

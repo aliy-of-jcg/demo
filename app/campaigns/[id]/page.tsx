@@ -11,6 +11,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
+import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface Campaign {
   id: number;
@@ -106,7 +107,7 @@ export default function CampaignDetailsPage() {
 
   const fetchCampaignDetails = async () => {
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}`);
+      const response = await fetchWithAuth(`/api/campaigns/${campaignId}`);
       const data = await response.json();
 
       if (data.success) {
@@ -125,7 +126,7 @@ export default function CampaignDetailsPage() {
 
   const fetchTrackingLinks = async () => {
     try {
-      const response = await fetch(`/api/campaigns/${campaignId}/tracking-links`);
+      const response = await fetchWithAuth(`/api/campaigns/${campaignId}/tracking-links`);
       const data = await response.json();
 
       if (data.success) {
@@ -166,7 +167,7 @@ export default function CampaignDetailsPage() {
 
     toast.promise(
       (async () => {
-        const response = await fetch(`/api/campaigns/${campaignId}/tracking-links`, {
+        const response = await fetchWithAuth(`/api/campaigns/${campaignId}/tracking-links`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -231,7 +232,7 @@ export default function CampaignDetailsPage() {
     toast.promise(
       (async () => {
         // Hard delete - actually remove from database
-        const response = await fetch(`/api/utm-codes/${id}`, {
+        const response = await fetchWithAuth(`/api/utm-codes/${id}`, {
           method: 'DELETE'
         });
 
@@ -274,7 +275,7 @@ export default function CampaignDetailsPage() {
 
     toast.promise(
       (async () => {
-        const response = await fetch(`/api/utm-codes/${id}`, {
+        const response = await fetchWithAuth(`/api/utm-codes/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: newStatus })
