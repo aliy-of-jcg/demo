@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import Swal from "sweetalert2";
 import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
 import type { UserType } from "@/lib/types";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { usePermission } from "@/lib/hooks/usePermission";
 
 interface User {
     id: number;
@@ -27,9 +29,9 @@ interface User {
 export default function UserManagementPage() {
     const t = useTranslations("userManagement");
     const router = useRouter();
+    const { hasPermission } = usePermission();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [unauthorized, setUnauthorized] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterType, setFilterType] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -38,23 +40,14 @@ export default function UserManagementPage() {
     const typeMenuRef = useRef<HTMLDivElement>(null);
     const statusMenuRef = useRef<HTMLDivElement>(null);
 
-    // Check user authorization
+    // Check if user has update/delete permissions
+    const canUpdateUsers = hasPermission('users:update');
+    const canDeleteUsers = hasPermission('users:delete');
+
+    // Fetch users on mount
     useEffect(() => {
-        const user = localStorage.getItem("user");
-        if (!user) {
-            router.push("/auth");
-            return;
-        }
-
-        const userData = JSON.parse(user);
-        if (userData.user_type !== "owner") {
-            setUnauthorized(true);
-            setLoading(false);
-            return;
-        }
-
         fetchUsers();
-    }, [router]);
+    }, []);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -99,12 +92,6 @@ export default function UserManagementPage() {
             });
 
             const data = await response.json();
-
-            if (response.status === 403) {
-                setUnauthorized(true);
-                setLoading(false);
-                return;
-            }
 
             if (data.success) {
                 setUsers(data.users);
@@ -288,357 +275,344 @@ export default function UserManagementPage() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex h-[60vh] items-center justify-center">
-                <div className="text-center">
-                    <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-indigo-600"></div>
-                    <p className="text-gray-600">{t("loading")}</p>
-                </div>
-            </div>
-        );
-    }
-
-    // Show unauthorized page for non-owners
-    if (unauthorized) {
-        return (
-            <div className="flex h-[60vh] items-center justify-center p-4">
-                <div className="text-center max-w-md">
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-                        <Lock className="h-8 w-8 text-red-600" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-                    <p className="text-gray-600 mb-6">{t("errors.unauthorized")}</p>
-                    <button
-                        onClick={() => router.push("/")}
-                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                        Go to Dashboard
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            {/* Header */}
-            <div className="mb-4 sm:mb-6">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t("title")}</h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-1">{t("subtitle")}</p>
-            </div>
-
-            {/* Stats */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t("summary.totalUsers")}</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.total}</div>
-                        <p className="text-xs text-muted-foreground">{t("summary.allAccounts")}</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t("summary.activeUsers")}</CardTitle>
-                        <UserCheck className="h-4 w-4 text-green-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.active}</div>
-                        <p className="text-xs text-muted-foreground">{t("summary.currentlyActive")}</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t("summary.pendingApprovals")}</CardTitle>
-                        <UserPlus className="h-4 w-4 text-yellow-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.pending}</div>
-                        <p className="text-xs text-muted-foreground">{t("summary.awaitingApproval")}</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t("summary.blockedUsers")}</CardTitle>
-                        <UserX className="h-4 w-4 text-red-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.blocked}</div>
-                        <p className="text-xs text-muted-foreground">{t("summary.accessRestricted")}</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Filters and Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="p-4 sm:p-6">
-                    <div className="mb-6 flex flex-col gap-4 md:flex-row">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                            <Input
-                                placeholder={t("filters.searchPlaceholder")}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10"
-                            />
-                        </div>
-                        <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-full md:w-[180px]">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">{t("filters.allTypes")}</SelectItem>
-                                <SelectItem value="admin">{t("userTypes.admin")}</SelectItem>
-                                <SelectItem value="observer">{t("userTypes.observer")}</SelectItem>
-                                <SelectItem value="regular">{t("userTypes.regular")}</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className="w-full md:w-[180px]">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">{t("filters.allStatuses")}</SelectItem>
-                                <SelectItem value="pending">{t("status.pending")}</SelectItem>
-                                <SelectItem value="active">{t("status.active")}</SelectItem>
-                                <SelectItem value="stopped">{t("status.stopped")}</SelectItem>
-                                <SelectItem value="blocked">{t("status.blocked")}</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="border-b">
-                                <tr className="text-left text-sm font-medium text-gray-500">
-                                    <th className="pb-3">{t("table.email")}</th>
-                                    <th className="pb-3">{t("table.companyName")}</th>
-                                    <th className="pb-3">{t("table.userType")}</th>
-                                    <th className="pb-3">{t("table.status")}</th>
-                                    <th className="pb-3">{t("table.lastLogin")}</th>
-                                    <th className="pb-3">{t("table.createdAt")}</th>
-                                    <th className="pb-3 text-right"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {filteredUsers.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="py-8 text-center text-gray-500">
-                                            {t("table.noUsers")}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredUsers.map((user) => (
-                                        <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                            <td className="py-4">
-                                                <div className="font-medium">{user.email}</div>
-                                            </td>
-                                            <td className="py-4">{user.company_name}</td>
-                                            <td className="py-4">
-                                                <div className="relative" ref={menuOpen?.userId === user.id && menuOpen?.type === 'userType' ? typeMenuRef : null}>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const button = e.currentTarget as HTMLElement;
-                                                            const rect = button.getBoundingClientRect();
-                                                            setMenuPosition({
-                                                                top: rect.bottom + 4,
-                                                                right: window.innerWidth - rect.right
-                                                            });
-                                                            setMenuOpen(menuOpen?.userId === user.id && menuOpen?.type === 'userType' ? null : { userId: user.id, type: 'userType' });
-                                                        }}
-                                                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-all hover:opacity-80 hover:scale-105 ${getUserTypeBadge(user.user_type)}`}
-                                                        title={t("table.changeType")}
-                                                    >
-                                                        {getUserTypeIcon(user.user_type)}
-                                                        {t(`userTypes.${user.user_type}`)}
-                                                    </button>
-                                                    {menuOpen?.userId === user.id && menuOpen?.type === 'userType' && menuPosition && (
-                                                        <>
-                                                            <div
-                                                                className="fixed inset-0 z-40"
-                                                                onClick={() => setMenuOpen(null)}
-                                                            />
-                                                            <div
-                                                                className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60] dark:bg-gray-800 dark:ring-gray-700"
-                                                                style={{
-                                                                    top: `${menuPosition.top}px`,
-                                                                    right: `${menuPosition.right}px`
-                                                                }}
-                                                            >
-                                                                <div className="py-1">
-                                                                    <button
-                                                                        type="button"
-                                                                        onMouseDown={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMenuOpen(null);
-                                                                            if (user.user_type !== 'admin') {
-                                                                                updateUser(user.id, { user_type: 'admin' }, t("actions.changeType.updating"));
-                                                                            }
-                                                                        }}
-                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
-                                                                    >
-                                                                        <Shield className="w-4 h-4 text-indigo-600" />
-                                                                        {t("userTypes.admin")}
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onMouseDown={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMenuOpen(null);
-                                                                            if (user.user_type !== 'observer') {
-                                                                                updateUser(user.id, { user_type: 'observer' }, t("actions.changeType.updating"));
-                                                                            }
-                                                                        }}
-                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
-                                                                    >
-                                                                        <Eye className="w-4 h-4 text-purple-600" />
-                                                                        {t("userTypes.observer")}
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onMouseDown={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMenuOpen(null);
-                                                                            if (user.user_type !== 'regular') {
-                                                                                updateUser(user.id, { user_type: 'regular' }, t("actions.changeType.updating"));
-                                                                            }
-                                                                        }}
-                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
-                                                                    >
-                                                                        <UserIcon className="w-4 h-4 text-green-600" />
-                                                                        {t("userTypes.regular")}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="py-4">
-                                                <div className="relative" ref={menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' ? statusMenuRef : null}>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            const button = e.currentTarget as HTMLElement;
-                                                            const rect = button.getBoundingClientRect();
-                                                            setMenuPosition({
-                                                                top: rect.bottom + 4,
-                                                                right: window.innerWidth - rect.right
-                                                            });
-                                                            setMenuOpen(menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' ? null : { userId: user.id, type: 'userStatus' });
-                                                        }}
-                                                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-all hover:opacity-80 hover:scale-105 ${getStatusBadge(user.status)}`}
-                                                        title={t("table.changeStatus")}
-                                                    >
-                                                        {t(`status.${user.status}`)}
-                                                    </button>
-                                                    {menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' && menuPosition && (
-                                                        <>
-                                                            <div
-                                                                className="fixed inset-0 z-40"
-                                                                onClick={() => setMenuOpen(null)}
-                                                            />
-                                                            <div
-                                                                className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60] dark:bg-gray-800 dark:ring-gray-700"
-                                                                style={{
-                                                                    top: `${menuPosition.top}px`,
-                                                                    right: `${menuPosition.right}px`
-                                                                }}
-                                                            >
-                                                                <div className="py-1">
-                                                                    <button
-                                                                        type="button"
-                                                                        onMouseDown={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMenuOpen(null);
-                                                                            if (user.status !== 'pending') {
-                                                                                updateUser(user.id, { status: 'pending' }, t("actions.changeStatus.updating"));
-                                                                            }
-                                                                        }}
-                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
-                                                                    >
-                                                                        {t("status.pending")}
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onMouseDown={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMenuOpen(null);
-                                                                            if (user.status !== 'active') {
-                                                                                updateUser(user.id, { status: 'active' }, t("actions.changeStatus.updating"));
-                                                                            }
-                                                                        }}
-                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
-                                                                    >
-                                                                        {t("status.active")}
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onMouseDown={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMenuOpen(null);
-                                                                            if (user.status !== 'stopped') {
-                                                                                updateUser(user.id, { status: 'stopped' }, t("actions.changeStatus.updating"));
-                                                                            }
-                                                                        }}
-                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
-                                                                    >
-                                                                        {t("status.stopped")}
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onMouseDown={(e) => {
-                                                                            e.stopPropagation();
-                                                                            setMenuOpen(null);
-                                                                            if (user.status !== 'blocked') {
-                                                                                updateUser(user.id, { status: 'blocked' }, t("actions.changeStatus.updating"));
-                                                                            }
-                                                                        }}
-                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left dark:text-red-400 dark:hover:bg-red-900/20"
-                                                                    >
-                                                                        {t("status.blocked")}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="py-4 text-sm text-gray-600">
-                                                {user.last_login_at
-                                                    ? formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true })
-                                                    : t("table.never")}
-                                            </td>
-                                            <td className="py-4 text-sm text-gray-600">
-                                                {formatCreatedDate(user.created_at)}
-                                            </td>
-                                            <td className="py-4 text-right">
-                                                <button
-                                                    onClick={() => handleDeleteUser(user)}
-                                                    className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                                                    aria-label={t("table.deleteUser")}
-                                                    title={t("table.deleteUser")}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+        <ProtectedRoute permission="users:read">
+            {loading && (
+                <div className="flex h-[60vh] items-center justify-center">
+                    <div className="text-center">
+                        <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-indigo-600"></div>
+                        <p className="text-gray-600">{t("loading")}</p>
                     </div>
                 </div>
-            </div>
-        </div>
+            )}
+
+            {!loading && (
+                <div className="p-4 sm:p-6 lg:p-8">
+                    {/* Header */}
+                    <div className="mb-4 sm:mb-6">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t("title")}</h1>
+                        <p className="text-sm sm:text-base text-gray-600 mt-1">{t("subtitle")}</p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">{t("summary.totalUsers")}</CardTitle>
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats.total}</div>
+                                <p className="text-xs text-muted-foreground">{t("summary.allAccounts")}</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">{t("summary.activeUsers")}</CardTitle>
+                                <UserCheck className="h-4 w-4 text-green-600" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats.active}</div>
+                                <p className="text-xs text-muted-foreground">{t("summary.currentlyActive")}</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">{t("summary.pendingApprovals")}</CardTitle>
+                                <UserPlus className="h-4 w-4 text-yellow-600" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats.pending}</div>
+                                <p className="text-xs text-muted-foreground">{t("summary.awaitingApproval")}</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">{t("summary.blockedUsers")}</CardTitle>
+                                <UserX className="h-4 w-4 text-red-600" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats.blocked}</div>
+                                <p className="text-xs text-muted-foreground">{t("summary.accessRestricted")}</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Filters and Table */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="p-4 sm:p-6">
+                            <div className="mb-6 flex flex-col gap-4 md:flex-row">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                    <Input
+                                        placeholder={t("filters.searchPlaceholder")}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10"
+                                    />
+                                </div>
+                                <Select value={filterType} onValueChange={setFilterType}>
+                                    <SelectTrigger className="w-full md:w-[180px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">{t("filters.allTypes")}</SelectItem>
+                                        <SelectItem value="admin">{t("userTypes.admin")}</SelectItem>
+                                        <SelectItem value="observer">{t("userTypes.observer")}</SelectItem>
+                                        <SelectItem value="regular">{t("userTypes.regular")}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                    <SelectTrigger className="w-full md:w-[180px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">{t("filters.allStatuses")}</SelectItem>
+                                        <SelectItem value="pending">{t("status.pending")}</SelectItem>
+                                        <SelectItem value="active">{t("status.active")}</SelectItem>
+                                        <SelectItem value="stopped">{t("status.stopped")}</SelectItem>
+                                        <SelectItem value="blocked">{t("status.blocked")}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Table */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="border-b">
+                                        <tr className="text-left text-sm font-medium text-gray-500">
+                                            <th className="pb-3">{t("table.email")}</th>
+                                            <th className="pb-3">{t("table.companyName")}</th>
+                                            <th className="pb-3">{t("table.userType")}</th>
+                                            <th className="pb-3">{t("table.status")}</th>
+                                            <th className="pb-3">{t("table.lastLogin")}</th>
+                                            <th className="pb-3">{t("table.createdAt")}</th>
+                                            <th className="pb-3 text-right"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {filteredUsers.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="py-8 text-center text-gray-500">
+                                                    {t("table.noUsers")}
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filteredUsers.map((user) => (
+                                                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                                    <td className="py-4">
+                                                        <div className="font-medium">{user.email}</div>
+                                                    </td>
+                                                    <td className="py-4">{user.company_name}</td>
+                                                    <td className="py-4">
+                                                        <div className="relative" ref={menuOpen?.userId === user.id && menuOpen?.type === 'userType' ? typeMenuRef : null}>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    if (!canUpdateUsers) return;
+                                                                    e.stopPropagation();
+                                                                    const button = e.currentTarget as HTMLElement;
+                                                                    const rect = button.getBoundingClientRect();
+                                                                    setMenuPosition({
+                                                                        top: rect.bottom + 4,
+                                                                        right: window.innerWidth - rect.right
+                                                                    });
+                                                                    setMenuOpen(menuOpen?.userId === user.id && menuOpen?.type === 'userType' ? null : { userId: user.id, type: 'userType' });
+                                                                }}
+                                                                disabled={!canUpdateUsers}
+                                                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all ${canUpdateUsers ? 'cursor-pointer hover:opacity-80 hover:scale-105' : 'cursor-default opacity-60'} ${getUserTypeBadge(user.user_type)}`}
+                                                                title={canUpdateUsers ? t("table.changeType") : ""}
+                                                            >
+                                                                {getUserTypeIcon(user.user_type)}
+                                                                {t(`userTypes.${user.user_type}`)}
+                                                            </button>
+                                                            {canUpdateUsers && menuOpen?.userId === user.id && menuOpen?.type === 'userType' && menuPosition && (
+                                                                <>
+                                                                    <div
+                                                                        className="fixed inset-0 z-40"
+                                                                        onClick={() => setMenuOpen(null)}
+                                                                    />
+                                                                    <div
+                                                                        className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60] dark:bg-gray-800 dark:ring-gray-700"
+                                                                        style={{
+                                                                            top: `${menuPosition.top}px`,
+                                                                            right: `${menuPosition.right}px`
+                                                                        }}
+                                                                    >
+                                                                        <div className="py-1">
+                                                                            <button
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setMenuOpen(null);
+                                                                                    if (user.user_type !== 'admin') {
+                                                                                        updateUser(user.id, { user_type: 'admin' }, t("actions.changeType.updating"));
+                                                                                    }
+                                                                                }}
+                                                                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                            >
+                                                                                <Shield className="w-4 h-4 text-indigo-600" />
+                                                                                {t("userTypes.admin")}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setMenuOpen(null);
+                                                                                    if (user.user_type !== 'observer') {
+                                                                                        updateUser(user.id, { user_type: 'observer' }, t("actions.changeType.updating"));
+                                                                                    }
+                                                                                }}
+                                                                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                            >
+                                                                                <Eye className="w-4 h-4 text-purple-600" />
+                                                                                {t("userTypes.observer")}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setMenuOpen(null);
+                                                                                    if (user.user_type !== 'regular') {
+                                                                                        updateUser(user.id, { user_type: 'regular' }, t("actions.changeType.updating"));
+                                                                                    }
+                                                                                }}
+                                                                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                            >
+                                                                                <UserIcon className="w-4 h-4 text-green-600" />
+                                                                                {t("userTypes.regular")}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4">
+                                                        <div className="relative" ref={menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' ? statusMenuRef : null}>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    if (!canUpdateUsers) return;
+                                                                    e.stopPropagation();
+                                                                    const button = e.currentTarget as HTMLElement;
+                                                                    const rect = button.getBoundingClientRect();
+                                                                    setMenuPosition({
+                                                                        top: rect.bottom + 4,
+                                                                        right: window.innerWidth - rect.right
+                                                                    });
+                                                                    setMenuOpen(menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' ? null : { userId: user.id, type: 'userStatus' });
+                                                                }}
+                                                                disabled={!canUpdateUsers}
+                                                                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium transition-all ${canUpdateUsers ? 'cursor-pointer hover:opacity-80 hover:scale-105' : 'cursor-default opacity-60'} ${getStatusBadge(user.status)}`}
+                                                                title={canUpdateUsers ? t("table.changeStatus") : ""}
+                                                            >
+                                                                {t(`status.${user.status}`)}
+                                                            </button>
+                                                            {canUpdateUsers && menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' && menuPosition && (
+                                                                <>
+                                                                    <div
+                                                                        className="fixed inset-0 z-40"
+                                                                        onClick={() => setMenuOpen(null)}
+                                                                    />
+                                                                    <div
+                                                                        className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60] dark:bg-gray-800 dark:ring-gray-700"
+                                                                        style={{
+                                                                            top: `${menuPosition.top}px`,
+                                                                            right: `${menuPosition.right}px`
+                                                                        }}
+                                                                    >
+                                                                        <div className="py-1">
+                                                                            <button
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setMenuOpen(null);
+                                                                                    if (user.status !== 'pending') {
+                                                                                        updateUser(user.id, { status: 'pending' }, t("actions.changeStatus.updating"));
+                                                                                    }
+                                                                                }}
+                                                                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                            >
+                                                                                {t("status.pending")}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setMenuOpen(null);
+                                                                                    if (user.status !== 'active') {
+                                                                                        updateUser(user.id, { status: 'active' }, t("actions.changeStatus.updating"));
+                                                                                    }
+                                                                                }}
+                                                                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                            >
+                                                                                {t("status.active")}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setMenuOpen(null);
+                                                                                    if (user.status !== 'stopped') {
+                                                                                        updateUser(user.id, { status: 'stopped' }, t("actions.changeStatus.updating"));
+                                                                                    }
+                                                                                }}
+                                                                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                            >
+                                                                                {t("status.stopped")}
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setMenuOpen(null);
+                                                                                    if (user.status !== 'blocked') {
+                                                                                        updateUser(user.id, { status: 'blocked' }, t("actions.changeStatus.updating"));
+                                                                                    }
+                                                                                }}
+                                                                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left dark:text-red-400 dark:hover:bg-red-900/20"
+                                                                            >
+                                                                                {t("status.blocked")}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 text-sm text-gray-600">
+                                                        {user.last_login_at
+                                                            ? formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true })
+                                                            : t("table.never")}
+                                                    </td>
+                                                    <td className="py-4 text-sm text-gray-600">
+                                                        {formatCreatedDate(user.created_at)}
+                                                    </td>
+                                                    <td className="py-4 text-right">
+                                                        {canDeleteUsers && (
+                                                            <button
+                                                                onClick={() => handleDeleteUser(user)}
+                                                                className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                                                aria-label={t("table.deleteUser")}
+                                                                title={t("table.deleteUser")}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </ProtectedRoute>
     );
 }
 

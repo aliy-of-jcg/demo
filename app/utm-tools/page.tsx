@@ -9,6 +9,8 @@ import Swal from 'sweetalert2';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 
 interface UTMCode {
   id: number;
@@ -37,6 +39,13 @@ interface Summary {
 
 export default function UTMListPage() {
   const t = useTranslations('utmTools.list');
+  const { hasPermission } = usePermission();
+
+  // Check permissions
+  const canCreateUtm = hasPermission('utm_codes:create');
+  const canUpdateUtm = hasPermission('utm_codes:update');
+  const canDeleteUtm = hasPermission('utm_codes:delete');
+
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 500); // Debounce search input
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -58,7 +67,7 @@ export default function UTMListPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const params = new URLSearchParams();
       if (debouncedSearch) {
         params.set('search', debouncedSearch);
@@ -138,10 +147,10 @@ export default function UTMListPage() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit' 
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
       });
     } catch {
       return dateString;
@@ -162,7 +171,7 @@ export default function UTMListPage() {
 
     if (!result.isConfirmed) return;
 
-      toast.promise(
+    toast.promise(
       (async () => {
         // Hard delete - actually remove from database
         const response = await fetch(`/api/utm-codes/${id}`, {
@@ -206,7 +215,7 @@ export default function UTMListPage() {
 
     if (!result.isConfirmed) return;
 
-      toast.promise(
+    toast.promise(
       (async () => {
         const response = await fetch(`/api/utm-codes/${id}`, {
           method: 'PUT',
@@ -288,13 +297,15 @@ export default function UTMListPage() {
             )}
             <span className="hidden sm:inline">{t('refresh')}</span>
           </button>
-          <Link 
-            href="/utm-tools/generator"
-            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('createUtm')}</span>
-          </Link>
+          <ProtectedComponent permission="utm_codes:create" hideOnUnauthorized>
+            <Link
+              href="/utm-tools/generator"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('createUtm')}</span>
+            </Link>
+          </ProtectedComponent>
         </div>
       </div>
 
@@ -447,30 +458,41 @@ export default function UTMListPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleToggleStatus(utm.id, utm.status, utm.name)}
-                        className={`px-2 py-1 rounded-full text-xs font-medium transition-all hover:ring-2 hover:ring-offset-1 ${statusColors[utm.status]} ${utm.status === 'active' ? 'hover:ring-blue-400' : 'hover:ring-yellow-400'} cursor-pointer`}
-                        title={utm.status === 'active' ? t('actions.clickToDeactivate') : t('actions.clickToActivate')}
-                      >
-                        {utm.status}
-                      </button>
+                      <ProtectedComponent permission="utm_codes:update" hideOnUnauthorized>
+                        <button
+                          onClick={() => handleToggleStatus(utm.id, utm.status, utm.name)}
+                          className={`px-2 py-1 rounded-full text-xs font-medium transition-all hover:ring-2 hover:ring-offset-1 ${statusColors[utm.status]} ${utm.status === 'active' ? 'hover:ring-blue-400' : 'hover:ring-yellow-400'} cursor-pointer`}
+                          title={utm.status === 'active' ? t('actions.clickToDeactivate') : t('actions.clickToActivate')}
+                        >
+                          {utm.status}
+                        </button>
+                      </ProtectedComponent>
+                      {!canUpdateUtm && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[utm.status]}`}>
+                          {utm.status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`/utm-tools/generator?edit=${utm.id}`}
-                          className="text-gray-400 hover:text-blue-600 transition-colors"
-                          title={t('actions.edit')}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(utm.id, utm.name)}
-                          className="text-gray-400 hover:text-red-600 transition-colors"
-                          title={t('actions.delete')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <ProtectedComponent permission="utm_codes:update" hideOnUnauthorized>
+                          <Link
+                            href={`/utm-tools/generator?edit=${utm.id}`}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title={t('actions.edit')}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Link>
+                        </ProtectedComponent>
+                        <ProtectedComponent permission="utm_codes:delete" hideOnUnauthorized>
+                          <button
+                            onClick={() => handleDelete(utm.id, utm.name)}
+                            className="text-gray-400 hover:text-red-600 transition-colors"
+                            title={t('actions.delete')}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </ProtectedComponent>
                       </div>
                     </td>
                   </tr>
@@ -503,12 +525,19 @@ export default function UTMListPage() {
                     <h3 className="text-sm font-semibold text-gray-900 mb-1">{utm.name}</h3>
                     <p className="text-xs text-gray-500 font-mono">{utm.tracking_code}</p>
                   </div>
-                  <button
-                    onClick={() => handleToggleStatus(utm.id, utm.status, utm.name)}
-                    className={`px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${statusColors[utm.status]}`}
-                  >
-                    {utm.status}
-                  </button>
+                  <ProtectedComponent permission="utm_codes:update" hideOnUnauthorized>
+                    <button
+                      onClick={() => handleToggleStatus(utm.id, utm.status, utm.name)}
+                      className={`px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${statusColors[utm.status]}`}
+                    >
+                      {utm.status}
+                    </button>
+                  </ProtectedComponent>
+                  {!canUpdateUtm && (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${statusColors[utm.status]}`}>
+                      {utm.status}
+                    </span>
+                  )}
                 </div>
 
                 {/* Campaign & Course */}
@@ -569,18 +598,22 @@ export default function UTMListPage() {
                     <span className="font-medium text-gray-900">{utm.clicks.toLocaleString()} {t('mobile.clicks')}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link
-                      href={`/utm-tools/generator?edit=${utm.id}`}
-                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(utm.id, utm.name)}
-                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <ProtectedComponent permission="utm_codes:update" hideOnUnauthorized>
+                      <Link
+                        href={`/utm-tools/generator?edit=${utm.id}`}
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Link>
+                    </ProtectedComponent>
+                    <ProtectedComponent permission="utm_codes:delete" hideOnUnauthorized>
+                      <button
+                        onClick={() => handleDelete(utm.id, utm.name)}
+                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </ProtectedComponent>
                   </div>
                 </div>
               </div>
@@ -612,11 +645,10 @@ export default function UTMListPage() {
                 <button
                   key={pageNum}
                   onClick={() => setPage(pageNum)}
-                  className={`px-3 py-1 rounded text-sm ${
-                    page === pageNum
+                  className={`px-3 py-1 rounded text-sm ${page === pageNum
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {pageNum}
                 </button>

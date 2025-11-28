@@ -1,33 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/mysql';
-import { verifyToken } from '@/lib/jwt';
+import { requirePermissionWithParams } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
 export const dynamic = 'force-dynamic';
 
-// Update user status or type
-export async function PATCH(
-    req: NextRequest,
-    { params }: { params: { id: string } }
-) {
+/**
+ * PATCH /api/users/[id]
+ * Update user status or type
+ * Requires: users:update permission (owner only for now)
+ */
+export const PATCH = requirePermissionWithParams('users:update', async (req: NextRequest, context: AuthContext, routeParams: { params: Record<string, string> }) => {
+    const { params } = routeParams;
     try {
-        const token = req.headers.get('authorization')?.replace('Bearer ', '');
-
-        if (!token) {
-            return NextResponse.json(
-                { success: false, message: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
-        const decoded = verifyToken(token);
-        if (!decoded || decoded.user_type !== 'owner') {
-            return NextResponse.json(
-                { success: false, message: 'Access denied. Owner privileges required.' },
-                { status: 403 }
-            );
-        }
-
+        const { user } = context;
         const userId = params.id;
+
         const body = await req.json();
         const { status, user_type } = body;
 
@@ -106,31 +94,16 @@ export async function PATCH(
             { status: 500 }
         );
     }
-}
+});
 
-// Soft delete user (set to hidden)
-export async function DELETE(
-    req: NextRequest,
-    { params }: { params: { id: string } }
-) {
+/**
+ * DELETE /api/users/[id]
+ * Soft delete user (set to hidden)
+ * Requires: users:delete permission (owner only)
+ */
+export const DELETE = requirePermissionWithParams('users:delete', async (req: NextRequest, context: AuthContext, routeParams: { params: Record<string, string> }) => {
+    const { params } = routeParams;
     try {
-        const token = req.headers.get('authorization')?.replace('Bearer ', '');
-
-        if (!token) {
-            return NextResponse.json(
-                { success: false, message: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
-        const decoded = verifyToken(token);
-        if (!decoded || decoded.user_type !== 'owner') {
-            return NextResponse.json(
-                { success: false, message: 'Access denied. Owner privileges required.' },
-                { status: 403 }
-            );
-        }
-
         const userId = params.id;
 
         // Check if user exists and is not an owner
@@ -174,6 +147,6 @@ export async function DELETE(
             { status: 500 }
         );
     }
-}
+});
 
 

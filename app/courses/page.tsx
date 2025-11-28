@@ -8,6 +8,8 @@ import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 
 interface Course {
   id: number;
@@ -41,6 +43,12 @@ export default function CoursesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const { hasPermission } = usePermission();
+
+  // Check permissions
+  const canCreateCourse = hasPermission('courses:create');
+  const canUpdateCourse = hasPermission('courses:update');
+  const canDeleteCourse = hasPermission('courses:delete');
 
   // Format duration with translated month/months
   const formatDuration = (duration: string | null | undefined): string => {
@@ -310,12 +318,14 @@ export default function CoursesPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-        >
-          <span>+ {t('addCourse')}</span>
-        </button>
+        <ProtectedComponent permission="courses:create" hideOnUnauthorized>
+          <button
+            onClick={() => handleOpenModal()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+          >
+            <span>+ {t('addCourse')}</span>
+          </button>
+        </ProtectedComponent>
       </div>
 
       {/* Summary Cards */}
@@ -486,18 +496,22 @@ export default function CoursesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                      <button
-                        onClick={() => handleOpenModal(course)}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(course.id)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <ProtectedComponent permission="courses:update" hideOnUnauthorized>
+                        <button
+                          onClick={() => handleOpenModal(course)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      </ProtectedComponent>
+                      <ProtectedComponent permission="courses:delete" hideOnUnauthorized>
+                        <button
+                          onClick={() => handleDelete(course.id)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </ProtectedComponent>
                     </td>
                   </tr>
                 ))
@@ -561,20 +575,24 @@ export default function CoursesPage() {
                     <span className="font-medium">{t('mobile.totalVisits')}</span> {course.total_visits?.toLocaleString() ?? 0}
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleOpenModal(course)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      aria-label="Edit course"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(course.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                      aria-label="Delete course"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <ProtectedComponent permission="courses:update" hideOnUnauthorized>
+                      <button
+                        onClick={() => handleOpenModal(course)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        aria-label="Edit course"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    </ProtectedComponent>
+                    <ProtectedComponent permission="courses:delete" hideOnUnauthorized>
+                      <button
+                        onClick={() => handleDelete(course.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        aria-label="Delete course"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </ProtectedComponent>
                   </div>
                 </div>
               </div>

@@ -9,6 +9,8 @@ import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 
 interface Campaign {
   id: number;
@@ -72,6 +74,12 @@ export default function CampaignDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const campaignId = params.id as string;
+  const { hasPermission } = usePermission();
+
+  // Check permissions
+  const canUpdateCampaign = hasPermission('campaigns:update');
+  const canUpdateUtm = hasPermission('utm_codes:update');
+  const canDeleteUtm = hasPermission('utm_codes:delete');
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [trackingLinks, setTrackingLinks] = useState<TrackingLink[]>([]);
@@ -327,13 +335,15 @@ export default function CampaignDetailsPage() {
             <h1 className="text-3xl font-bold text-gray-900">{campaign.name}</h1>
             <p className="text-gray-600 mt-1">Campaign Details & Tracking Links</p>
           </div>
-          <Link
-            href={`/campaigns/${campaign.id}/edit`}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Edit className="w-4 h-4" />
-            <span>Edit Campaign</span>
-          </Link>
+          <ProtectedComponent permission="campaigns:update" hideOnUnauthorized>
+            <Link
+              href={`/campaigns/${campaign.id}/edit`}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Edit Campaign</span>
+            </Link>
+          </ProtectedComponent>
         </div>
       </div>
 
@@ -635,10 +645,10 @@ export default function CampaignDetailsPage() {
                           <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                             <div
                               className={`h-1.5 rounded-full ${(link.spent / link.budget) * 100 > 90
-                                  ? 'bg-red-600'
-                                  : (link.spent / link.budget) * 100 > 70
-                                    ? 'bg-yellow-600'
-                                    : 'bg-green-600'
+                                ? 'bg-red-600'
+                                : (link.spent / link.budget) * 100 > 70
+                                  ? 'bg-yellow-600'
+                                  : 'bg-green-600'
                                 }`}
                               style={{ width: `${Math.min((link.spent / link.budget) * 100, 100)}%` }}
                             ></div>
@@ -655,8 +665,8 @@ export default function CampaignDetailsPage() {
                       <button
                         onClick={() => handleToggleStatus(link.id, link.status, link.name)}
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-full transition-all hover:ring-2 hover:ring-offset-1 cursor-pointer ${link.status === 'active'
-                            ? 'bg-green-100 text-green-800 hover:ring-green-400'
-                            : 'bg-gray-100 text-gray-800 hover:ring-gray-400'
+                          ? 'bg-green-100 text-green-800 hover:ring-green-400'
+                          : 'bg-gray-100 text-gray-800 hover:ring-gray-400'
                           }`}
                         title={`Click to ${link.status === 'active' ? 'deactivate' : 'activate'}`}
                       >
@@ -665,20 +675,24 @@ export default function CampaignDetailsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={`/utm-tools/generator?edit=${link.id}`}
-                          className="text-blue-600 hover:text-blue-800 transition-colors"
-                          title="Edit UTM"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteTrackingLink(link.id)}
-                          className="text-red-600 hover:text-red-800 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <ProtectedComponent permission="utm_codes:update" hideOnUnauthorized>
+                          <Link
+                            href={`/utm-tools/generator?edit=${link.id}`}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            title="Edit UTM"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Link>
+                        </ProtectedComponent>
+                        <ProtectedComponent permission="utm_codes:delete" hideOnUnauthorized>
+                          <button
+                            onClick={() => handleDeleteTrackingLink(link.id)}
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </ProtectedComponent>
                       </div>
                     </td>
                   </tr>

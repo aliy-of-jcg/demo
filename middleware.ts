@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isPublicRoute, isApiRoute } from '@/lib/auth/route-guard';
 
 export function middleware(request: NextRequest) {
-  // Only apply CORS to /api/track and /api/track-internal routes
-  if (request.nextUrl.pathname.startsWith('/api/track')) {
+  const pathname = request.nextUrl.pathname;
+
+  // Handle CORS for tracking routes
+  if (pathname.startsWith('/api/track')) {
     const origin = request.headers.get('origin') || '';
-    
+
     // Handle preflight requests
     if (request.method === 'OPTIONS') {
       return new NextResponse(null, {
@@ -22,7 +25,7 @@ export function middleware(request: NextRequest) {
 
     // Handle actual requests
     const response = NextResponse.next();
-    
+
     // Google Analytics approach: echo back the origin (allow all domains)
     if (origin) {
       response.headers.set('Access-Control-Allow-Origin', origin);
@@ -33,12 +36,30 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // For all other routes, no special middleware handling is required
+  // Skip public routes and API routes - let them through
+  // Note: We're not doing redirects in middleware to avoid loops
+  // Auth redirects are handled client-side by LayoutWrapper/useAuth hook
+  if (isPublicRoute(pathname) || isApiRoute(pathname)) {
+    return NextResponse.next();
+  }
+
+  // For all other routes, let them through
+  // Authentication and authorization are handled client-side (LayoutWrapper)
+  // and in individual API route handlers using withAuth middleware
   return NextResponse.next();
 }
 
 export const config = {
-  // Only match tracking API routes for CORS handling
-  matcher: ['/api/track/:path*'],
+  // Match all routes except static files and API routes that need CORS
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (public folder)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
 

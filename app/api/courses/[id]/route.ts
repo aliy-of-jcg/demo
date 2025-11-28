@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
+import { requirePermissionWithParams } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
 export async function GET(
   request: NextRequest,
@@ -34,10 +36,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const PUT = requirePermissionWithParams('courses:update', async (request: NextRequest, context: AuthContext, routeParams: { params: Record<string, string> }) => {
+  const { params } = routeParams;
   try {
     const id = params.id;
     const body = await request.json();
@@ -106,12 +106,10 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const DELETE = requirePermissionWithParams('courses:delete', async (request: NextRequest, context: AuthContext, routeParams: { params: Record<string, string> }) => {
+  const { params } = routeParams;
   try {
     const id = params.id;
     const pool = getPool();
@@ -151,4 +149,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});

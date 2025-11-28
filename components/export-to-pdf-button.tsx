@@ -5,6 +5,7 @@ import { Download, Loader2 } from 'lucide-react';
 import { exportToPDF, ExportToPDFOptions } from '@/lib/pdf-export';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
+import { ProtectedComponent } from './auth/ProtectedComponent';
 
 export interface ExportToPDFButtonProps {
   /**
@@ -117,32 +118,34 @@ export function ExportToPDFButton({
   };
 
   return (
-    <button
-      onClick={handleExport}
-      disabled={isExporting}
-      className={`
-        inline-flex items-center justify-center gap-2
-        rounded-lg font-medium
-        transition-colors
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
-        disabled:pointer-events-none disabled:opacity-50
-        ${sizeClasses[size]}
-        ${variantClasses[variant]}
-        ${className}
-      `}
-    >
-      {isExporting ? (
-        <>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span>{t('export.exporting')}</span>
-        </>
-      ) : (
-        <>
-          <Download className="w-4 h-4" />
-          <span>{defaultLabel}</span>
-        </>
-      )}
-    </button>
+    <ProtectedComponent permission="analytics:export" hideOnUnauthorized>
+      <button
+        onClick={handleExport}
+        disabled={isExporting}
+        className={`
+          inline-flex items-center justify-center gap-2
+          rounded-lg font-medium
+          transition-colors
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+          disabled:pointer-events-none disabled:opacity-50
+          ${sizeClasses[size]}
+          ${variantClasses[variant]}
+          ${className}
+        `}
+      >
+        {isExporting ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>{t('export.exporting')}</span>
+          </>
+        ) : (
+          <>
+            <Download className="w-4 h-4" />
+            <span>{defaultLabel}</span>
+          </>
+        )}
+      </button>
+    </ProtectedComponent>
   );
 }
 

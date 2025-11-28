@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
+import { requirePermission } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
 // Type definitions for the courses data
 interface Course {
@@ -373,7 +375,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = requirePermission('courses:create', async (request: NextRequest, context: AuthContext) => {
   try {
     const body = await request.json();
     const {
@@ -438,5 +440,5 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 

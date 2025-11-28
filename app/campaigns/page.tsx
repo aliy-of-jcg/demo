@@ -10,6 +10,8 @@ import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 
 interface Campaign {
   id: number;
@@ -63,6 +65,12 @@ export default function CampaignsPage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const t = useTranslations('campaigns');
+  const { hasPermission } = usePermission();
+
+  // Check permissions
+  const canCreateCampaign = hasPermission('campaigns:create');
+  const canUpdateCampaign = hasPermission('campaigns:update');
+  const canDeleteCampaign = hasPermission('campaigns:delete');
 
   // Get locale from pathname or default to 'en'
   const locale = pathname?.split('/')[1] || 'en';
@@ -297,12 +305,14 @@ export default function CampaignsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
-        <Link
-          href="/campaigns/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-        >
-          <span>+ {t('createNew')}</span>
-        </Link>
+        <ProtectedComponent permission="campaigns:create" hideOnUnauthorized>
+          <Link
+            href="/campaigns/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+          >
+            <span>+ {t('createNew')}</span>
+          </Link>
+        </ProtectedComponent>
       </div>
 
       {/* Summary Cards */}
@@ -663,78 +673,86 @@ export default function CampaignsPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </Link>
-                          <div className="relative" ref={actionMenuOpen === campaign.id ? menuRef : null}>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const button = e.currentTarget as HTMLElement;
-                                const rect = button.getBoundingClientRect();
-                                setMenuPosition({
-                                  top: rect.bottom + 4,
-                                  right: window.innerWidth - rect.right
-                                });
-                                setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id);
-                              }}
-                              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded hover:bg-gray-100"
-                              title={t('table.moreActions')}
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-                            {actionMenuOpen === campaign.id && menuPosition && (
-                              <>
-                                <div
-                                  className="fixed inset-0 z-40"
-                                  onClick={() => setActionMenuOpen(null)}
-                                />
-                                <div
-                                  className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60]"
-                                  style={{
-                                    top: `${menuPosition.top}px`,
-                                    right: `${menuPosition.right}px`
-                                  }}
-                                >
-                                  <div className="py-1">
-                                    <button
-                                      type="button"
-                                      onMouseDown={(e) => {
-                                        e.stopPropagation();
-                                        setActionMenuOpen(null);
-                                        router.push(`/campaigns/${campaign.id}/edit`);
-                                      }}
-                                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                      {t('actions.edit')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onMouseDown={(e) => {
-                                        e.stopPropagation();
-                                        setActionMenuOpen(null);
-                                        handleDuplicate(campaign.id);
-                                      }}
-                                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                                    >
-                                      <Copy className="w-4 h-4" />
-                                      {t('actions.duplicate')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onMouseDown={(e) => {
-                                        e.stopPropagation();
-                                        setActionMenuOpen(null);
-                                        handleDelete(campaign.id);
-                                      }}
-                                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                      {t('actions.delete')}
-                                    </button>
+                          {(canUpdateCampaign || canDeleteCampaign) && (
+                            <div className="relative" ref={actionMenuOpen === campaign.id ? menuRef : null}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const button = e.currentTarget as HTMLElement;
+                                  const rect = button.getBoundingClientRect();
+                                  setMenuPosition({
+                                    top: rect.bottom + 4,
+                                    right: window.innerWidth - rect.right
+                                  });
+                                  setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id);
+                                }}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded hover:bg-gray-100"
+                                title={t('table.moreActions')}
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+                              {actionMenuOpen === campaign.id && menuPosition && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setActionMenuOpen(null)}
+                                  />
+                                  <div
+                                    className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60]"
+                                    style={{
+                                      top: `${menuPosition.top}px`,
+                                      right: `${menuPosition.right}px`
+                                    }}
+                                  >
+                                    <div className="py-1">
+                                      <ProtectedComponent permission="campaigns:update" hideOnUnauthorized>
+                                        <button
+                                          type="button"
+                                          onMouseDown={(e) => {
+                                            e.stopPropagation();
+                                            setActionMenuOpen(null);
+                                            router.push(`/campaigns/${campaign.id}/edit`);
+                                          }}
+                                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                          {t('actions.edit')}
+                                        </button>
+                                      </ProtectedComponent>
+                                      <ProtectedComponent permission="campaigns:create" hideOnUnauthorized>
+                                        <button
+                                          type="button"
+                                          onMouseDown={(e) => {
+                                            e.stopPropagation();
+                                            setActionMenuOpen(null);
+                                            handleDuplicate(campaign.id);
+                                          }}
+                                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                                        >
+                                          <Copy className="w-4 h-4" />
+                                          {t('actions.duplicate')}
+                                        </button>
+                                      </ProtectedComponent>
+                                      <ProtectedComponent permission="campaigns:delete" hideOnUnauthorized>
+                                        <button
+                                          type="button"
+                                          onMouseDown={(e) => {
+                                            e.stopPropagation();
+                                            setActionMenuOpen(null);
+                                            handleDelete(campaign.id);
+                                          }}
+                                          className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                          {t('actions.delete')}
+                                        </button>
+                                      </ProtectedComponent>
+                                    </div>
                                   </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -795,57 +813,65 @@ export default function CampaignsPage() {
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{campaign.course_name}</p>
                   </div>
-                  <div className="relative ml-2" ref={actionMenuOpen === campaign.id ? menuRef : null}>
-                    <button
-                      onClick={() => setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id)}
-                      className="p-1 text-gray-400 hover:text-gray-600"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-                    {actionMenuOpen === campaign.id && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => setActionMenuOpen(null)}
-                        />
-                        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActionMenuOpen(null);
-                              router.push(`/campaigns/${campaign.id}/edit`);
-                            }}
-                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                          >
-                            <Edit className="w-4 h-4" />
-                            {t('actions.edit')}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActionMenuOpen(null);
-                              handleDuplicate(campaign.id);
-                            }}
-                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                          >
-                            <Copy className="w-4 h-4" />
-                            {t('actions.duplicate')}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActionMenuOpen(null);
-                              handleDelete(campaign.id);
-                            }}
-                            className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            {t('actions.delete')}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  {(canUpdateCampaign || canDeleteCampaign) && (
+                    <div className="relative ml-2" ref={actionMenuOpen === campaign.id ? menuRef : null}>
+                      <button
+                        onClick={() => setActionMenuOpen(actionMenuOpen === campaign.id ? null : campaign.id)}
+                        className="p-1 text-gray-400 hover:text-gray-600"
+                      >
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                      {actionMenuOpen === campaign.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setActionMenuOpen(null)}
+                          />
+                          <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100] overflow-visible">
+                            <ProtectedComponent permission="campaigns:update" hideOnUnauthorized>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuOpen(null);
+                                  router.push(`/campaigns/${campaign.id}/edit`);
+                                }}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                              >
+                                <Edit className="w-4 h-4" />
+                                {t('actions.edit')}
+                              </button>
+                            </ProtectedComponent>
+                            <ProtectedComponent permission="campaigns:create" hideOnUnauthorized>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuOpen(null);
+                                  handleDuplicate(campaign.id);
+                                }}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                              >
+                                <Copy className="w-4 h-4" />
+                                {t('actions.duplicate')}
+                              </button>
+                            </ProtectedComponent>
+                            <ProtectedComponent permission="campaigns:delete" hideOnUnauthorized>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuOpen(null);
+                                  handleDelete(campaign.id);
+                                }}
+                                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                {t('actions.delete')}
+                              </button>
+                            </ProtectedComponent>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm mb-3">

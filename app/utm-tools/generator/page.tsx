@@ -8,8 +8,9 @@ import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
-export default function UTMGeneratorPage() {
+function UTMGeneratorPageContent() {
   const t = useTranslations('utmTools.generator');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -559,6 +560,14 @@ export default function UTMGeneratorPage() {
         <PageFooter />
       </div>
     </div>
+  );
+}
+
+export default function UTMGeneratorPage() {
+  return (
+    <ProtectedRoute permission="utm_codes:create" showAccessDeniedMessage>
+      <UTMGeneratorPageContent />
+    </ProtectedRoute>
   );
 }
 

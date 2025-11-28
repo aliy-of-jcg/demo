@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { PageFooter } from '@/components/page-footer';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 interface Course {
   id: number;
@@ -15,16 +16,16 @@ interface Course {
   code: string;
 }
 
-export default function NewCampaignPage() {
+function NewCampaignPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const duplicateId = searchParams.get('duplicate');
   const t = useTranslations('campaigns.create');
-  
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingDuplicate, setLoadingDuplicate] = useState(false);
-  
+
   // Refs for scrolling to error fields
   const fieldRefs = {
     name: useRef<HTMLInputElement>(null),
@@ -36,7 +37,7 @@ export default function NewCampaignPage() {
     budget: useRef<HTMLInputElement>(null),
     landing_url: useRef<HTMLInputElement>(null),
   };
-  
+
   const [formData, setFormData] = useState({
     name: '',
     utm_name: '',  // Added: Name for the tracking link/UTM code
@@ -62,7 +63,7 @@ export default function NewCampaignPage() {
 
   useEffect(() => {
     fetchCourses();
-    
+
     // If duplicate ID is present, fetch campaign data
     if (duplicateId) {
       fetchDuplicateCampaign(duplicateId);
@@ -74,7 +75,7 @@ export default function NewCampaignPage() {
     try {
       const response = await fetch(`/api/campaigns/${id}`);
       const data = await response.json();
-      
+
       if (data.success && data.campaign) {
         const campaign = data.campaign;
         // Populate form with campaign data except dates
@@ -219,20 +220,20 @@ export default function NewCampaignPage() {
     }
 
     setErrors(newErrors);
-    
+
     // Scroll to first error field
     if (Object.keys(newErrors).length > 0) {
       const firstErrorField = Object.keys(newErrors)[0] as keyof typeof fieldRefs;
       if (fieldRefs[firstErrorField]?.current) {
-        fieldRefs[firstErrorField].current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
+        fieldRefs[firstErrorField].current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
         });
         fieldRefs[firstErrorField].current?.focus();
       }
       toast.error(t('errors.fillAllFields'));
     }
-    
+
     return Object.keys(newErrors).length === 0;
   };
 
@@ -265,7 +266,7 @@ export default function NewCampaignPage() {
         if (data.trackingLink) {
           const baseUrl = window.location.origin;
           const shortUrl = `${baseUrl}/t/${data.trackingLink.trackingCode}`;
-          
+
           // Copy to clipboard
           const success = await copyToClipboard(shortUrl);
           if (success) {
@@ -614,7 +615,7 @@ export default function NewCampaignPage() {
           <div className="lg:col-span-1 order-first lg:order-last">
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 lg:sticky lg:top-8">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">{t('summary.title')}</h2>
-              
+
               <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
                 <div>
                   <p className="text-xs sm:text-sm text-gray-600">{t('summary.media')}</p>
@@ -721,6 +722,14 @@ export default function NewCampaignPage() {
         <PageFooter />
       </div>
     </div>
+  );
+}
+
+export default function NewCampaignPage() {
+  return (
+    <ProtectedRoute permission="campaigns:create" showAccessDeniedMessage>
+      <NewCampaignPageContent />
+    </ProtectedRoute>
   );
 }
 

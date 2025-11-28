@@ -8,6 +8,7 @@ import { UserMenu } from "./user-menu";
 import { LanguageSwitcher } from "./language-switcher";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { ProtectedComponent } from "./auth/ProtectedComponent";
 
 
 interface SidebarProps {
@@ -22,16 +23,6 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   const [isUTMToolsOpen, setIsUTMToolsOpen] = useState(false);
   const [isLogAnalysisOpen, setIsLogAnalysisOpen] = useState(false);
   const [isSystemManagementOpen, setIsSystemManagementOpen] = useState(false);
-  const [userType, setUserType] = useState<string | null>(null);
-
-  // Get user type from localStorage
-  useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (user) {
-      const userData = JSON.parse(user);
-      setUserType(userData.user_type);
-    }
-  }, []);
 
 
   // Build navigation items with translations
@@ -252,8 +243,8 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
           )}
         </div>
 
-        {/* System Management Dropdown - Only for Owners */}
-        {userType === 'owner' && (
+        {/* System Management Dropdown - Only for users with users:read permission */}
+        <ProtectedComponent permission="users:read" hideOnUnauthorized>
           <div className="space-y-1">
             <button
               onClick={() => setIsSystemManagementOpen(!isSystemManagementOpen)}
@@ -296,7 +287,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
               </div>
             )}
           </div>
-        )}
+        </ProtectedComponent>
 
       </nav>
       {/* Language Switcher */}
