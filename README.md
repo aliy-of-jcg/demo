@@ -30,9 +30,17 @@ Next.js 14로 구축된 포괄적인 마케팅 분석 및 캠페인 관리 플�
 
 ### 기술 기능
 - ⚡ **이중 데이터베이스 아키텍처** - 분석용 ClickHouse + 앱 데이터용 MySQL
-- 🔐 **인증 시스템** - 역할 기반 액세스 제어가 있는 안전한 JWT 기반 인증
+- 🔐 **고급 인증 시스템** - 역할 기반 액세스 제어(RBAC)가 있는 안전한 JWT 기반 인증
+  - 세밀한 권한 매트릭스 (리소스별 액션 제어)
+  - 역할 계층 구조 (Owner > Admin > Observer > Regular)
+  - 소유권 기반 권한 지원
+  - 사용자 상태 관리 (active, pending, stopped, blocked, hidden)
 - 👥 **사용자 관리** - Owner, Admin, Observer, Regular 사용자 유형 지원
 - ⚙️ **시스템 관리** - Owner 전용 시스템 관리 메뉴 및 사용자 관리 기능
+- 🛡️ **권한 보호 시스템** - 프론트엔드 및 백엔드 권한 미들웨어
+  - `usePermission()` 및 `useRole()` React 훅
+  - `<ProtectedComponent>` 및 `<ProtectedRoute>` 컴포넌트
+  - API 라우트용 `withAuth()` 미들웨어
 - 📧 **이메일 통합** - Nodemailer를 사용한 자동 알림 및 비밀번호 재설정
 - 🔄 **세션 관리** - 쿠키 기반 세션을 사용한 방문자 추적
 - 📍 **IP 지리적 위치** - 자동 국가/도시 감지
@@ -207,6 +215,9 @@ demo/
 ├── components/            # React 컴포넌트
 │   ├── ui/               # shadcn/ui 기본 컴포넌트
 │   │   └── *.tsx         # Button, Input, Card, Dialog 등
+│   ├── auth/             # 인증 및 권한 컴포넌트
+│   │   ├── ProtectedRoute.tsx # 권한 기반 라우트 보호
+│   │   └── ProtectedComponent.tsx # 권한 기반 컴포넌트 보호
 │   ├── auth-form.tsx     # 로그인/회원가입 폼
 │   ├── export-to-pdf-button.tsx # PDF 내보내기 버튼 컴포넌트
 │   ├── forgot-password-form.tsx # 비밀번호 재설정 요청 폼
@@ -230,7 +241,22 @@ demo/
 │   ├── db-init.ts        # 데이터베이스 초기화
 │   ├── api-spec.ts       # Swagger API 사양
 │   ├── pdf-export.ts     # PDF 내보내기 유틸리티 (html2canvas + jsPDF)
-│   └── hooks/            # 커스텀 React 훅
+│   ├── auth/             # 인증 및 권한 미들웨어
+│   │   ├── api-middleware.ts # API 라우트 인증/권한 미들웨어
+│   │   ├── route-guard.ts    # 라우트 가드 유틸리티
+│   │   ├── status-checker.ts # 사용자 상태 확인
+│   │   └── types.ts          # 인증 타입 정의
+│   ├── permissions/      # RBAC 권한 시스템
+│   │   ├── types.ts      # 권한 타입 정의
+│   │   ├── definitions.ts # 권한 매트릭스 및 역할 정의
+│   │   └── checker.ts    # 권한 확인 함수
+│   ├── hooks/            # 커스텀 React 훅
+│   │   ├── useAuth.ts    # 인증 훅
+│   │   ├── usePermission.ts # 권한 확인 훅
+│   │   ├── useRole.ts    # 역할 확인 훅
+│   │   └── useDebounce.ts # 디바운스 훅
+│   └── utils/            # 추가 유틸리티
+│       └── fetch-with-auth.ts # 인증이 포함된 fetch 래퍼
 ├── scripts/              # 데이터베이스 관리 스크립트
 │   ├── init-clickhouse.js # ClickHouse 스키마 초기화
 │   ├── init-mysql.js     # MySQL 스키마 초기화
@@ -339,11 +365,18 @@ CosMos AI는 실시간 분석과 안정적인 애플리케이션 데이터 관�
 
 **인증 및 보안**
 - 7일 만료가 있는 JWT 기반 인증
-- bcrypt 비밀번호 해싱
+- bcrypt 비밀번호 해싱 (10 라운드)
 - 민감한 엔드포인트에 대한 속도 제한
-- 역할 기반 액세스 제어 (Owner, Admin, Observer, Regular)
+- 고급 역할 기반 액세스 제어 (RBAC)
+  - 세밀한 권한 매트릭스 (리소스별 액션 제어)
+  - 역할 계층 구조 (Owner > Admin > Observer > Regular)
+  - 소유권 기반 권한 지원 (`own` vs `all`)
+  - 프론트엔드 및 백엔드 권한 보호
+  - 사용자 상태 기반 액세스 제어 (active, pending, stopped, blocked, hidden)
 - 자동 정리가 있는 세션 관리
 - 이메일 검증을 통한 비밀번호 재설정
+- API 라우트용 `withAuth()` 미들웨어
+- React 컴포넌트용 `usePermission()` 및 `useRole()` 훅
 
 **분석 엔진**
 - 실시간 이벤트 추적
@@ -446,15 +479,51 @@ NEXTAUTH_URL=http://localhost:3000
 - 자동으로 인증 페이지로 리디렉션됩니다
 - 계정을 생성하거나 기존 자격 증명으로 로그인
 
-#### 2. 사용자 역할 및 권한
-- **Owner** - 전체 시스템 액세스 (데이터베이스를 통해 수동 할당)
-  - 시스템 관리 메뉴 액세스
-  - 사용자 관리 기능 (사용자 보기, 업데이트, 삭제)
-  - 사용자 유형 및 상태 수정 가능
-  - 모든 다른 기능에 대한 전체 액세스
-- **Admin** - 캠페인 관리, 분석 보기, 데이터 내보내기
-- **Observer** - 분석 및 대시보드에 대한 읽기 전용 액세스
-- **Regular** - 기본 보기 액세스
+#### 2. 사용자 역할 및 권한 (RBAC)
+
+CosMos AI는 세밀한 역할 기반 액세스 제어(RBAC) 시스템을 구현하여 리소스별 권한을 관리합니다.
+
+**역할 계층 구조:**
+- **Owner** (레벨 4) - 최고 권한, 모든 리소스에 대한 전체 액세스
+- **Admin** (레벨 3) - 대부분의 리소스 관리 권한 (사용자 관리 제외)
+- **Observer** (레벨 2) - 읽기 전용 액세스
+- **Regular** (레벨 1) - 제한된 읽기 액세스
+
+**권한 매트릭스:**
+
+| 리소스 | Owner | Admin | Observer | Regular |
+|--------|-------|-------|----------|---------|
+| **사용자 (users)** | 생성, 읽기, 업데이트, 삭제, 관리 | 읽기 | 읽기 | - |
+| **캠페인 (campaigns)** | 생성, 읽기, 업데이트, 삭제, 관리 | 생성, 읽기, 업데이트, 삭제, 관리 | 읽기 | 읽기 |
+| **코스 (courses)** | 생성, 읽기, 업데이트, 삭제, 관리 | 생성, 읽기, 업데이트, 삭제, 관리 | 읽기 | 읽기 |
+| **분석 (analytics)** | 읽기, 내보내기 | 읽기, 내보내기 | 읽기 | 읽기 |
+| **UTM 코드 (utm_codes)** | 생성, 읽기, 업데이트, 삭제, 관리 | 생성, 읽기, 업데이트, 삭제, 관리 | 읽기 | 읽기 |
+| **설정 (settings)** | 읽기, 업데이트, 관리 | 읽기, 업데이트 | - | - |
+| **시스템 (system)** | 읽기, 업데이트, 관리 | - | - | - |
+
+**권한 형식:**
+- 권한은 `리소스:액션` 형식으로 정의됩니다 (예: `campaigns:create`, `users:manage`)
+- 지원되는 액션: `create`, `read`, `update`, `delete`, `manage`, `export`
+- 소유권 기반 권한: `리소스:액션:own` 또는 `리소스:액션:all` 형식 지원
+
+**사용자 상태:**
+- **active** - 정상 액세스 허용
+- **pending** - 계정 승인 대기 중
+- **stopped** - 일시 중지됨 (읽기 전용)
+- **blocked** - 차단됨 (액세스 거부)
+- **hidden** - 숨김 (시스템에서 숨김)
+
+**프론트엔드 권한 보호:**
+- `usePermission()` 훅 - 컴포넌트에서 권한 확인
+- `useRole()` 훅 - 역할 확인
+- `<ProtectedComponent>` - 권한 기반 조건부 렌더링
+- `<ProtectedRoute>` - 권한 기반 라우트 보호
+
+**백엔드 권한 보호:**
+- `withAuth()` 미들웨어 - API 라우트 인증 및 권한 확인
+- `requirePermission()` - 특정 권한 요구
+- `requireRole()` - 특정 역할 요구
+- 자동 상태 확인 및 권한 검증
 
 #### 3. 첫 번째 캠페인 생성
 1. 사이드바에서 **Campaigns**로 이동

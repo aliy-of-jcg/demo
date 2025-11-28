@@ -30,9 +30,17 @@ A comprehensive marketing analytics and campaign management platform built with 
 
 ### Technical Features
 - ⚡ **Dual Database Architecture** - ClickHouse for analytics + MySQL for app data
-- 🔐 **Authentication System** - Secure JWT-based authentication with role-based access control
+- 🔐 **Advanced Authentication System** - Secure JWT-based authentication with Role-Based Access Control (RBAC)
+  - Fine-grained permission matrix (resource-level action control)
+  - Role hierarchy (Owner > Admin > Observer > Regular)
+  - Ownership-based permission support
+  - User status management (active, pending, stopped, blocked, hidden)
 - 👥 **User Management** - Support for Owner, Admin, Observer, and Regular user types
 - ⚙️ **System Management** - Owner-only system administration menu with user management capabilities
+- 🛡️ **Permission Protection System** - Frontend and backend permission middleware
+  - `usePermission()` and `useRole()` React hooks
+  - `<ProtectedComponent>` and `<ProtectedRoute>` components
+  - `withAuth()` middleware for API routes
 - 📧 **Email Integration** - Automated notifications and password reset with Nodemailer
 - 🔄 **Session Management** - Visitor tracking with cookie-based sessions
 - 📍 **IP Geolocation** - Automatic country/city detection
@@ -207,6 +215,9 @@ demo/
 ├── components/            # React components
 │   ├── ui/               # shadcn/ui base components
 │   │   └── *.tsx         # Button, Input, Card, Dialog, etc.
+│   ├── auth/             # Authentication & permission components
+│   │   ├── ProtectedRoute.tsx # Permission-based route protection
+│   │   └── ProtectedComponent.tsx # Permission-based component protection
 │   ├── auth-form.tsx     # Login/signup form
 │   ├── export-to-pdf-button.tsx # PDF export button component
 │   ├── forgot-password-form.tsx # Password reset request form
@@ -230,7 +241,22 @@ demo/
 │   ├── db-init.ts        # Database initialization
 │   ├── api-spec.ts       # Swagger API specification
 │   ├── pdf-export.ts     # PDF export utilities (html2canvas + jsPDF)
-│   └── hooks/            # Custom React hooks
+│   ├── auth/             # Authentication & permission middleware
+│   │   ├── api-middleware.ts # API route auth/permission middleware
+│   │   ├── route-guard.ts    # Route guard utilities
+│   │   ├── status-checker.ts # User status checking
+│   │   └── types.ts          # Authentication type definitions
+│   ├── permissions/      # RBAC permission system
+│   │   ├── types.ts      # Permission type definitions
+│   │   ├── definitions.ts # Permission matrix & role definitions
+│   │   └── checker.ts    # Permission checking functions
+│   ├── hooks/            # Custom React hooks
+│   │   ├── useAuth.ts    # Authentication hook
+│   │   ├── usePermission.ts # Permission checking hook
+│   │   ├── useRole.ts    # Role checking hook
+│   │   └── useDebounce.ts # Debounce hook
+│   └── utils/            # Additional utilities
+│       └── fetch-with-auth.ts # Authenticated fetch wrapper
 ├── scripts/              # Database management scripts
 │   ├── init-clickhouse.js # Initialize ClickHouse schema
 │   ├── init-mysql.js     # Initialize MySQL schema
@@ -339,11 +365,18 @@ CosMos AI uses a dual-database architecture optimized for both real-time analyti
 
 **Authentication & Security**
 - JWT-based authentication with 7-day expiry
-- bcrypt password hashing
+- bcrypt password hashing (10 rounds)
 - Rate limiting on sensitive endpoints
-- Role-based access control (Owner, Admin, Observer, Regular)
+- Advanced Role-Based Access Control (RBAC)
+  - Fine-grained permission matrix (resource-level action control)
+  - Role hierarchy (Owner > Admin > Observer > Regular)
+  - Ownership-based permission support (`own` vs `all`)
+  - Frontend and backend permission protection
+  - User status-based access control (active, pending, stopped, blocked, hidden)
 - Session management with automatic cleanup
 - Password reset with email verification
+- `withAuth()` middleware for API routes
+- `usePermission()` and `useRole()` React hooks
 
 **Analytics Engine**
 - Real-time event tracking
@@ -447,15 +480,51 @@ The `docker-compose.yml` configures two services:
 - You'll be automatically redirected to the authentication page
 - Create an account or log in with existing credentials
 
-#### 2. User Roles & Permissions
-- **Owner** - Full system access (manually assigned via database)
-  - Access to System Management menu
-  - User management capabilities (view, update, delete users)
-  - Can modify user types and statuses
-  - Full access to all other features
-- **Admin** - Manage campaigns, view analytics, export data
-- **Observer** - View-only access to analytics and dashboards
-- **Regular** - Basic view access
+#### 2. User Roles & Permissions (RBAC)
+
+CosMos AI implements a fine-grained Role-Based Access Control (RBAC) system for resource-level permission management.
+
+**Role Hierarchy:**
+- **Owner** (Level 4) - Highest privileges, full access to all resources
+- **Admin** (Level 3) - Most resource management permissions (except user management)
+- **Observer** (Level 2) - Read-only access
+- **Regular** (Level 1) - Limited read access
+
+**Permission Matrix:**
+
+| Resource | Owner | Admin | Observer | Regular |
+|----------|-------|-------|----------|---------|
+| **Users (users)** | create, read, update, delete, manage | read | read | - |
+| **Campaigns (campaigns)** | create, read, update, delete, manage | create, read, update, delete, manage | read | read |
+| **Courses (courses)** | create, read, update, delete, manage | create, read, update, delete, manage | read | read |
+| **Analytics (analytics)** | read, export | read, export | read | read |
+| **UTM Codes (utm_codes)** | create, read, update, delete, manage | create, read, update, delete, manage | read | read |
+| **Settings (settings)** | read, update, manage | read, update | - | - |
+| **System (system)** | read, update, manage | - | - | - |
+
+**Permission Format:**
+- Permissions are defined in `resource:action` format (e.g., `campaigns:create`, `users:manage`)
+- Supported actions: `create`, `read`, `update`, `delete`, `manage`, `export`
+- Ownership-based permissions: Supports `resource:action:own` or `resource:action:all` format
+
+**User Status:**
+- **active** - Normal access allowed
+- **pending** - Account awaiting approval
+- **stopped** - Temporarily suspended (read-only)
+- **blocked** - Blocked (access denied)
+- **hidden** - Hidden (hidden from system)
+
+**Frontend Permission Protection:**
+- `usePermission()` hook - Check permissions in components
+- `useRole()` hook - Check roles
+- `<ProtectedComponent>` - Conditional rendering based on permissions
+- `<ProtectedRoute>` - Permission-based route protection
+
+**Backend Permission Protection:**
+- `withAuth()` middleware - Authentication and permission checks for API routes
+- `requirePermission()` - Require specific permission
+- `requireRole()` - Require specific role
+- Automatic status checking and permission validation
 
 #### 3. Create Your First Campaign
 1. Navigate to **Campaigns** from the sidebar
