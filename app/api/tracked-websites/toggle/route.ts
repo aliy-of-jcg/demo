@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
+import { requirePermission } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
 export const dynamic = 'force-dynamic';
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = requirePermission('settings:update', async (request: NextRequest, context: AuthContext) => {
   try {
     const { domain, is_enabled } = await request.json();
 
@@ -15,7 +17,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const pool = getPool();
-    
+
     // Update the domain status
     const [result] = await pool.execute(
       'UPDATE tracked_websites SET is_enabled = ?, updated_at = NOW() WHERE domain = ?',
@@ -51,5 +53,5 @@ export async function PATCH(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 

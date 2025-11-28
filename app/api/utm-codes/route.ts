@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
+import { requirePermission } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,7 +10,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
-    
+
     console.log(`🏷️ UTM Codes API - Page: ${page}, Limit: ${limit}, Search: ${search || 'none'}`);
 
     const offset = (page - 1) * limit;
@@ -69,11 +71,11 @@ export async function GET(request: NextRequest) {
 
     // Fetch click data from ClickHouse for ALL matching UTMs (not just paginated)
     let clickDataMap: { [key: string]: number } = {};
-    
+
     if (allTrackingCodes.length > 0) {
       try {
         const escapedCodes = allTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-        
+
         const clickQuery = `
           SELECT 
             tracking_code,
@@ -89,7 +91,7 @@ export async function GET(request: NextRequest) {
         });
 
         const clickRows = await clickData.json() as any[];
-        
+
         clickRows.forEach((row: any) => {
           clickDataMap[row.tracking_code] = parseInt(row.total_clicks) || 0;
         });
@@ -101,7 +103,7 @@ export async function GET(request: NextRequest) {
     // Enhance paginated UTM codes with click data and construct full URLs
     const enhancedUTMs = utmCodes.map(utm => {
       const clicks = clickDataMap[utm.tracking_code] || 0;
-      
+
       // Construct full URL with UTM parameters
       let fullUrl = utm.landing_url || '';
       if (fullUrl) {
@@ -170,7 +172,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = requirePermission('utm_codes:create', async (request: NextRequest, context: AuthContext) => {
   try {
     const body = await request.json();
     const pool = getPool();
@@ -187,16 +189,16 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!name || !landing_url) {
       return NextResponse.json(
-        {success: false, error: 'UTM name and landing URL are required'},
-        {status: 400}
+        { success: false, error: 'UTM name and landing URL are required' },
+        { status: 400 }
       );
     }
 
     // Validate campaign_id - must be provided and be a valid number
     if (!campaign_id || campaign_id === '' || campaign_id === "0") {
       return NextResponse.json(
-        {success: false, error: 'Campaign selection is required'},
-        {status: 400}
+        { success: false, error: 'Campaign selection is required' },
+        { status: 400 }
       );
     }
 
@@ -204,8 +206,8 @@ export async function POST(request: NextRequest) {
     const parsedCampaignId = parseInt(campaign_id, 10);
     if (isNaN(parsedCampaignId) || parsedCampaignId <= 0) {
       return NextResponse.json(
-        {success: false, error: 'Invalid campaign ID'},
-        {status: 400}
+        { success: false, error: 'Invalid campaign ID' },
+        { status: 400 }
       );
     }
 
@@ -216,9 +218,9 @@ export async function POST(request: NextRequest) {
     );
 
     if (!campaignRows || (campaignRows as any[]).length === 0) {
-      return NextResponse.json( 
-        {success: false, error: 'Selected campaign not found'},
-        {status: 404}
+      return NextResponse.json(
+        { success: false, error: 'Selected campaign not found' },
+        { status: 404 }
       );
     }
 
@@ -230,23 +232,23 @@ export async function POST(request: NextRequest) {
     const tracking_code = `${timestamp}${random}`; // e.g., 12345243431 (12 characters)
 
     // Build full URl with UTM parameters
-      let fullUrlWithUtm = landing_url;
-      try {
-        const urlObj = new URL(landing_url);
-        if (utm_campaign) urlObj.searchParams.set('utm_campaign', utm_campaign);
-        if (utm_source) urlObj.searchParams.set('utm_source', utm_source);
-        if (utm_medium) urlObj.searchParams.set('utm_medium', utm_medium);
-        if (utm_term) urlObj.searchParams.set('utm_term', utm_term);
-        if (utm_content) urlObj.searchParams.set('utm_content', utm_content);
-        fullUrlWithUtm = urlObj.toString();
-  } catch (error) {
-    // If landing_url is invalid, use it as-is
-    console.warn('Invalid landing URL, using as-is:', landing_url);
-  }
+    let fullUrlWithUtm = landing_url;
+    try {
+      const urlObj = new URL(landing_url);
+      if (utm_campaign) urlObj.searchParams.set('utm_campaign', utm_campaign);
+      if (utm_source) urlObj.searchParams.set('utm_source', utm_source);
+      if (utm_medium) urlObj.searchParams.set('utm_medium', utm_medium);
+      if (utm_term) urlObj.searchParams.set('utm_term', utm_term);
+      if (utm_content) urlObj.searchParams.set('utm_content', utm_content);
+      fullUrlWithUtm = urlObj.toString();
+    } catch (error) {
+      // If landing_url is invalid, use it as-is
+      console.warn('Invalid landing URL, using as-is:', landing_url);
+    }
 
-      // Insert the new UTM code
-      const [result] = await pool.execute(
-        `INSERT INTO utm_codes (
+    // Insert the new UTM code
+    const [result] = await pool.execute(
+      `INSERT INTO utm_codes (
           name, 
           tracking_code, 
           campaign_id,
@@ -259,21 +261,21 @@ export async function POST(request: NextRequest) {
           full_url,
           created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [
-          name,
-          tracking_code,
-          parsedCampaignId,  // Use parsed integer
-          utm_source || null,
-          utm_medium || null,
-          utm_campaign,
-          utm_term || null,
-          utm_content || null,
-          landing_url,
-          fullUrlWithUtm
-        ]
-      );
+      [
+        name,
+        tracking_code,
+        parsedCampaignId,  // Use parsed integer
+        utm_source || null,
+        utm_medium || null,
+        utm_campaign,
+        utm_term || null,
+        utm_content || null,
+        landing_url,
+        fullUrlWithUtm
+      ]
+    );
 
-      const insertResult = result as any;
+    const insertResult = result as any;
 
     return NextResponse.json({
       success: true,
@@ -298,4 +300,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

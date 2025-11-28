@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
+import { requirePermissionWithParams } from '@/lib/auth/api-middleware';
+import type { AuthContext } from '@/lib/auth/types';
 
 export async function GET(
   request: NextRequest,
@@ -9,7 +11,7 @@ export async function GET(
     const params = await context.params;
     const id = params.id;
     const pool = getPool();
-    
+
     // Get the UTM code
     const [utmCodeResult] = await pool.execute(
       'SELECT * FROM utm_codes WHERE id = ?',
@@ -17,7 +19,7 @@ export async function GET(
     );
 
     const utmCodes = utmCodeResult as any[];
-    
+
     if (utmCodes.length === 0) {
       return NextResponse.json(
         { success: false, error: 'UTM code not found' },
@@ -38,15 +40,12 @@ export async function GET(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export const DELETE = requirePermissionWithParams('utm_codes:delete', async (request: NextRequest, context: AuthContext, routeParams: { params: Record<string, string> }) => {
+  const { params } = routeParams;
   try {
-    const params = await context.params;
     const id = params.id;
     const pool = getPool();
-    
+
     // Soft delete - set status to 'hidden' instead of deleting
     await pool.execute(
       'UPDATE utm_codes SET status = ? WHERE id = ?',
@@ -64,14 +63,11 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});
 
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+export const PUT = requirePermissionWithParams('utm_codes:update', async (request: NextRequest, context: AuthContext, routeParams: { params: Record<string, string> }) => {
+  const { params } = routeParams;
   try {
-    const params = await context.params;
     const id = params.id;
     const body = await request.json();
     const pool = getPool();
@@ -195,4 +191,4 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
+});

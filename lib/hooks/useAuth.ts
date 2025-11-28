@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { UserType, UserStatus } from '@/lib/types';
 
@@ -40,9 +40,14 @@ export interface UseAuthReturn extends AuthState {
  * Custom hook for authentication state management
  * Consolidates the duplicate checkAuth() logic from layout-wrapper.tsx and auth/page.tsx
  */
+// Global flag to prevent concurrent auth checks across all instances
+let isCheckingAuth = false;
+let authCheckPromise: Promise<void> | null = null;
+
 export function useAuth(requireAuth: boolean = true): UseAuthReturn {
     const router = useRouter();
     const pathname = usePathname();
+    const hasCheckedRef = useRef(false);
     const [authState, setAuthState] = useState<AuthState>({
         user: null,
         isLoading: true,
@@ -54,35 +59,81 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
      * Check authentication status
      */
     const checkAuth = useCallback(async () => {
-        try {
-            setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
+        // Prevent concurrent checks - wait for existing check if in progress
+        if (isCheckingAuth && authCheckPromise) {
+            await authCheckPromise;
+            return;
+        }
 
-            const token = localStorage.getItem('auth_token');
+        // Start new check
+        isCheckingAuth = true;
+        authCheckPromise = (async () => {
+            try {
+                setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
-            if (!token) {
-                if (requireAuth) {
-                    localStorage.removeItem('user');
-                    window.location.replace('/auth');
+                const token = localStorage.getItem('auth_token');
+
+                if (!token) {
+                    if (requireAuth) {
+                        localStorage.removeItem('user');
+                        window.location.replace('/auth');
+                        return;
+                    }
+                    setAuthState({
+                        user: null,
+                        isLoading: false,
+                        isAuthenticated: false,
+                        error: null,
+                    });
                     return;
                 }
-                setAuthState({
-                    user: null,
-                    isLoading: false,
-                    isAuthenticated: false,
-                    error: null,
+
+                const response = await fetch('/api/auth/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token }),
                 });
-                return;
-            }
 
-            const response = await fetch('/api/auth/validate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token }),
-            });
+                const result = await response.json();
 
-            const result = await response.json();
+                if (!result.valid) {
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('user');
 
-            if (!result.valid) {
+                    if (requireAuth) {
+                        window.location.replace('/auth');
+                        return;
+                    }
+
+                    setAuthState({
+                        user: null,
+                        isLoading: false,
+                        isAuthenticated: false,
+                        error: result.message || 'Authentication failed',
+                    });
+                    return;
+                }
+
+                if (result.user) {
+                    // Store user in localStorage for backward compatibility
+                    localStorage.setItem('user', JSON.stringify(result.user));
+
+                    setAuthState({
+                        user: result.user as AuthUser,
+                        isLoading: false,
+                        isAuthenticated: true,
+                        error: null,
+                    });
+                } else {
+                    setAuthState({
+                        user: null,
+                        isLoading: false,
+                        isAuthenticated: false,
+                        error: 'User data not found',
+                    });
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('user');
 
@@ -95,46 +146,15 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
                     user: null,
                     isLoading: false,
                     isAuthenticated: false,
-                    error: result.message || 'Authentication failed',
+                    error: 'Authentication check failed',
                 });
-                return;
+            } finally {
+                isCheckingAuth = false;
+                authCheckPromise = null;
             }
+        })();
 
-            if (result.user) {
-                // Store user in localStorage for backward compatibility
-                localStorage.setItem('user', JSON.stringify(result.user));
-
-                setAuthState({
-                    user: result.user as AuthUser,
-                    isLoading: false,
-                    isAuthenticated: true,
-                    error: null,
-                });
-            } else {
-                setAuthState({
-                    user: null,
-                    isLoading: false,
-                    isAuthenticated: false,
-                    error: 'User data not found',
-                });
-            }
-        } catch (error) {
-            console.error('Auth check failed:', error);
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
-
-            if (requireAuth) {
-                window.location.replace('/auth');
-                return;
-            }
-
-            setAuthState({
-                user: null,
-                isLoading: false,
-                isAuthenticated: false,
-                error: 'Authentication check failed',
-            });
-        }
+        await authCheckPromise;
     }, [requireAuth]);
 
     /**
@@ -176,13 +196,22 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
             return;
         }
 
+        // Only check if we haven't checked for this pathname yet
+        if (hasCheckedRef.current) {
+            return;
+        }
+
         // Small delay to prevent chunk loading race condition
         const timeout = setTimeout(() => {
+            hasCheckedRef.current = true;
             checkAuth();
         }, 100);
 
-        return () => clearTimeout(timeout);
-    }, [pathname, checkAuth, requireAuth]);
+        return () => {
+            clearTimeout(timeout);
+            hasCheckedRef.current = false;
+        };
+    }, [pathname, requireAuth]); // Removed checkAuth from deps to prevent re-runs
 
     // Try to load user from localStorage on mount (for faster initial render)
     useEffect(() => {

@@ -6,6 +6,8 @@ import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
 import { useTranslations } from 'next-intl';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 
 interface WebsiteData {
   domain: string;
@@ -43,6 +45,11 @@ interface ApiResponse {
 
 export default function TrackedWebsitesPage() {
   const t = useTranslations('trackedWebsites');
+  const { hasPermission } = usePermission();
+
+  // Check if user can manage tracked websites (settings:update permission)
+  const canManageWebsites = hasPermission('settings:update');
+
   const [dateRange, setDateRange] = useState({
     start: (() => {
       const date = new Date();
@@ -79,9 +86,13 @@ export default function TrackedWebsitesPage() {
     setTogglingDomain(domain);
 
     const promise = (async () => {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/tracked-websites/toggle', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
         body: JSON.stringify({ domain, is_enabled: !currentStatus })
       });
 
@@ -454,9 +465,11 @@ export default function TrackedWebsitesPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         {t('table.lastSeen')}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('table.actions')}
-                      </th>
+                      {canManageWebsites && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {t('table.actions')}
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -505,33 +518,37 @@ export default function TrackedWebsitesPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(website.last_seen)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            onClick={() => handleToggleStatus(website.domain, website.is_enabled)}
-                            disabled={togglingDomain === website.domain}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${website.is_enabled
-                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                              } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {togglingDomain === website.domain ? (
-                              <>
-                                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                {t('table.processing')}
-                              </>
-                            ) : website.is_enabled ? (
-                              <>
-                                <Ban className="w-3 h-3" />
-                                {t('table.disable')}
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="w-3 h-3" />
-                                {t('table.enable')}
-                              </>
-                            )}
-                          </button>
-                        </td>
+                        {canManageWebsites && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <ProtectedComponent permission="settings:update" hideOnUnauthorized>
+                              <button
+                                onClick={() => handleToggleStatus(website.domain, website.is_enabled)}
+                                disabled={togglingDomain === website.domain}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${website.is_enabled
+                                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              >
+                                {togglingDomain === website.domain ? (
+                                  <>
+                                    <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    {t('table.processing')}
+                                  </>
+                                ) : website.is_enabled ? (
+                                  <>
+                                    <Ban className="w-3 h-3" />
+                                    {t('table.disable')}
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-3 h-3" />
+                                    {t('table.enable')}
+                                  </>
+                                )}
+                              </button>
+                            </ProtectedComponent>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -593,31 +610,33 @@ export default function TrackedWebsitesPage() {
                       <p className="font-medium text-orange-600">{website.total_conversions}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleToggleStatus(website.domain, website.is_enabled)}
-                    disabled={togglingDomain === website.domain}
-                    className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${website.is_enabled
-                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                      : 'bg-green-100 text-green-700 hover:bg-green-200'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {togglingDomain === website.domain ? (
-                      <>
-                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        {t('table.processing')}
-                      </>
-                    ) : website.is_enabled ? (
-                      <>
-                        <Ban className="w-3 h-3" />
-                        {t('table.disableTracking')}
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-3 h-3" />
-                        {t('table.enableTracking')}
-                      </>
-                    )}
-                  </button>
+                  <ProtectedComponent permission="settings:update" hideOnUnauthorized>
+                    <button
+                      onClick={() => handleToggleStatus(website.domain, website.is_enabled)}
+                      disabled={togglingDomain === website.domain}
+                      className={`w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 ${website.is_enabled
+                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {togglingDomain === website.domain ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          {t('table.processing')}
+                        </>
+                      ) : website.is_enabled ? (
+                        <>
+                          <Ban className="w-3 h-3" />
+                          {t('table.disableTracking')}
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-3 h-3" />
+                          {t('table.enableTracking')}
+                        </>
+                      )}
+                    </button>
+                  </ProtectedComponent>
                 </div>
               ))}
             </div>

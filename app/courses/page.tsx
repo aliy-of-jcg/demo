@@ -239,10 +239,12 @@ export default function CoursesPage() {
 
         const method = editingCourse ? 'PUT' : 'POST';
 
+        const token = localStorage.getItem('auth_token');
         const response = await fetch(url, {
           method,
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(token && { Authorization: `Bearer ${token}` })
           },
           body: JSON.stringify(formData)
         });
@@ -281,8 +283,12 @@ export default function CoursesPage() {
 
     toast.promise(
       (async () => {
+        const token = localStorage.getItem('auth_token');
         const response = await fetch(`/api/courses/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` })
+          }
         });
 
         const data = await response.json();
