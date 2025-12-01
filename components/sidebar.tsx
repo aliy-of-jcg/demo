@@ -50,10 +50,10 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
     { name: t('logAnalysisItems.returningVisitorAnalysis'), href: "/returning-analysis" },
     { name: t('logAnalysisItems.pageFlowAnalysis'), href: "/page-flow-analysis" },
     { name: t('logAnalysisItems.sessionJourneys'), href: '/session-journeys' },
-    { name: t('logAnalysisItems.trackedWebsites'), href: '/tracked-websites' },
   ];
 
   const systemManagementItems = [
+    { name: t('logAnalysisItems.trackedWebsites'), href: '/tracked-websites' },
     { name: t('userManagement'), href: "/user-management" },
   ];
 

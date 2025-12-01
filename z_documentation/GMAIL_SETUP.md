@@ -34,7 +34,8 @@ EMAIL_FROM="Admin Panel <noreply@adminpanel.com>"
 ```
 
 **Important:** 
-- Remove spaces from the app password
+- Remove spaces from the app password (Gmail shows it as "abcd efgh ijkl mnop" but use "abcdefghijklmnop")
+- Do NOT put quotes around EMAIL_PASSWORD value (e.g., use `EMAIL_PASSWORD=abcdefghijklmnop` not `EMAIL_PASSWORD="abcdefghijklmnop"`)
 - Replace `your.email@gmail.com` with your actual Gmail address
 - The app password is NOT your regular Gmail password
 
@@ -80,6 +81,69 @@ npm run dev
 2. Check Spam/Junk folder
 3. Gmail account is active
 4. Server logs for errors: check terminal output
+
+### Server Deployment Issues (Works Locally, Fails on Server)
+
+**Common Causes:**
+
+1. **Missing Environment Variables on Server**
+   - Verify all `EMAIL_*` variables are set in your production environment
+   - Check Docker environment variables if using containers
+   - Ensure `.env` files are properly loaded on server
+
+2. **Gmail Blocking Server IP**
+   - Gmail may block connections from new/unfamiliar IP addresses
+   - Solution: Use a service like SendGrid, AWS SES, or Mailgun for production
+   - Or: Whitelist your server IP in Gmail (if using Google Workspace)
+
+3. **Network/Firewall Restrictions**
+   - Server firewall may block outbound SMTP port 587
+   - Check if port 587 is open: `telnet smtp.gmail.com 587`
+   - Some cloud providers block SMTP by default
+
+4. **Docker/Container Networking**
+   - If using Docker, ensure network allows outbound SMTP connections
+   - Check `docker-compose.yml` network configuration
+   - Verify environment variables are passed to container
+
+**Debugging Steps:**
+
+1. **Check Server Logs** - The improved error handling will now show:
+   - Specific error codes (EAUTH, ECONNECTION, ETIMEDOUT)
+   - Email configuration status
+   - Detailed error messages
+
+2. **Verify Environment Variables:**
+   ```bash
+   # On your server, check if variables are set
+   echo $EMAIL_USER
+   echo $EMAIL_PASSWORD
+   echo $EMAIL_HOST
+   ```
+
+3. **Test SMTP Connection from Server:**
+   ```bash
+   # SSH into your server and test
+   telnet smtp.gmail.com 587
+   # Or use the testEmailConnection function
+   ```
+
+4. **Check Error Details:**
+   - Look for error codes in server logs:
+     - `EAUTH`: Authentication failed (wrong credentials)
+     - `ECONNECTION`: Cannot connect to SMTP server
+     - `ETIMEDOUT`: Connection timeout
+
+**Recommended Solution for Production:**
+
+For production servers, consider using a dedicated email service:
+
+- **SendGrid** (Free tier: 100 emails/day)
+- **AWS SES** (Very affordable, reliable)
+- **Mailgun** (Developer-friendly)
+- **Resend** (Modern API, great DX)
+
+These services are more reliable than Gmail SMTP for production use.
 
 ---
 

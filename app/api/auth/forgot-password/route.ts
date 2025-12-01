@@ -7,7 +7,7 @@ import crypto from 'crypto';
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
-    
+
     console.log(`🔑 Forgot Password API - Email: ${email}`);
 
     // Validation
@@ -103,9 +103,12 @@ export async function POST(req: NextRequest) {
         expiresAt: expiresAt.toISOString(),
         timestamp: new Date().toISOString(),
       });
-    } catch (emailError) {
+    } catch (emailError: any) {
+      const errorMessage = emailError?.message || 'Failed to send password reset email';
+
       console.error('Failed to send password reset email:', {
         error: emailError,
+        errorMessage,
         email: user.email,
         userId: user.id,
         timestamp: new Date().toISOString(),
@@ -117,7 +120,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Failed to send password reset email. Please try again later.',
+          message: errorMessage,
         },
         { status: 500 }
       );
