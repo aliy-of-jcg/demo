@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Copy, ExternalLink, Edit, Trash2, Plus, TrendingUp, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
 import Swal from 'sweetalert2';
@@ -40,6 +41,9 @@ interface Summary {
 }
 
 export default function UTMListPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const t = useTranslations('utmTools.list');
   const { hasPermission } = usePermission();
 
@@ -48,13 +52,22 @@ export default function UTMListPage() {
   const canUpdateUtm = hasPermission('utm_codes:update');
   const canDeleteUtm = hasPermission('utm_codes:delete');
 
+  // Initialize from URL params (only on first render)
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [page, setPage] = useState(() => {
+    const urlPage = searchParams.get('page');
+    return urlPage ? parseInt(urlPage) : 1;
+  });
+  const [limit, setLimit] = useState(() => {
+    const urlLimit = searchParams.get('limit');
+    return urlLimit && [10, 20, 50].includes(parseInt(urlLimit)) ? parseInt(urlLimit) : 10;
+  });
+
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 500); // Debounce search input
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [summary, setSummary] = useState<Summary>({
@@ -64,6 +77,32 @@ export default function UTMListPage() {
     total_clicks: 0
   });
   const [utmCodes, setUtmCodes] = useState<UTMCode[]>([]);
+
+  // Mark as initialized after first render
+  useEffect(() => {
+    setIsInitialized(true);
+  }, []);
+
+  // Update URL when page or limit changes (but not on initial render)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const params = new URLSearchParams();
+    params.set('page', page.toString());
+    params.set('limit', limit.toString());
+
+    router.replace(`/utm-tools?${params.toString()}`, { scroll: false });
+  }, [page, limit, isInitialized, router]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  // Reset to page 1 when limit changes
+  useEffect(() => {
+    setPage(1);
+  }, [limit]);
 
   const fetchUTMCodes = useCallback(async () => {
     try {
@@ -244,7 +283,7 @@ export default function UTMListPage() {
 
   const handleLimitChange = (newLimit: number) => {
     setLimit(newLimit);
-    setPage(1); // Reset to page 1 when limit changes
+    // Page reset is handled by useEffect
   };
 
   if (loading) {

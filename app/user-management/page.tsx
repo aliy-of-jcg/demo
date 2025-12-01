@@ -14,6 +14,7 @@ import type { UserType } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
+import { useDebounce } from '@/lib/hooks/useDebounce';
 
 interface User {
     id: number;
@@ -33,7 +34,8 @@ function UserManagementPageContent() {
     const { hasPermission } = usePermission();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchInput, setSearchInput] = useState(""); // Immediate input value
+    const debouncedSearch = useDebounce(searchInput, 500); // Debounced search value
     const [filterType, setFilterType] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [menuOpen, setMenuOpen] = useState<{ userId: number; type: 'userType' | 'userStatus' } | null>(null);
@@ -174,8 +176,8 @@ function UserManagementPageContent() {
 
     const filteredUsers = users.filter((user) => {
         const matchesSearch =
-            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.company_name.toLowerCase().includes(searchTerm.toLowerCase());
+            user.email.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            user.company_name.toLowerCase().includes(debouncedSearch.toLowerCase());
         const matchesType = filterType === "all" || user.user_type === filterType;
         const matchesStatus = filterStatus === "all" || user.status === filterStatus;
         return matchesSearch && matchesType && matchesStatus;
@@ -336,8 +338,8 @@ function UserManagementPageContent() {
                                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                                     <Input
                                         placeholder={t("filters.searchPlaceholder")}
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        value={searchInput}
+                                        onChange={(e) => setSearchInput(e.target.value)}
                                         className="pl-10"
                                     />
                                 </div>

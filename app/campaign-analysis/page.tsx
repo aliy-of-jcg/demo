@@ -359,7 +359,7 @@ export default function CampaignAnalysisPage() {
               : 'bg-transparent text-gray-700 hover:bg-gray-100'
               }`}
           >
-            UTM Comparison
+            {t('viewMode.utm')}
           </button>
         </div>
       </div>
@@ -667,7 +667,7 @@ export default function CampaignAnalysisPage() {
                 <>
                   {/* UTM Filters */}
                   <div className="mb-4 sm:mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
                       <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Source</label>
                         <select
@@ -694,14 +694,14 @@ export default function CampaignAnalysisPage() {
                           ))}
                         </select>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="text-sm text-gray-600 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className={`flex flex-col gap-2 ${data.deletedLinksCount !== undefined && data.deletedLinksCount !== null && data.deletedLinksCount > 0 ? 'items-end' : 'items-end'}`}>
+                        <div className="text-sm text-gray-600 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 whitespace-nowrap">
                           Showing <span className="font-semibold text-gray-900">{filteredUtms.length}</span> of <span className="font-semibold text-gray-900">{data.utmBreakdown.length}</span> UTMs
                         </div>
-                        {data.deletedLinksCount && data.deletedLinksCount > 0 && (
-                          <div className="text-xs text-amber-600 font-medium flex items-center gap-1 px-3 py-1.5 bg-amber-50 rounded-lg border border-amber-200">
+                        {data.deletedLinksCount !== undefined && data.deletedLinksCount !== null && data.deletedLinksCount > 0 && (
+                          <div className="text-xs text-amber-600 font-medium flex items-center gap-1 px-3 py-1.5 bg-amber-50 rounded-lg border border-amber-200 whitespace-nowrap">
                             <span>⚠️</span>
-                            <span>+ {data.deletedLinksCount} deleted link{data.deletedLinksCount !== 1 ? 's' : ''} (not shown)</span>
+                            <span>has {data.deletedLinksCount} deleted utm{data.deletedLinksCount !== 1 ? 's' : ''}</span>
                           </div>
                         )}
                       </div>

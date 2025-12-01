@@ -721,7 +721,8 @@
     "spent": "사용액",
     "viewMode": {
       "chart": "차트",
-      "table": "테이블"
+      "table": "테이블",
+      "utm": "UTM 비교"
     },
     "filters": {
       "allPlatforms": "모든 플랫폼",

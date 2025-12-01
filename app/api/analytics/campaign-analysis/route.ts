@@ -282,13 +282,20 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     try {
       // Get all tracking codes from MySQL for this campaign (including hidden)
       const [allTrackingCodes] = await pool.query<RowDataPacket[]>(
-        'SELECT tracking_code FROM utm_codes WHERE campaign_id = ?',
+        'SELECT tracking_code, status FROM utm_codes WHERE campaign_id = ?',
         [campaignId]
       );
       const allTrackingCodesInMySQL = new Set(
         allTrackingCodes.map(tc => tc.tracking_code).filter(code => code && code !== '')
       );
       const activeTrackingCodes = new Set(validTrackingCodes);
+
+      // Count hidden UTMs as deleted links
+      const hiddenUtms = allTrackingCodes.filter(tc => tc.status === 'hidden');
+      deletedLinksCount += hiddenUtms.length;
+      if (hiddenUtms.length > 0) {
+        hasLegacyData = true;
+      }
 
       // Check visit_logs for tracking codes that don't exist in MySQL
       if (campaignId) {
@@ -308,7 +315,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           clickhouseTrackingCodesData.map(row => row.tracking_code?.trim() || row.tracking_code).filter(code => code && code !== '')
         );
 
-        // Count deleted links (tracking codes in ClickHouse but not in MySQL)
+        // Count hard-deleted links (tracking codes in ClickHouse but not in MySQL)
         for (const code of Array.from(clickhouseTrackingCodes)) {
           if (!allTrackingCodesInMySQL.has(code)) {
             hasLegacyData = true;

@@ -6,7 +6,7 @@ import type {
     PermissionCheckResult,
     OwnershipChecker,
 } from './types';
-import { roleHasPermission, hasRoleOrHigher } from './definitions';
+import { roleHasPermission, hasRoleOrHigher } from '@/lib/permissions/definitions';
 import type { UserType } from '@/lib/types';
 
 /**

@@ -721,7 +721,8 @@
     "spent": "Spent",
     "viewMode": {
       "chart": "Chart",
-      "table": "Table"
+      "table": "Table",
+      "utm": "UTM Comparison"
     },
     "filters": {
       "allPlatforms": "All Platforms",
