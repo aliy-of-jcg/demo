@@ -249,6 +249,126 @@
     "empty": {
       "noCampaigns": "No campaigns found"
     },
+    "warning": {
+      "notTracked": "Not Tracked",
+      "landingPageNotTracked": "Landing page is not tracked by CosMosAI or tracking is disabled for this domain"
+    },
+    "detail": {
+      "backToCampaigns": "Back to Campaigns",
+      "subtitle": "Campaign Details & Tracking Links",
+      "editCampaign": "Edit Campaign",
+      "campaignPeriod": "Campaign Period",
+      "days": "days",
+      "totalBudget": "Total Budget",
+      "daily": "Daily",
+      "budgetSpent": "Budget Spent",
+      "percentUsed": "% used",
+      "trackingLinks": "Tracking Links",
+      "active": "active",
+      "campaignInformation": "Campaign Information",
+      "course": "Course",
+      "courseCode": "Course Code",
+      "mediaSources": "Media Sources",
+      "adTypes": "Ad Types",
+      "description": "Description",
+      "noDescription": "No description provided",
+      "createdAt": "Created At",
+      "performance": "Performance",
+      "totalClicks": "Total Clicks",
+      "fromActiveLinks": "From {count} active tracking link{plural}",
+      "fromLinks": "From {count} tracking link{plural}",
+      "fromDeletedLinks": "+ {count} from deleted link{plural}",
+      "includesDeletedData": "Includes data from deleted links",
+      "uniqueVisitors": "Unique Visitors",
+      "percentOfClicks": "{percent}% of clicks",
+      "budgetUsed": "Budget Used",
+      "manageLinks": "Manage multiple tracking links for different sources and mediums",
+      "addTrackingLink": "Add Tracking Link",
+      "tableHeaders": {
+        "name": "Name",
+        "shortUrl": "Short URL",
+        "mediaAdType": "Media / Ad Type",
+        "landingUrl": "Landing URL",
+        "budgetSpent": "Budget / Spent",
+        "clicks": "Clicks",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "noLinksYet": "No tracking links yet. Create one to start tracking this campaign.",
+      "term": "Term",
+      "content": "Content",
+      "budget": "Budget",
+      "spent": "Spent",
+      "noLimit": "No limit",
+      "inactive": "Inactive",
+      "clickToToggle": "Click to {action}",
+      "editUtm": "Edit UTM",
+      "delete": "Delete",
+      "copyLink": "Copy tracking link",
+      "testRedirect": "Test redirect",
+      "modal": {
+        "addTitle": "Add New Tracking Link",
+        "description": "Create a new tracking link with different source, medium, or landing URL. Duplicate links are not allowed.",
+        "linkName": "Link Name",
+        "landingUrl": "Landing URL",
+        "media": "Media",
+        "adType": "Ad Type",
+        "autoFilled": "Auto-filled from campaign. You can override if needed.",
+        "utmCampaign": "UTM Campaign",
+        "utmTerm": "UTM Term (Optional)",
+        "utmContent": "UTM Content (Optional)",
+        "budgetSettings": "Budget Settings (Optional)",
+        "budgetDescription": "Allocate a specific budget for this tracking link. Leave empty for no budget limit.",
+        "budgetAllocation": "Budget Allocation ($)",
+        "currentBudget": "Current campaign budget:",
+        "autoPause": "Auto-pause when budget is reached",
+        "autoPauseDesc": "Automatically deactivate this link when its budget is fully spent",
+        "autoUpdate": "Auto-update campaign budget if needed",
+        "autoUpdateDesc": "Automatically increase campaign budget if this allocation exceeds the current total",
+        "budgetPreview": "Budget Impact Preview:",
+        "currentAllocated": "Current Allocated:",
+        "newLinkBudget": "New Link Budget:",
+        "totalAfterAdding": "Total After Adding:",
+        "exceedsBudget": "Exceeds campaign budget by ${amount}",
+        "willAutoIncrease": "(will be auto-increased)",
+        "cancel": "Cancel",
+        "create": "Create Tracking Link"
+      },
+      "toast": {
+        "linkCopied": "Tracking link copied to clipboard!",
+        "copyFailed": "Failed to copy tracking link",
+        "campaignNotFound": "Campaign not found",
+        "loadFailed": "Failed to load campaign",
+        "fillRequired": "Please fill in all required fields",
+        "duplicateLink": "A tracking link with these exact parameters already exists. Please use different UTM parameters or landing URL.",
+        "createFailed": "Failed to create tracking link",
+        "budgetUpdated": "Campaign budget automatically increased to ${amount}",
+        "creating": "Creating tracking link...",
+        "created": "Tracking link created successfully!",
+        "deleting": "Deleting tracking link...",
+        "deleted": "Tracking link deleted successfully!",
+        "deleteFailed": "Failed to delete tracking link",
+        "activating": "Activating tracking link...",
+        "activated": "Tracking link activated successfully!",
+        "deactivating": "Deactivating tracking link...",
+        "deactivated": "Tracking link deactivated successfully!",
+        "updateFailed": "Failed to update tracking link status"
+      },
+      "swal": {
+        "deleteTitle": "Delete Tracking Link?",
+        "deleteText": "Are you sure you want to delete this tracking link? This action cannot be undone.",
+        "deleteConfirm": "Yes, delete it!",
+        "deleteCancel": "Cancel",
+        "toggleText": "Are you sure you want to {action} \"{name}\"?",
+        "activateAction": "activate",
+        "deactivateAction": "deactivate",
+        "inactiveWarning": "⚠️ The link will show an \"expired\" message to visitors.",
+        "activeInfo": "✓ The link will redirect visitors normally.",
+        "toggleConfirm": "Yes, {action} it",
+        "toggleCancel": "Cancel"
+      },
+      "loading": "Loading campaign details..."
+    },
     "loading": "Loading...",
     "create": {
       "title": "Create New Campaign",
@@ -652,6 +772,10 @@
     "export": {
       "filename": "campaign-analysis-{start}-to-{end}.pdf",
       "title": "Campaign Analysis - {start} to {end}"
+    },
+    "warning": {
+      "notTracked": "Not Tracked",
+      "landingPageNotTracked": "Landing page is not tracked by CosMosAI or tracking is disabled for this domain"
     },
     "loading": "Loading..."
   },
@@ -1078,6 +1202,10 @@
       "copy": {
         "success": "URL copied to clipboard!",
         "error": "Failed to copy URL"
+      },
+      "warning": {
+        "notTracked": "Not Tracked",
+        "landingPageNotTracked": "Landing page is not tracked by CosMosAI or tracking is disabled for this domain"
       }
     },
     "generator": {

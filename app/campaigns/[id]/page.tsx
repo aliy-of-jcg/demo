@@ -54,6 +54,7 @@ interface TrackingLink {
   auto_pause_on_budget: boolean;
   status: string;
   created_at: string;
+  landingPageTracked?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -63,12 +64,7 @@ const statusColors: Record<string, string> = {
   paused: 'bg-yellow-100 text-yellow-800'
 };
 
-const statusLabels: Record<string, string> = {
-  active: 'Active',
-  waiting: 'Waiting',
-  ended: 'Ended',
-  paused: 'Paused'
-};
+// Status labels will use translations
 
 export default function CampaignDetailsPage() {
   const t = useTranslations('campaigns');
@@ -113,12 +109,12 @@ export default function CampaignDetailsPage() {
       if (data.success) {
         setCampaign(data.campaign);
       } else {
-        toast.error('Campaign not found');
+        toast.error(t('detail.toast.campaignNotFound'));
         router.push('/campaigns');
       }
     } catch (error) {
       console.error('Error fetching campaign:', error);
-      toast.error('Failed to load campaign');
+      toast.error(t('detail.toast.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -144,10 +140,10 @@ export default function CampaignDetailsPage() {
     const success = await copyToClipboard(shortUrl);
     if (success) {
       setCopiedCode(trackingCode);
-      toast.success('Tracking link copied to clipboard!');
+      toast.success(t('detail.toast.linkCopied'));
       setTimeout(() => setCopiedCode(null), 2000);
     } else {
-      toast.error('Failed to copy tracking link');
+      toast.error(t('detail.toast.copyFailed'));
     }
   };
 
@@ -161,7 +157,7 @@ export default function CampaignDetailsPage() {
     e.preventDefault();
 
     if (!formData.name || !formData.utm_source || !formData.utm_medium || !formData.utm_campaign || !formData.landing_url) {
-      toast.error('Please fill in all required fields');
+      toast.error(t('detail.toast.fillRequired'));
       return;
     }
 
@@ -180,14 +176,14 @@ export default function CampaignDetailsPage() {
 
         if (!response.ok || !data.success) {
           if (data.duplicate) {
-            throw new Error('A tracking link with these exact parameters already exists. Please use different UTM parameters or landing URL.');
+            throw new Error(t('detail.toast.duplicateLink'));
           }
-          throw new Error(data.error || 'Failed to create tracking link');
+          throw new Error(data.error || t('detail.toast.createFailed'));
         }
 
         // Show additional info if campaign budget was updated
         if (data.campaignBudgetUpdated) {
-          toast.success(`Campaign budget automatically increased to $${data.newCampaignBudget}`, { duration: 5000 });
+          toast.success(t('detail.toast.budgetUpdated', { amount: data.newCampaignBudget }), { duration: 5000 });
         }
 
         setShowAddLinkModal(false);
@@ -208,8 +204,8 @@ export default function CampaignDetailsPage() {
         return data;
       })(),
       {
-        loading: 'Creating tracking link...',
-        success: 'Tracking link created successfully!',
+        loading: t('detail.toast.creating'),
+        success: t('detail.toast.created'),
         error: (err) => err.message
       }
     );
@@ -217,14 +213,14 @@ export default function CampaignDetailsPage() {
 
   const handleDeleteTrackingLink = async (id: number) => {
     const result = await Swal.fire({
-      title: 'Delete Tracking Link?',
-      text: 'Are you sure you want to delete this tracking link? This action cannot be undone.',
+      title: t('detail.swal.deleteTitle'),
+      text: t('detail.swal.deleteText'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel'
+      confirmButtonText: t('detail.swal.deleteConfirm'),
+      cancelButtonText: t('detail.swal.deleteCancel')
     });
 
     if (!result.isConfirmed) return;
@@ -246,29 +242,32 @@ export default function CampaignDetailsPage() {
         return data;
       })(),
       {
-        loading: 'Deleting tracking link...',
-        success: 'Tracking link deleted successfully!',
-        error: (err) => err.message
+        loading: t('detail.toast.deleting'),
+        success: t('detail.toast.deleted'),
+        error: (err) => err.message || t('detail.toast.deleteFailed')
       }
     );
   };
 
   const handleToggleStatus = async (id: number, currentStatus: string, name: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    const action = newStatus === 'active' ? 'activate' : 'deactivate';
+    const action = newStatus === 'active' ? t('detail.swal.activateAction') : t('detail.swal.deactivateAction');
+    const actionText = newStatus === 'active'
+      ? t('utmTools.list.toggle.activateTitle').replace('UTM Link?', 'Tracking Link?').replace('UTM 링크?', '추적 링크?')
+      : t('utmTools.list.toggle.deactivateTitle').replace('UTM Link?', 'Tracking Link?').replace('UTM 링크?', '추적 링크?');
 
     const result = await Swal.fire({
-      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Tracking Link?`,
+      title: actionText,
       html: `
-        <p>Are you sure you want to ${action} "${name}"?</p>
-        ${newStatus === 'inactive' ? '<p class="text-sm text-orange-600 mt-2">⚠️ The link will show an "expired" message to visitors.</p>' : '<p class="text-sm text-green-600 mt-2">✓ The link will redirect visitors normally.</p>'}
+        <p>${t('detail.swal.toggleText', { action, name })}</p>
+        ${newStatus === 'inactive' ? `<p class="text-sm text-orange-600 mt-2">${t('detail.swal.inactiveWarning')}</p>` : `<p class="text-sm text-green-600 mt-2">${t('detail.swal.activeInfo')}</p>`}
       `,
       icon: newStatus === 'inactive' ? 'warning' : 'info',
       showCancelButton: true,
       confirmButtonColor: newStatus === 'inactive' ? '#f59e0b' : '#10b981',
       cancelButtonColor: '#6b7280',
-      confirmButtonText: `Yes, ${action} it`,
-      cancelButtonText: 'Cancel'
+      confirmButtonText: t('detail.swal.toggleConfirm', { action }),
+      cancelButtonText: t('detail.swal.toggleCancel')
     });
 
     if (!result.isConfirmed) return;
@@ -284,15 +283,15 @@ export default function CampaignDetailsPage() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error(data.error || 'Failed to update tracking link status');
+          throw new Error(data.error || t('detail.toast.updateFailed'));
         }
 
         await fetchTrackingLinks();
         return data;
       })(),
       {
-        loading: `${action.charAt(0).toUpperCase() + action.slice(1)}ing tracking link...`,
-        success: `Tracking link ${action}d successfully!`,
+        loading: newStatus === 'active' ? t('detail.toast.activating') : t('detail.toast.deactivating'),
+        success: newStatus === 'active' ? t('detail.toast.activated') : t('detail.toast.deactivated'),
         error: (err) => err.message
       }
     );
@@ -303,7 +302,7 @@ export default function CampaignDetailsPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading campaign details...</p>
+          <p className="mt-4 text-gray-600">{t('detail.loading')}</p>
         </div>
       </div>
     );
@@ -313,7 +312,7 @@ export default function CampaignDetailsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Campaign not found</p>
+          <p className="text-gray-600">{t('detail.toast.campaignNotFound')}</p>
         </div>
       </div>
     );
@@ -329,12 +328,12 @@ export default function CampaignDetailsPage() {
       <div className="mb-6">
         <Link href="/campaigns" className="flex items-center text-gray-600 hover:text-gray-900 mb-2">
           <ChevronLeft className="w-5 h-5" />
-          <span>Back to Campaigns</span>
+          <span>{t('detail.backToCampaigns')}</span>
         </Link>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{campaign.name}</h1>
-            <p className="text-gray-600 mt-1">Campaign Details & Tracking Links</p>
+            <p className="text-gray-600 mt-1">{t('detail.subtitle')}</p>
           </div>
           <ProtectedComponent permission="campaigns:update" hideOnUnauthorized>
             <Link
@@ -342,7 +341,7 @@ export default function CampaignDetailsPage() {
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
               <Edit className="w-4 h-4" />
-              <span>Edit Campaign</span>
+              <span>{t('detail.editCampaign')}</span>
             </Link>
           </ProtectedComponent>
         </div>
@@ -356,11 +355,11 @@ export default function CampaignDetailsPage() {
               <Calendar className="w-5 h-5 text-blue-600" />
             </div>
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[campaign.status]}`}>
-              {statusLabels[campaign.status]}
+              {t(`status.${campaign.status}`)}
             </span>
           </div>
-          <h3 className="text-sm font-medium text-gray-600">Campaign Period</h3>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{campaignDays} days</p>
+          <h3 className="text-sm font-medium text-gray-600">{t('detail.campaignPeriod')}</h3>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{campaignDays} {t('detail.days')}</p>
           <p className="text-xs text-gray-500 mt-1">
             {new Date(campaign.start_date).toLocaleDateString()} - {new Date(campaign.end_date).toLocaleDateString()}
           </p>
@@ -372,10 +371,10 @@ export default function CampaignDetailsPage() {
               <DollarSign className="w-5 h-5 text-green-600" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-gray-600">Total Budget</h3>
+          <h3 className="text-sm font-medium text-gray-600">{t('detail.totalBudget')}</h3>
           <p className="text-2xl font-bold text-gray-900 mt-1">₩{campaign.budget.toLocaleString()}</p>
           <p className="text-xs text-gray-500 mt-1">
-            Daily: ₩{Math.floor(campaign.budget / campaignDays).toLocaleString()}
+            {t('detail.daily')}: ₩{Math.floor(campaign.budget / campaignDays).toLocaleString()}
           </p>
         </div>
 
@@ -385,10 +384,10 @@ export default function CampaignDetailsPage() {
               <TrendingUp className="w-5 h-5 text-purple-600" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-gray-600">Budget Spent</h3>
+          <h3 className="text-sm font-medium text-gray-600">{t('detail.budgetSpent')}</h3>
           <p className="text-2xl font-bold text-gray-900 mt-1">₩{campaign.spent.toLocaleString()}</p>
           <p className="text-xs text-gray-500 mt-1">
-            {((campaign.spent / campaign.budget) * 100).toFixed(2)}% used
+            {((campaign.spent / campaign.budget) * 100).toFixed(2)}{t('detail.percentUsed')}
           </p>
         </div>
 
@@ -398,10 +397,10 @@ export default function CampaignDetailsPage() {
               <LinkIcon className="w-5 h-5 text-orange-600" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-gray-600">Tracking Links</h3>
+          <h3 className="text-sm font-medium text-gray-600">{t('detail.trackingLinks')}</h3>
           <p className="text-2xl font-bold text-gray-900 mt-1">{trackingLinks.length}</p>
           <p className="text-xs text-gray-500 mt-1">
-            {trackingLinks.filter(l => l.status === 'active').length} active
+            {trackingLinks.filter(l => l.status === 'active').length} {t('detail.active')}
           </p>
         </div>
       </div>
@@ -409,18 +408,18 @@ export default function CampaignDetailsPage() {
       {/* Campaign Details */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Campaign Information</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('detail.campaignInformation')}</h2>
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-sm font-medium text-gray-600">Course</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.course')}</p>
               <p className="text-base text-gray-900 mt-1">{campaign.course_name}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Course Code</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.courseCode')}</p>
               <p className="text-base text-gray-900 mt-1">{campaign.course_code || '-'}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Media Sources</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.mediaSources')}</p>
               <div className="mt-1 flex flex-wrap gap-2">
                 {trackingLinks.length > 0 ? (
                   Array.from(new Set(trackingLinks.map(link => link.utm_source))).map((source, idx) => (
@@ -434,7 +433,7 @@ export default function CampaignDetailsPage() {
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Ad Types</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.adTypes')}</p>
               <div className="mt-1 flex flex-wrap gap-2">
                 {trackingLinks.length > 0 ? (
                   Array.from(new Set(trackingLinks.map(link => link.utm_medium))).map((medium, idx) => (
@@ -448,11 +447,11 @@ export default function CampaignDetailsPage() {
               </div>
             </div>
             <div className="col-span-2">
-              <p className="text-sm font-medium text-gray-600">Description</p>
-              <p className="text-base text-gray-900 mt-1">{campaign.description || 'No description provided'}</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.description')}</p>
+              <p className="text-base text-gray-900 mt-1">{campaign.description || t('detail.noDescription')}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Created At</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.createdAt')}</p>
               <p className="text-base text-gray-900 mt-1">
                 {new Date(campaign.created_at).toLocaleDateString()} {new Date(campaign.created_at).toLocaleTimeString()}
               </p>
@@ -461,10 +460,10 @@ export default function CampaignDetailsPage() {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Performance</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('detail.performance')}</h2>
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Clicks</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.totalClicks')}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {(campaign?.clicks ?? 0).toLocaleString()}
               </p>
@@ -472,41 +471,50 @@ export default function CampaignDetailsPage() {
                 {campaign?.hasLegacyData ? (
                   <>
                     <div>
-                      From {campaign?.activeTrackingLinksCount || trackingLinks.length} active tracking link{(campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''}
+                      {t('detail.fromActiveLinks', {
+                        count: campaign?.activeTrackingLinksCount || trackingLinks.length,
+                        plural: (campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''
+                      })}
                     </div>
                     {campaign?.clicksFromLegacyData && campaign.clicksFromLegacyData > 0 ? (
                       <div className="text-amber-600 font-medium flex items-center gap-1">
                         <span>⚠️</span>
-                        <span>+ {campaign.clicksFromLegacyData.toLocaleString()} from deleted link{campaign.clicksFromLegacyData !== 1 ? 's' : ''}</span>
+                        <span>{t('detail.fromDeletedLinks', {
+                          count: campaign.clicksFromLegacyData.toLocaleString(),
+                          plural: campaign.clicksFromLegacyData !== 1 ? 's' : ''
+                        })}</span>
                       </div>
                     ) : (
                       <div className="text-amber-600 flex items-center gap-1">
                         <span>⚠️</span>
-                        <span>Includes data from deleted links</span>
+                        <span>{t('detail.includesDeletedData')}</span>
                       </div>
                     )}
                   </>
                 ) : (
                   <div>
-                    From {campaign?.activeTrackingLinksCount || trackingLinks.length} tracking link{(campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''}
+                    {t('detail.fromLinks', {
+                      count: campaign?.activeTrackingLinksCount || trackingLinks.length,
+                      plural: (campaign?.activeTrackingLinksCount || trackingLinks.length) !== 1 ? 's' : ''
+                    })}
                   </div>
                 )}
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Unique Visitors</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.uniqueVisitors')}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {(campaign?.visitors ?? 0).toLocaleString()}
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 {campaign?.clicks && campaign.visitors
-                  ? `${((campaign.visitors / campaign.clicks) * 100).toFixed(1)}% of clicks`
+                  ? t('detail.percentOfClicks', { percent: ((campaign.visitors / campaign.clicks) * 100).toFixed(1) })
                   : t('noDataYet')
                 }
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Budget Used</p>
+              <p className="text-sm font-medium text-gray-600">{t('detail.budgetUsed')}</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
                 {((campaign.spent / campaign.budget) * 100).toFixed(2)}%
               </p>
@@ -522,8 +530,8 @@ export default function CampaignDetailsPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Tracking Links</h2>
-            <p className="text-sm text-gray-600 mt-1">Manage multiple tracking links for different sources and mediums</p>
+            <h2 className="text-xl font-semibold text-gray-900">{t('detail.trackingLinks')}</h2>
+            <p className="text-sm text-gray-600 mt-1">{t('detail.manageLinks')}</p>
           </div>
           <button
             onClick={() => {
@@ -546,7 +554,7 @@ export default function CampaignDetailsPage() {
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Tracking Link</span>
+            <span>{t('detail.addTrackingLink')}</span>
           </button>
         </div>
 
@@ -555,28 +563,28 @@ export default function CampaignDetailsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                  {t('detail.tableHeaders.name')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Short URL
+                  {t('detail.tableHeaders.shortUrl')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Media / Ad Type
+                  {t('detail.tableHeaders.mediaAdType')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Landing URL
+                  {t('detail.tableHeaders.landingUrl')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Budget / Spent
+                  {t('detail.tableHeaders.budgetSpent')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Clicks
+                  {t('detail.tableHeaders.clicks')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  {t('detail.tableHeaders.status')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  {t('detail.tableHeaders.actions')}
                 </th>
               </tr>
             </thead>
@@ -584,15 +592,30 @@ export default function CampaignDetailsPage() {
               {trackingLinks.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
-                    No tracking links yet. Create one to start tracking this campaign.
+                    {t('detail.noLinksYet')}
                   </td>
                 </tr>
               ) : (
                 trackingLinks.map((link) => (
                   <tr key={link.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{link.name}</div>
-                      <div className="text-xs text-gray-500">{link.utm_campaign}</div>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{link.name}</div>
+                          <div className="text-xs text-gray-500">{link.utm_campaign}</div>
+                        </div>
+                        {link.landingPageTracked === false && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded border border-yellow-300 whitespace-nowrap"
+                            title={t('warning.landingPageNotTracked')}
+                          >
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            {t('warning.notTracked')}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
@@ -602,7 +625,7 @@ export default function CampaignDetailsPage() {
                         <button
                           onClick={() => handleCopyTrackingLink(link.tracking_code)}
                           className="text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Copy tracking link"
+                          title={t('detail.copyLink')}
                         >
                           {copiedCode === link.tracking_code ? (
                             <Check className="w-4 h-4 text-green-600" />
@@ -613,7 +636,7 @@ export default function CampaignDetailsPage() {
                         <button
                           onClick={() => handleOpenTrackingLink(link.tracking_code)}
                           className="text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Test redirect"
+                          title={t('detail.testRedirect')}
                         >
                           <ExternalLink className="w-4 h-4" />
                         </button>
@@ -623,9 +646,9 @@ export default function CampaignDetailsPage() {
                       <div className="text-sm text-gray-900">{link.utm_source} / {link.utm_medium}</div>
                       {(link.utm_term || link.utm_content) && (
                         <div className="text-xs text-gray-500">
-                          {link.utm_term && `Term: ${link.utm_term}`}
+                          {link.utm_term && `${t('detail.term')}: ${link.utm_term}`}
                           {link.utm_term && link.utm_content && ' | '}
-                          {link.utm_content && `Content: ${link.utm_content}`}
+                          {link.utm_content && `${t('detail.content')}: ${link.utm_content}`}
                         </div>
                       )}
                     </td>
@@ -638,10 +661,10 @@ export default function CampaignDetailsPage() {
                       {link.budget ? (
                         <div className="text-sm">
                           <div className="text-gray-900">
-                            Budget: ${link.budget.toLocaleString()}
+                            {t('detail.budget')}: ${link.budget.toLocaleString()}
                           </div>
                           <div className="text-gray-600">
-                            Spent: ${link.spent.toLocaleString()}
+                            {t('detail.spent')}: ${link.spent.toLocaleString()}
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                             <div
@@ -656,7 +679,7 @@ export default function CampaignDetailsPage() {
                           </div>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400">No limit</span>
+                        <span className="text-xs text-gray-400">{t('detail.noLimit')}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -669,9 +692,9 @@ export default function CampaignDetailsPage() {
                           ? 'bg-green-100 text-green-800 hover:ring-green-400'
                           : 'bg-gray-100 text-gray-800 hover:ring-gray-400'
                           }`}
-                        title={`Click to ${link.status === 'active' ? 'deactivate' : 'activate'}`}
+                        title={t('detail.clickToToggle', { action: link.status === 'active' ? 'deactivate' : 'activate' })}
                       >
-                        {link.status === 'active' ? 'Active' : 'Inactive'}
+                        {link.status === 'active' ? t('status.active') : t('detail.inactive')}
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -680,7 +703,7 @@ export default function CampaignDetailsPage() {
                           <Link
                             href={`/utm-tools/generator?edit=${link.id}`}
                             className="text-blue-600 hover:text-blue-800 transition-colors"
-                            title="Edit UTM"
+                            title={t('detail.editUtm')}
                           >
                             <Edit className="w-4 h-4" />
                           </Link>
@@ -689,7 +712,7 @@ export default function CampaignDetailsPage() {
                           <button
                             onClick={() => handleDeleteTrackingLink(link.id)}
                             className="text-red-600 hover:text-red-800 transition-colors"
-                            title="Delete"
+                            title={t('detail.delete')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -708,15 +731,15 @@ export default function CampaignDetailsPage() {
       {showAddLinkModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Add New Tracking Link</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('detail.modal.addTitle')}</h2>
             <p className="text-sm text-gray-600 mb-6">
-              Create a new tracking link with different source, medium, or landing URL. Duplicate links are not allowed.
+              {t('detail.modal.description')}
             </p>
 
             <form onSubmit={handleAddTrackingLink} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Link Name <span className="text-red-500">*</span>
+                  {t('detail.modal.linkName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -730,7 +753,7 @@ export default function CampaignDetailsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Landing URL <span className="text-red-500">*</span>
+                  {t('detail.modal.landingUrl')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="url"
@@ -745,7 +768,7 @@ export default function CampaignDetailsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Media <span className="text-red-500">*</span>
+                    {t('detail.modal.media')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -756,13 +779,13 @@ export default function CampaignDetailsPage() {
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Auto-filled from campaign. You can override if needed.
+                    {t('detail.modal.autoFilled')}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ad Type <span className="text-red-500">*</span>
+                    {t('detail.modal.adType')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -773,14 +796,14 @@ export default function CampaignDetailsPage() {
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Auto-filled from campaign. You can override if needed.
+                    {t('detail.modal.autoFilled')}
                   </p>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  UTM Campaign <span className="text-red-500">*</span>
+                  {t('detail.modal.utmCampaign')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -795,7 +818,7 @@ export default function CampaignDetailsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    UTM Term (Optional)
+                    {t('detail.modal.utmTerm')}
                   </label>
                   <input
                     type="text"
@@ -808,7 +831,7 @@ export default function CampaignDetailsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    UTM Content (Optional)
+                    {t('detail.modal.utmContent')}
                   </label>
                   <input
                     type="text"
@@ -823,16 +846,16 @@ export default function CampaignDetailsPage() {
               {/* Budget Settings */}
               <div className="border-t border-gray-200 pt-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  💰 Budget Settings (Optional)
+                  💰 {t('detail.modal.budgetSettings')}
                 </h3>
                 <p className="text-xs text-gray-600 mb-4">
-                  Allocate a specific budget for this tracking link. Leave empty for no budget limit.
+                  {t('detail.modal.budgetDescription')}
                 </p>
 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Budget Allocation ($)
+                      {t('detail.modal.budgetAllocation')}
                     </label>
                     <input
                       type="number"
@@ -844,7 +867,7 @@ export default function CampaignDetailsPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Current campaign budget: ${campaign?.budget.toLocaleString() || 0}
+                      {t('detail.modal.currentBudget')} ${campaign?.budget.toLocaleString() || 0}
                     </p>
                   </div>
 
@@ -858,10 +881,10 @@ export default function CampaignDetailsPage() {
                     />
                     <div className="flex-1">
                       <label htmlFor="auto_pause" className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Auto-pause when budget is reached
+                        {t('detail.modal.autoPause')}
                       </label>
                       <p className="text-xs text-gray-500">
-                        Automatically deactivate this link when its budget is fully spent
+                        {t('detail.modal.autoPauseDesc')}
                       </p>
                     </div>
                   </div>
@@ -876,27 +899,27 @@ export default function CampaignDetailsPage() {
                     />
                     <div className="flex-1">
                       <label htmlFor="auto_update_budget" className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Auto-update campaign budget if needed
+                        {t('detail.modal.autoUpdate')}
                       </label>
                       <p className="text-xs text-gray-500">
-                        Automatically increase campaign budget if this allocation exceeds the current total
+                        {t('detail.modal.autoUpdateDesc')}
                       </p>
                     </div>
                   </div>
 
                   {formData.budget && parseFloat(formData.budget) > 0 && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-sm text-blue-900 font-medium mb-1">💡 Budget Impact Preview:</p>
+                      <p className="text-sm text-blue-900 font-medium mb-1">💡 {t('detail.modal.budgetPreview')}</p>
                       <div className="text-xs text-blue-800 space-y-1">
-                        <div>Current Allocated: ${
+                        <div>{t('detail.modal.currentAllocated')} ${
                           trackingLinks
                             .filter(l => l.budget)
                             .reduce((sum, l) => sum + (l.budget || 0), 0)
                             .toLocaleString()
                         }</div>
-                        <div>New Link Budget: ${parseFloat(formData.budget).toLocaleString()}</div>
+                        <div>{t('detail.modal.newLinkBudget')} ${parseFloat(formData.budget).toLocaleString()}</div>
                         <div className="border-t border-blue-300 pt-1 mt-1">
-                          <strong>Total After Adding: ${
+                          <strong>{t('detail.modal.totalAfterAdding')} ${
                             (trackingLinks
                               .filter(l => l.budget)
                               .reduce((sum, l) => sum + (l.budget || 0), 0) + parseFloat(formData.budget))
@@ -907,13 +930,13 @@ export default function CampaignDetailsPage() {
                           .filter(l => l.budget)
                           .reduce((sum, l) => sum + (l.budget || 0), 0) + parseFloat(formData.budget) > (campaign?.budget || 0) && (
                             <div className="text-orange-700 font-medium pt-1">
-                              ⚠️ Exceeds campaign budget by ${
-                                (trackingLinks
+                              ⚠️ {t('detail.modal.exceedsBudget', {
+                                amount: (trackingLinks
                                   .filter(l => l.budget)
                                   .reduce((sum, l) => sum + (l.budget || 0), 0) + parseFloat(formData.budget) - (campaign?.budget || 0))
                                   .toLocaleString()
-                              }
-                              {formData.auto_update_campaign_budget && " (will be auto-increased)"}
+                              })}
+                              {formData.auto_update_campaign_budget && ` ${t('detail.modal.willAutoIncrease')}`}
                             </div>
                           )}
                       </div>
@@ -928,13 +951,13 @@ export default function CampaignDetailsPage() {
                   onClick={() => setShowAddLinkModal(false)}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  {t('detail.modal.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Create Tracking Link
+                  {t('detail.modal.create')}
                 </button>
               </div>
             </form>

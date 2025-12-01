@@ -249,6 +249,126 @@
     "empty": {
       "noCampaigns": "캠페인을 찾을 수 없습니다"
     },
+    "warning": {
+      "notTracked": "추적 안 됨",
+      "landingPageNotTracked": "랜딩 페이지가 CosMosAI에서 추적되지 않거나 이 도메인에 대한 추적이 비활성화되어 있습니다"
+    },
+    "detail": {
+      "backToCampaigns": "캠페인으로 돌아가기",
+      "subtitle": "캠페인 세부 정보 및 추적 링크",
+      "editCampaign": "캠페인 편집",
+      "campaignPeriod": "캠페인 기간",
+      "days": "일",
+      "totalBudget": "총 예산",
+      "daily": "일일",
+      "budgetSpent": "사용된 예산",
+      "percentUsed": "% 사용됨",
+      "trackingLinks": "추적 링크",
+      "active": "활성",
+      "campaignInformation": "캠페인 정보",
+      "course": "과정",
+      "courseCode": "과정 코드",
+      "mediaSources": "미디어 소스",
+      "adTypes": "광고 유형",
+      "description": "설명",
+      "noDescription": "설명이 제공되지 않았습니다",
+      "createdAt": "생성일",
+      "performance": "성과",
+      "totalClicks": "총 클릭 수",
+      "fromActiveLinks": "{count}개의 활성 추적 링크에서",
+      "fromLinks": "{count}개의 추적 링크에서",
+      "fromDeletedLinks": "삭제된 링크에서 + {count}",
+      "includesDeletedData": "삭제된 링크의 데이터 포함",
+      "uniqueVisitors": "고유 방문자",
+      "percentOfClicks": "클릭의 {percent}%",
+      "budgetUsed": "사용된 예산",
+      "manageLinks": "다양한 소스 및 미디어에 대한 여러 추적 링크 관리",
+      "addTrackingLink": "추적 링크 추가",
+      "tableHeaders": {
+        "name": "이름",
+        "shortUrl": "짧은 URL",
+        "mediaAdType": "미디어 / 광고 유형",
+        "landingUrl": "랜딩 URL",
+        "budgetSpent": "예산 / 사용액",
+        "clicks": "클릭 수",
+        "status": "상태",
+        "actions": "작업"
+      },
+      "noLinksYet": "아직 추적 링크가 없습니다. 이 캠페인 추적을 시작하려면 하나를 만드세요.",
+      "term": "용어",
+      "content": "콘텐츠",
+      "budget": "예산",
+      "spent": "사용액",
+      "noLimit": "제한 없음",
+      "inactive": "비활성",
+      "clickToToggle": "{action}하려면 클릭",
+      "editUtm": "UTM 편집",
+      "delete": "삭제",
+      "copyLink": "추적 링크 복사",
+      "testRedirect": "리디렉션 테스트",
+      "modal": {
+        "addTitle": "새 추적 링크 추가",
+        "description": "다른 소스, 미디어 또는 랜딩 URL로 새 추적 링크를 만듭니다. 중복 링크는 허용되지 않습니다.",
+        "linkName": "링크 이름",
+        "landingUrl": "랜딩 URL",
+        "media": "미디어",
+        "adType": "광고 유형",
+        "autoFilled": "캠페인에서 자동으로 채워짐. 필요시 덮어쓸 수 있습니다.",
+        "utmCampaign": "UTM 캠페인",
+        "utmTerm": "UTM 용어 (선택사항)",
+        "utmContent": "UTM 콘텐츠 (선택사항)",
+        "budgetSettings": "예산 설정 (선택사항)",
+        "budgetDescription": "이 추적 링크에 대한 특정 예산을 할당합니다. 예산 제한이 없으려면 비워두세요.",
+        "budgetAllocation": "예산 할당 ($)",
+        "currentBudget": "현재 캠페인 예산:",
+        "autoPause": "예산 도달 시 자동 일시 중지",
+        "autoPauseDesc": "예산이 완전히 소진되면 이 링크를 자동으로 비활성화합니다",
+        "autoUpdate": "필요시 캠페인 예산 자동 업데이트",
+        "autoUpdateDesc": "이 할당이 현재 총액을 초과하면 캠페인 예산을 자동으로 증가시킵니다",
+        "budgetPreview": "예산 영향 미리보기:",
+        "currentAllocated": "현재 할당됨:",
+        "newLinkBudget": "새 링크 예산:",
+        "totalAfterAdding": "추가 후 총액:",
+        "exceedsBudget": "캠페인 예산을 ${amount} 초과",
+        "willAutoIncrease": "(자동으로 증가됨)",
+        "cancel": "취소",
+        "create": "추적 링크 만들기"
+      },
+      "toast": {
+        "linkCopied": "추적 링크가 클립보드에 복사되었습니다!",
+        "copyFailed": "추적 링크 복사 실패",
+        "campaignNotFound": "캠페인을 찾을 수 없습니다",
+        "loadFailed": "캠페인 로드 실패",
+        "fillRequired": "모든 필수 필드를 입력해주세요",
+        "duplicateLink": "이러한 정확한 매개변수를 가진 추적 링크가 이미 존재합니다. 다른 UTM 매개변수 또는 랜딩 URL을 사용하세요.",
+        "createFailed": "추적 링크 생성 실패",
+        "budgetUpdated": "캠페인 예산이 자동으로 ${amount}로 증가되었습니다",
+        "creating": "추적 링크 생성 중...",
+        "created": "추적 링크가 성공적으로 생성되었습니다!",
+        "deleting": "추적 링크 삭제 중...",
+        "deleted": "추적 링크가 성공적으로 삭제되었습니다!",
+        "deleteFailed": "추적 링크 삭제 실패",
+        "activating": "추적 링크 활성화 중...",
+        "activated": "추적 링크가 성공적으로 활성화되었습니다!",
+        "deactivating": "추적 링크 비활성화 중...",
+        "deactivated": "추적 링크가 성공적으로 비활성화되었습니다!",
+        "updateFailed": "추적 링크 상태 업데이트 실패"
+      },
+      "swal": {
+        "deleteTitle": "추적 링크 삭제?",
+        "deleteText": "이 추적 링크를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+        "deleteConfirm": "예, 삭제합니다!",
+        "deleteCancel": "취소",
+        "toggleText": "\"{name}\"을(를) {action}하시겠습니까?",
+        "activateAction": "활성화",
+        "deactivateAction": "비활성화",
+        "inactiveWarning": "⚠️ 링크가 방문자에게 \"만료됨\" 메시지를 표시합니다.",
+        "activeInfo": "✓ 링크가 방문자를 정상적으로 리디렉션합니다.",
+        "toggleConfirm": "예, {action}합니다",
+        "toggleCancel": "취소"
+      },
+      "loading": "캠페인 세부 정보 로딩 중..."
+    },
     "loading": "로딩 중...",
     "create": {
       "title": "새 캠페인 만들기",
@@ -652,6 +772,10 @@
     "export": {
       "filename": "캠페인-분석-{start}-{end}.pdf",
       "title": "캠페인 분석 - {start} ~ {end}"
+    },
+    "warning": {
+      "notTracked": "추적 안 됨",
+      "landingPageNotTracked": "랜딩 페이지가 CosMosAI에서 추적되지 않거나 이 도메인에 대한 추적이 비활성화되어 있습니다"
     },
     "loading": "로딩 중..."
   },
@@ -1078,6 +1202,10 @@
       "copy": {
         "success": "URL이 클립보드에 복사되었습니다!",
         "error": "URL 복사 실패"
+      },
+      "warning": {
+        "notTracked": "추적 안 됨",
+        "landingPageNotTracked": "랜딩 페이지가 CosMosAI에서 추적되지 않거나 이 도메인에 대한 추적이 비활성화되어 있습니다"
       }
     },
     "generator": {

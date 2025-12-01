@@ -7,6 +7,21 @@ import type { AuthContext } from '@/lib/auth/types';
 
 export const dynamic = 'force-dynamic';
 
+// Helper function to normalize domain (extract domain from URL)
+function normalizeDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    let domain = urlObj.hostname.toLowerCase();
+    // Remove www. prefix
+    if (domain.startsWith('www.')) {
+      domain = domain.substring(4);
+    }
+    return domain;
+  } catch (error) {
+    return '';
+  }
+}
+
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -44,7 +59,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // 2. Get all tracking codes for this campaign (include hidden for historical analytics)
     const [trackingCodes] = await pool.query<RowDataPacket[]>(
-      'SELECT id, name, tracking_code, utm_campaign, utm_source, utm_medium, utm_content, status, budget, spent FROM utm_codes WHERE campaign_id = ?',
+      'SELECT id, name, tracking_code, utm_campaign, utm_source, utm_medium, utm_content, status, budget, spent, landing_url FROM utm_codes WHERE campaign_id = ?',
       [campaignId]
     );
 
@@ -356,7 +371,35 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    // 8. Get per-UTM breakdown with metrics and daily data
+    // 8. Batch check which landing page domains are tracked and enabled
+    // Extract all unique domains from landing URLs
+    const landingDomains = new Set<string>();
+    trackingCodes.forEach(tc => {
+      if (tc.landing_url) {
+        const domain = normalizeDomain(tc.landing_url);
+        if (domain) {
+          landingDomains.add(domain);
+        }
+      }
+    });
+
+    // Batch check which domains are tracked and enabled (single query)
+    const trackedDomainsSet = new Set<string>();
+    if (landingDomains.size > 0) {
+      try {
+        const domainsList = Array.from(landingDomains).map(d => `'${d.replace(/'/g, "\\'")}'`).join(',');
+        const [trackedDomains] = await pool.query<RowDataPacket[]>(
+          `SELECT domain FROM tracked_websites WHERE domain IN (${domainsList}) AND is_enabled = 1`
+        );
+        trackedDomains.forEach((row: any) => {
+          trackedDomainsSet.add(row.domain);
+        });
+      } catch (error) {
+        console.error('Error checking tracked domains:', error);
+      }
+    }
+
+    // 9. Get per-UTM breakdown with metrics and daily data
     const utmBreakdown = await Promise.all(
       trackingCodes
         .filter(tc => tc.status !== 'hidden') // Only show active/inactive UTMs
@@ -442,6 +485,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
           const utmDailyJson = await utmDailyResult.json() as Array<{ date: string; visitors: number; conversions: number }>;
 
+          // Check if landing page is tracked (domain exists in tracked_websites AND is_enabled = 1)
+          let landingPageTracked = true;
+          if (tc.landing_url) {
+            const domain = normalizeDomain(tc.landing_url);
+            landingPageTracked = domain ? trackedDomainsSet.has(domain) : false;
+          }
+
           return {
             id: tc.id,
             name: tc.name,
@@ -452,6 +502,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             status: tc.status,
             budget: parseFloat(tc.budget) || 0,
             spent: parseFloat(tc.spent) || 0,
+            landingPageTracked,
             metrics: {
               clicks: utmClicks,
               visitors: utmVisitors,

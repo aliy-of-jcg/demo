@@ -3,6 +3,22 @@ import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { RowDataPacket } from 'mysql2';
+
+// Helper function to normalize domain (extract domain from URL)
+function normalizeDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    let domain = urlObj.hostname.toLowerCase();
+    // Remove www. prefix
+    if (domain.startsWith('www.')) {
+      domain = domain.substring(4);
+    }
+    return domain;
+  } catch (error) {
+    return '';
+  }
+}
 
 export const GET = requirePermission('utm_codes:read', async (request: NextRequest, context: AuthContext) => {
   try {
@@ -69,6 +85,32 @@ export const GET = requirePermission('utm_codes:read', async (request: NextReque
     const allMatchingUTMs = allMatchingUTMsResult as any[];
     const allTrackingCodes = allMatchingUTMs.map(utm => utm.tracking_code);
 
+    // Batch check which landing page domains are tracked and enabled
+    const landingDomains = new Set<string>();
+    allMatchingUTMs.forEach(utm => {
+      if (utm.landing_url) {
+        const domain = normalizeDomain(utm.landing_url);
+        if (domain) {
+          landingDomains.add(domain);
+        }
+      }
+    });
+
+    const trackedDomainsSet = new Set<string>();
+    if (landingDomains.size > 0) {
+      try {
+        const domainsList = Array.from(landingDomains).map(d => `'${d.replace(/'/g, "\\'")}'`).join(',');
+        const [trackedDomains] = await pool.query<RowDataPacket[]>(
+          `SELECT domain FROM tracked_websites WHERE domain IN (${domainsList}) AND is_enabled = 1`
+        );
+        trackedDomains.forEach((row: any) => {
+          trackedDomainsSet.add(row.domain);
+        });
+      } catch (error) {
+        console.error('Error checking tracked domains:', error);
+      }
+    }
+
     // Fetch click data from ClickHouse for ALL matching UTMs (not just paginated)
     let clickDataMap: { [key: string]: number } = {};
 
@@ -120,6 +162,13 @@ export const GET = requirePermission('utm_codes:read', async (request: NextReque
         }
       }
 
+      // Check if landing page is tracked
+      let landingPageTracked = true;
+      if (utm.landing_url) {
+        const domain = normalizeDomain(utm.landing_url);
+        landingPageTracked = domain ? trackedDomainsSet.has(domain) : false;
+      }
+
       return {
         id: utm.id,
         name: utm.name,
@@ -135,7 +184,8 @@ export const GET = requirePermission('utm_codes:read', async (request: NextReque
         full_url: fullUrl,
         created_at: utm.created_at,
         clicks: clicks,
-        status: utm.status || 'active' // Use status from database
+        status: utm.status || 'active', // Use status from database
+        landingPageTracked
       };
     });
 

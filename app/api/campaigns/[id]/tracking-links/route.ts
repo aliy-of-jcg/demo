@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import { nanoid } from 'nanoid';
 import clickhouse from '@/lib/clickhouse';
+import { RowDataPacket } from 'mysql2';
+
+// Helper function to normalize domain (extract domain from URL)
+function normalizeDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    let domain = urlObj.hostname.toLowerCase();
+    // Remove www. prefix
+    if (domain.startsWith('www.')) {
+      domain = domain.substring(4);
+    }
+    return domain;
+  } catch (error) {
+    return '';
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -11,7 +27,7 @@ export async function GET(
     const campaignId = params.id;
     console.log(`🔗 Campaign Tracking Links API - Campaign ID: ${campaignId}`);
     const pool = getPool();
-    
+
     const [links] = await pool.execute(
       `SELECT 
         utm_codes.id,
@@ -68,17 +84,51 @@ export async function GET(
     // 🎭 DEMO FEATURE: Auto-calculate spent based on clicks ($0.50 per click)
     const DEMO_COST_PER_CLICK = 0.50;
 
+    // Batch check which landing page domains are tracked and enabled
+    const landingDomains = new Set<string>();
+    (links as any[]).forEach(link => {
+      if (link.landing_url) {
+        const domain = normalizeDomain(link.landing_url);
+        if (domain) {
+          landingDomains.add(domain);
+        }
+      }
+    });
+
+    const trackedDomainsSet = new Set<string>();
+    if (landingDomains.size > 0) {
+      try {
+        const domainsList = Array.from(landingDomains).map(d => `'${d.replace(/'/g, "\\'")}'`).join(',');
+        const [trackedDomains] = await pool.query<RowDataPacket[]>(
+          `SELECT domain FROM tracked_websites WHERE domain IN (${domainsList}) AND is_enabled = 1`
+        );
+        trackedDomains.forEach((row: any) => {
+          trackedDomainsSet.add(row.domain);
+        });
+      } catch (error) {
+        console.error('Error checking tracked domains:', error);
+      }
+    }
+
     // Add real click data and calculated spent to each link
     const linksWithAnalytics = (links as any[]).map(link => {
       const realClicks = clicksMap.get(link.tracking_code) || 0;
       const calculatedSpent = realClicks * DEMO_COST_PER_CLICK;
-      
+
+      // Check if landing page is tracked
+      let landingPageTracked = true;
+      if (link.landing_url) {
+        const domain = normalizeDomain(link.landing_url);
+        landingPageTracked = domain ? trackedDomainsSet.has(domain) : false;
+      }
+
       return {
         ...link,
         clicks: realClicks, // Override with real clicks from ClickHouse
         spent: link.budget > 0 ? calculatedSpent : link.spent, // Use calculated spent if budget is set, otherwise use stored value
         budget: parseFloat(link.budget) || 0,
-        auto_pause_on_budget: Boolean(link.auto_pause_on_budget)
+        auto_pause_on_budget: Boolean(link.auto_pause_on_budget),
+        landingPageTracked
       };
     });
 
@@ -150,7 +200,7 @@ export async function POST(
         'SELECT COALESCE(SUM(budget), 0) as total_allocated FROM utm_codes WHERE campaign_id = ? AND budget > 0 AND status != \'hidden\'',
         [campaignId]
       );
-      
+
       const totalAllocated = parseFloat((budgetResult as any[])[0]?.total_allocated || 0);
       const newTotal = totalAllocated + parseFloat(budget);
 
@@ -166,8 +216,8 @@ export async function POST(
           campaignBudgetUpdated = true;
         } else {
           return NextResponse.json(
-            { 
-              success: false, 
+            {
+              success: false,
               error: `Budget allocation ($${newTotal.toFixed(2)}) would exceed campaign budget ($${campaign.budget.toFixed(2)}). Enable "Auto-update campaign budget" to proceed.`
             },
             { status: 400 }
@@ -200,8 +250,8 @@ export async function POST(
 
     if ((existing as any[]).length > 0) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'A tracking link with these exact parameters already exists for this campaign',
           duplicate: true
         },
@@ -215,7 +265,7 @@ export async function POST(
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const trackingUrl = `${appUrl}/t/${trackingCode}`;
-    
+
     // Build full URL with UTM parameters
     const urlObj = new URL(landing_url);
     urlObj.searchParams.set('utm_source', utm_source);
