@@ -136,7 +136,7 @@ export default function CampaignAnalysisPage() {
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        const response = await fetch('/api/campaigns');
+        const response = await fetchWithAuth('/api/campaigns');
         const result = await response.json();
         if (result.campaigns && result.campaigns.length > 0) {
           setCampaigns(result.campaigns);

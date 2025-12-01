@@ -16,7 +16,7 @@ export default function AuthPage() {
     // Check if user is already authenticated
     const checkAuth = async () => {
       const token = localStorage.getItem("auth_token");
-      
+
       if (token) {
         try {
           const response = await fetch("/api/auth/validate", {
@@ -36,7 +36,7 @@ export default function AuthPage() {
           console.error("Auth check failed:", error);
         }
       }
-      
+
       // Not authenticated, show login page
       setIsChecking(false);
     };
@@ -63,7 +63,7 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 animate-gradient-shift">
           <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20"></div>
         </div>
-        
+
         {/* Overlay to ensure text readability */}
         <div className="absolute inset-0 bg-black/30"></div>
       </div>
@@ -73,7 +73,7 @@ export default function AuthPage() {
         <div className="flex flex-1 items-center justify-center p-4">
           <AuthForm />
         </div>
-        
+
         {/* Footer */}
         <AuthFooter />
       </div>

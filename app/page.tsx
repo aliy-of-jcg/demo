@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTranslations } from 'next-intl';
-import { 
-  BarChart3, 
-  Users, 
-  MousePointerClick, 
-  TrendingUp, 
+import {
+  BarChart3,
+  Users,
+  MousePointerClick,
+  TrendingUp,
   Sparkles,
   ArrowRight,
   Target,
@@ -20,6 +20,7 @@ import {
   Tag
 } from "lucide-react";
 import { PageFooter } from "@/components/page-footer";
+import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
 
 // Home page now relies on the root layout's cookie-based locale handling.
 export const dynamic = 'force-dynamic';
@@ -52,9 +53,9 @@ export default function LandingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/campaigns");
+        const response = await fetchWithAuth("/api/campaigns");
         const result = await response.json();
-        
+
         if (result.success) {
           setSummary(result.summary);
           // Get top 3 recent campaigns
@@ -194,11 +195,11 @@ export default function LandingPage() {
               <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
               <span className="whitespace-nowrap">{t('hero.badge')}</span>
             </div>
-            
+
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 px-2 break-words">
               {t('hero.title')} <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{t('hero.brandName')}</span>
             </h1>
-            
+
             <p className="text-base sm:text-lg lg:text-xl text-gray-600 mb-8 sm:mb-12 max-w-3xl mx-auto px-4">
               {t('hero.description')}
             </p>
@@ -207,7 +208,7 @@ export default function LandingPage() {
             {!loading && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
                 {stats.map((stat, index) => (
-                  <div 
+                  <div
                     key={index}
                     className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                   >
@@ -276,7 +277,7 @@ export default function LandingPage() {
                   </div>
                 </Link>
               </div>
-              
+
               <div className="space-y-3 sm:space-y-4">
                 {recentCampaigns.map((campaign) => (
                   <Link key={campaign.id} href={`/campaigns/${campaign.id}`}>
