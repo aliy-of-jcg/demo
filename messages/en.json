@@ -1412,6 +1412,56 @@
       "regular": "Regular"
     }
   },
+  "profile": {
+    "title": "Profile Settings",
+    "subtitle": "Manage your account information and security",
+    "sections": {
+      "personalInfo": "Personal Information",
+      "personalInfoDesc": "Update your email, phone number, and company information",
+      "changePassword": "Change Password",
+      "changePasswordDesc": "Update your password to keep your account secure"
+    },
+    "fields": {
+      "email": "Email Address",
+      "phoneNumber": "Phone Number",
+      "companyName": "Company Name",
+      "currentPassword": "Current Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm New Password"
+    },
+    "placeholders": {
+      "currentPassword": "Enter your current password",
+      "newPassword": "Enter new password",
+      "confirmPassword": "Confirm new password"
+    },
+    "hints": {
+      "confirmIdentity": "Required to confirm your identity",
+      "passwordStrength": "Minimum 6 characters"
+    },
+    "buttons": {
+      "updateProfile": "Update Profile",
+      "changePassword": "Change Password",
+      "updating": "Updating..."
+    },
+    "validation": {
+      "emailRequired": "Email is required",
+      "phoneRequired": "Phone number is required",
+      "companyRequired": "Company name is required",
+      "currentPasswordRequired": "Current password is required",
+      "newPasswordRequired": "New password is required",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "passwordsNoMatch": "Passwords do not match",
+      "noChanges": "No changes were made to your profile"
+    },
+    "success": {
+      "profileUpdated": "Profile updated successfully!",
+      "passwordChanged": "Password changed successfully!"
+    },
+    "errors": {
+      "updateFailed": "Failed to update profile",
+      "passwordChangeFailed": "Failed to change password"
+    }
+  },
   "userManagement": {
     "title": "User Management",
     "subtitle": "Manage user accounts, roles, and permissions",
