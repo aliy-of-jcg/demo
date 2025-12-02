@@ -1,59 +1,7 @@
 /**
- * Fetch utility that handles authentication errors and shows popup before redirecting
+ * Fetch utility that handles authentication errors and redirects with reason code
  */
-import Swal from 'sweetalert2';
 import type { UserStatus } from '@/lib/types';
-
-// Hardcoded Korean messages for auth popups
-const AUTH_MESSAGES: Record<string, { title: string; text: string; icon: 'error' | 'warning' | 'info' }> = {
-    blocked: { title: '계정 차단됨', text: '귀하의 계정이 차단되었습니다. 오류로 생각되시면 지원팀에 문의해주세요.', icon: 'error' },
-    stopped: { title: '계정 중지됨', text: '귀하의 계정이 중지되었습니다. 지원팀에 문의해주세요.', icon: 'warning' },
-    pending: { title: '계정 승인 대기 중', text: '귀하의 계정이 승인 대기 중입니다. 관리자에게 문의하거나 활성화를 기다려주세요.', icon: 'info' },
-    session_expired: { title: '세션 만료됨', text: '세션이 만료되었습니다. 다시 로그인해주세요.', icon: 'warning' },
-};
-
-let isShowingPopup = false;
-
-async function showAuthPopupAndRedirect(messageType: string, redirectUrl: string = '/auth') {
-    if (isShowingPopup) return;
-    isShowingPopup = true;
-
-    try {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        if (window.location.pathname === '/auth') {
-            isShowingPopup = false;
-            return;
-        }
-
-        const message = AUTH_MESSAGES[messageType] || AUTH_MESSAGES.session_expired;
-        await Swal.fire({
-            title: message.title,
-            text: message.text,
-            icon: message.icon,
-            confirmButtonText: '확인',
-            confirmButtonColor: '#6366f1',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showCloseButton: true,
-            didClose: () => { isShowingPopup = false; },
-        });
-
-        window.location.replace(redirectUrl);
-    } catch (error) {
-        console.error('Error showing auth popup:', error);
-        isShowingPopup = false;
-        window.location.replace(redirectUrl);
-    }
-}
-
-function getMessageTypeFromStatus(status: UserStatus): string {
-    switch (status) {
-        case 'blocked': return 'blocked';
-        case 'stopped': return 'stopped';
-        case 'pending': return 'pending';
-        default: return 'session_expired';
-    }
-}
 
 export async function fetchWithAuth(
     url: string,
@@ -72,33 +20,54 @@ export async function fetchWithAuth(
         headers,
     });
 
-    // Check for authentication/authorization errors - show popup before redirecting
+    // Check for authentication/authorization errors - store reason code and redirect
     if (response.status === 401 || response.status === 403) {
         // Clear auth data
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
 
-        // Try to get status from response body if available
-        let status: UserStatus | null = null;
+        // Try to get reason code from response body
+        let reasonCode: string | null = null;
         try {
             const clonedResponse = response.clone();
             const contentType = clonedResponse.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 const data = await clonedResponse.json();
-                status = data.status as UserStatus | null;
-                console.log('[Fetch With Auth] Status from response:', status, 'Full data:', data);
+                reasonCode = data.reasonCode || null;
+
+                // Fallback: generate reason code from status if not provided
+                if (!reasonCode && data.status) {
+                    const status = data.status as UserStatus;
+                    switch (status) {
+                        case 'blocked':
+                            reasonCode = 'auth.statusChanged.blocked';
+                            break;
+                        case 'stopped':
+                            reasonCode = 'auth.statusChanged.stopped';
+                            break;
+                        case 'pending':
+                            reasonCode = 'auth.statusChanged.pending';
+                            break;
+                        default:
+                            reasonCode = 'auth.sessionExpired';
+                    }
+                }
             }
         } catch (error) {
-            // If JSON parsing fails, continue with generic message
+            // If JSON parsing fails, use default reason code
             console.warn('[Fetch With Auth] Could not parse error response:', error);
         }
 
-        // Show popup based on status and redirect
-        if (status) {
-            await showAuthPopupAndRedirect(getMessageTypeFromStatus(status));
+        // Store reason code in sessionStorage for auth page to display
+        if (reasonCode) {
+            sessionStorage.setItem('auth_redirect_reason', reasonCode);
         } else {
-            await showAuthPopupAndRedirect('session_expired');
+            // Default fallback reason code
+            sessionStorage.setItem('auth_redirect_reason', 'auth.sessionExpired');
         }
+
+        // Redirect to auth page
+        window.location.replace('/auth');
 
         // Throw error to stop further execution
         throw new Error('Authentication failed - redirecting');

@@ -66,13 +66,19 @@ async function fetchUserFromDB(userId: number): Promise<AuthenticatedUser | null
 /**
  * Create unauthorized response
  */
-function createUnauthorizedResponse(reason: string, statusCode: number = 401, userStatus?: string): NextResponse {
+function createUnauthorizedResponse(
+    reason: string,
+    statusCode: number = 401,
+    userStatus?: string,
+    reasonCode?: string
+): NextResponse {
     return NextResponse.json(
         {
             success: false,
             message: reason,
             error: 'Unauthorized',
             status: userStatus, // Include status for client-side message handling
+            reasonCode: reasonCode || getReasonCodeFromStatus(userStatus), // Include reason code for localized messages
         },
         { status: statusCode }
     );
@@ -81,16 +87,34 @@ function createUnauthorizedResponse(reason: string, statusCode: number = 401, us
 /**
  * Create forbidden response
  */
-function createForbiddenResponse(reason: string, userStatus?: string): NextResponse {
+function createForbiddenResponse(reason: string, userStatus?: string, reasonCode?: string): NextResponse {
     return NextResponse.json(
         {
             success: false,
             message: reason,
             error: 'Forbidden',
             status: userStatus, // Include status for client-side message handling
+            reasonCode: reasonCode || getReasonCodeFromStatus(userStatus), // Include reason code for localized messages
         },
         { status: 403 }
     );
+}
+
+/**
+ * Get reason code from user status
+ */
+function getReasonCodeFromStatus(status?: string): string | undefined {
+    if (!status) return undefined;
+    switch (status) {
+        case 'blocked':
+            return 'auth.statusChanged.blocked';
+        case 'stopped':
+            return 'auth.statusChanged.stopped';
+        case 'pending':
+            return 'auth.statusChanged.pending';
+        default:
+            return undefined;
+    }
 }
 
 /**
@@ -106,19 +130,34 @@ export function withAuth(
             // 1. Extract token
             const token = extractToken(req);
             if (!token) {
-                return createUnauthorizedResponse('Authentication required. Please provide a valid token.');
+                return createUnauthorizedResponse(
+                    'Authentication required. Please provide a valid token.',
+                    401,
+                    undefined,
+                    'auth.sessionExpired'
+                );
             }
 
             // 2. Verify token
             const decoded = verifyToken(token);
             if (!decoded) {
-                return createUnauthorizedResponse('Invalid or expired token.');
+                return createUnauthorizedResponse(
+                    'Invalid or expired token.',
+                    401,
+                    undefined,
+                    'auth.sessionExpired'
+                );
             }
 
             // 3. Fetch user from database to get current status
             const user = await fetchUserFromDB(decoded.userId);
             if (!user) {
-                return createUnauthorizedResponse('User not found.');
+                return createUnauthorizedResponse(
+                    'User not found.',
+                    401,
+                    undefined,
+                    'auth.userNotFound'
+                );
             }
 
             // 4. Check user status (MUST be done before permission checks)
@@ -127,7 +166,8 @@ export function withAuth(
                 return createUnauthorizedResponse(
                     statusCheck.reason || 'Account access denied',
                     statusCheck.statusCode || 403,
-                    user.status // Include user status in response
+                    user.status, // Include user status in response
+                    getReasonCodeFromStatus(user.status) // Include reason code for localized messages
                 );
             }
 
@@ -156,7 +196,9 @@ export function withAuth(
                 );
                 if (!hasRequiredRole) {
                     return createForbiddenResponse(
-                        `Access denied. Required role: ${options.roles.join(' or ')}`
+                        `Access denied. Required role: ${options.roles.join(' or ')}`,
+                        user.status,
+                        'auth.permissionDenied.roleChanged'
                     );
                 }
             }
@@ -170,7 +212,9 @@ export function withAuth(
                 );
                 if (!permissionResult.allowed) {
                     return createForbiddenResponse(
-                        permissionResult.reason || 'Insufficient permissions.'
+                        permissionResult.reason || 'Insufficient permissions.',
+                        user.status,
+                        'auth.permissionDenied.insufficient'
                     );
                 }
             }

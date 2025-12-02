@@ -88,6 +88,38 @@
       },
       "okButton": "OK"
     },
+    "statusChanged": {
+      "blocked": {
+        "title": "Account Blocked",
+        "text": "Your account has been blocked. Please contact support if you believe this is an error."
+      },
+      "stopped": {
+        "title": "Account Stopped",
+        "text": "Your account has been stopped. Please contact support for assistance."
+      },
+      "pending": {
+        "title": "Account Pending Approval",
+        "text": "Your account is pending approval. Please contact your administrator or wait for activation."
+      }
+    },
+    "permissionDenied": {
+      "insufficient": {
+        "title": "Access Denied",
+        "text": "You do not have permission to access this resource. Please contact your administrator if you believe this is an error."
+      },
+      "roleChanged": {
+        "title": "Access Denied",
+        "text": "Your user type has been changed. You no longer have access to this feature. Please contact your administrator if you have questions."
+      }
+    },
+    "sessionExpired": {
+      "title": "Session Expired",
+      "text": "Your session has expired. Please sign in again."
+    },
+    "userNotFound": {
+      "title": "Account Not Found",
+      "text": "Account not found. Please check your credentials and try again."
+    },
     "accessDenied": {
       "title": "Access Denied",
       "message": "You need to be promoted to <strong>Admin</strong> to access this feature.",
