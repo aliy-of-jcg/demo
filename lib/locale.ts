@@ -11,8 +11,10 @@ export function getLocaleFromCookies(): 'en' | 'ko' {
   const localeCookie = cookies.find(c => c.trim().startsWith('NEXT_LOCALE='));
 
   if (localeCookie) {
-    const locale = localeCookie.split('=')[1];
-    return (locale as 'en' | 'ko') || 'en';
+    const locale = localeCookie.split('=')[1]?.trim();
+    if (locale === 'ko' || locale === 'en') {
+      return locale as 'en' | 'ko';
+    }
   }
 
   return 'en';

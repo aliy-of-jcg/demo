@@ -53,6 +53,41 @@
       "accountBlocked": "Your account has been blocked. Please contact support if you believe this is an error.",
       "invalidCredentials": "Invalid email or password"
     },
+    "authMessages": {
+      "blocked": {
+        "title": "Account Blocked",
+        "text": "Your account has been blocked. Please contact support if you believe this is an error."
+      },
+      "stopped": {
+        "title": "Account Stopped",
+        "text": "Your account has been stopped. Please contact support for assistance."
+      },
+      "pending": {
+        "title": "Account Pending",
+        "text": "Your account is pending approval. Please contact your administrator or wait for activation."
+      },
+      "role_changed": {
+        "title": "Permissions Updated",
+        "text": "Your permissions have been updated. Please log in again."
+      },
+      "session_expired": {
+        "title": "Session Expired",
+        "text": "Your session has expired. Please sign in again."
+      },
+      "logged_out": {
+        "title": "Logged Out",
+        "text": "You have been logged out successfully."
+      },
+      "account_not_found": {
+        "title": "Account Not Found",
+        "text": "Account not found. Please check your credentials."
+      },
+      "generic": {
+        "title": "Authentication Required",
+        "text": "Please sign in to continue."
+      },
+      "okButton": "OK"
+    },
     "accessDenied": {
       "title": "Access Denied",
       "message": "You need to be promoted to <strong>Admin</strong> to access this feature.",
@@ -582,7 +617,9 @@
       "error": "Error",
       "createFailed": "Failed to create course",
       "updateFailed": "Failed to update course",
-      "deleteFailed": "Failed to delete course"
+      "deleteFailed": "Failed to delete course",
+      "unauthorized": "You do not have permission to create courses",
+      "loadFailed": "Failed to load courses"
     },
     "delete": {
       "title": "Delete Course?",

@@ -204,6 +204,12 @@ export default function CoursesPage() {
   };
 
   const handleOpenModal = (course: Course | null = null) => {
+    // Permission check for creating new course
+    if (!course && !canCreateCourse) {
+      toast.error(t('actions.unauthorized'));
+      return;
+    }
+
     if (course) {
       setEditingCourse(course);
       setFormData({

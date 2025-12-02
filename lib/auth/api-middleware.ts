@@ -66,12 +66,13 @@ async function fetchUserFromDB(userId: number): Promise<AuthenticatedUser | null
 /**
  * Create unauthorized response
  */
-function createUnauthorizedResponse(reason: string, statusCode: number = 401): NextResponse {
+function createUnauthorizedResponse(reason: string, statusCode: number = 401, userStatus?: string): NextResponse {
     return NextResponse.json(
         {
             success: false,
             message: reason,
             error: 'Unauthorized',
+            status: userStatus, // Include status for client-side message handling
         },
         { status: statusCode }
     );
@@ -80,12 +81,13 @@ function createUnauthorizedResponse(reason: string, statusCode: number = 401): N
 /**
  * Create forbidden response
  */
-function createForbiddenResponse(reason: string): NextResponse {
+function createForbiddenResponse(reason: string, userStatus?: string): NextResponse {
     return NextResponse.json(
         {
             success: false,
             message: reason,
             error: 'Forbidden',
+            status: userStatus, // Include status for client-side message handling
         },
         { status: 403 }
     );
@@ -124,7 +126,8 @@ export function withAuth(
             if (!statusCheck.allowed) {
                 return createUnauthorizedResponse(
                     statusCheck.reason || 'Account access denied',
-                    statusCheck.statusCode || 403
+                    statusCheck.statusCode || 403,
+                    user.status // Include user status in response
                 );
             }
 
@@ -132,7 +135,8 @@ export function withAuth(
             const requireActive = options.requireActive !== false;
             if (requireActive && !isUserActive(user.status)) {
                 return createForbiddenResponse(
-                    'This operation requires an active account. Your account is currently read-only.'
+                    'This operation requires an active account. Your account is currently read-only.',
+                    user.status // Include user status in response
                 );
             }
 

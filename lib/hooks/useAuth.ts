@@ -3,6 +3,59 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { UserType, UserStatus } from '@/lib/types';
+import Swal from 'sweetalert2';
+
+// Hardcoded Korean messages for auth popups
+const AUTH_MESSAGES: Record<string, { title: string; text: string; icon: 'error' | 'warning' | 'info' }> = {
+    blocked: { title: '계정 차단됨', text: '귀하의 계정이 차단되었습니다. 오류로 생각되시면 지원팀에 문의해주세요.', icon: 'error' },
+    stopped: { title: '계정 중지됨', text: '귀하의 계정이 중지되었습니다. 지원팀에 문의해주세요.', icon: 'warning' },
+    pending: { title: '계정 승인 대기 중', text: '귀하의 계정이 승인 대기 중입니다. 관리자에게 문의하거나 활성화를 기다려주세요.', icon: 'info' },
+    session_expired: { title: '세션 만료됨', text: '세션이 만료되었습니다. 다시 로그인해주세요.', icon: 'warning' },
+    logged_out: { title: '로그아웃됨', text: '성공적으로 로그아웃되었습니다.', icon: 'info' },
+};
+
+let isShowingPopup = false;
+
+async function showAuthPopupAndRedirect(messageType: string, redirectUrl: string = '/auth') {
+    if (isShowingPopup) return;
+    isShowingPopup = true;
+
+    try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (window.location.pathname === '/auth') {
+            isShowingPopup = false;
+            return;
+        }
+
+        const message = AUTH_MESSAGES[messageType] || AUTH_MESSAGES.session_expired;
+        await Swal.fire({
+            title: message.title,
+            text: message.text,
+            icon: message.icon,
+            confirmButtonText: '확인',
+            confirmButtonColor: '#6366f1',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showCloseButton: true,
+            didClose: () => { isShowingPopup = false; },
+        });
+
+        window.location.replace(redirectUrl);
+    } catch (error) {
+        console.error('Error showing auth popup:', error);
+        isShowingPopup = false;
+        window.location.replace(redirectUrl);
+    }
+}
+
+function getMessageTypeFromStatus(status: UserStatus): string {
+    switch (status) {
+        case 'blocked': return 'blocked';
+        case 'stopped': return 'stopped';
+        case 'pending': return 'pending';
+        default: return 'session_expired';
+    }
+}
 
 /**
  * User interface for client-side use
@@ -75,7 +128,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
                 if (!token) {
                     if (requireAuth) {
                         localStorage.removeItem('user');
-                        window.location.replace('/auth');
+                        await showAuthPopupAndRedirect('session_expired');
                         return;
                     }
                     setAuthState({
@@ -100,7 +153,11 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
                     localStorage.removeItem('user');
 
                     if (requireAuth) {
-                        window.location.replace('/auth');
+                        if (result.status) {
+                            await showAuthPopupAndRedirect(getMessageTypeFromStatus(result.status as UserStatus));
+                        } else {
+                            await showAuthPopupAndRedirect('session_expired');
+                        }
                         return;
                     }
 
@@ -137,7 +194,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
                 localStorage.removeItem('user');
 
                 if (requireAuth) {
-                    window.location.replace('/auth');
+                    await showAuthPopupAndRedirect('session_expired');
                     return;
                 }
 
@@ -159,7 +216,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
     /**
      * Logout user
      */
-    const logout = useCallback(() => {
+    const logout = useCallback(async () => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
         setAuthState({
@@ -168,7 +225,7 @@ export function useAuth(requireAuth: boolean = true): UseAuthReturn {
             isAuthenticated: false,
             error: null,
         });
-        window.location.replace('/auth');
+        await showAuthPopupAndRedirect('logged_out');
     }, []);
 
     /**

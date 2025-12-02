@@ -15,6 +15,7 @@ export interface ValidateTokenResponse {
   valid: boolean;
   user?: AuthUser;
   message?: string;
+  status?: string; // User status for client-side message handling
 }
 
 // Validate JWT token
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     if (users.length === 0) {
       return NextResponse.json(
-        { valid: false, message: 'Invalid email or password' },
+        { valid: false, message: 'Invalid email or password', status: 'hidden' },
         { status: 401 }
       );
     }
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
     // Check user status - handle hidden status specially (pretend account doesn't exist)
     if (user.status === 'hidden') {
       return NextResponse.json(
-        { valid: false, message: 'Invalid email or password' },
+        { valid: false, message: 'Invalid email or password', status: 'hidden' },
         { status: 401 }
       );
     }
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json(
-        { valid: false, message },
+        { valid: false, message, status: user.status },
         { status: statusCode }
       );
     }

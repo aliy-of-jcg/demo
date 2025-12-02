@@ -24,9 +24,9 @@ export const STATUS_ACCESS_RULES: Record<
         message: 'Your account is pending approval. Please contact your administrator or wait for activation.',
     },
     stopped: {
-        canAccess: true,
-        accessLevel: 'readonly',
-        message: 'Your account has been stopped. You have read-only access.',
+        canAccess: false,
+        accessLevel: 'none',
+        message: 'Your account has been stopped. Please contact support for assistance.',
     },
     blocked: {
         canAccess: false,

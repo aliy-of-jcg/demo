@@ -5,6 +5,59 @@ import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Loader2, Menu } from "lucide-react";
+import Swal from 'sweetalert2';
+import type { UserStatus } from "@/lib/types";
+
+// Hardcoded Korean messages for auth popups
+const AUTH_MESSAGES: Record<string, { title: string; text: string; icon: 'error' | 'warning' | 'info' }> = {
+  blocked: { title: '계정 차단됨', text: '귀하의 계정이 차단되었습니다. 오류로 생각되시면 지원팀에 문의해주세요.', icon: 'error' },
+  stopped: { title: '계정 중지됨', text: '귀하의 계정이 중지되었습니다. 지원팀에 문의해주세요.', icon: 'warning' },
+  pending: { title: '계정 승인 대기 중', text: '귀하의 계정이 승인 대기 중입니다. 관리자에게 문의하거나 활성화를 기다려주세요.', icon: 'info' },
+  session_expired: { title: '세션 만료됨', text: '세션이 만료되었습니다. 다시 로그인해주세요.', icon: 'warning' },
+};
+
+let isShowingPopup = false;
+
+async function showAuthPopupAndRedirect(messageType: string, redirectUrl: string = '/auth') {
+  if (isShowingPopup) return;
+  isShowingPopup = true;
+
+  try {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    if (window.location.pathname === '/auth') {
+      isShowingPopup = false;
+      return;
+    }
+
+    const message = AUTH_MESSAGES[messageType] || AUTH_MESSAGES.session_expired;
+    await Swal.fire({
+      title: message.title,
+      text: message.text,
+      icon: message.icon,
+      confirmButtonText: '확인',
+      confirmButtonColor: '#6366f1',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showCloseButton: true,
+      didClose: () => { isShowingPopup = false; },
+    });
+
+    window.location.replace(redirectUrl);
+  } catch (error) {
+    console.error('Error showing auth popup:', error);
+    isShowingPopup = false;
+    window.location.replace(redirectUrl);
+  }
+}
+
+function getMessageTypeFromStatus(status: UserStatus): string {
+  switch (status) {
+    case 'blocked': return 'blocked';
+    case 'stopped': return 'stopped';
+    case 'pending': return 'pending';
+    default: return 'session_expired';
+  }
+}
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,10 +81,9 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem("auth_token");
-        
+
         if (!token) {
-          // Use replace to avoid adding to history
-          window.location.replace(`/auth`);
+          await showAuthPopupAndRedirect('session_expired');
           return;
         }
 
@@ -46,8 +98,13 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         if (!result.valid) {
           localStorage.removeItem("auth_token");
           localStorage.removeItem("user");
-          // Use replace to avoid back button issues
-          window.location.replace(`/auth`);
+
+          // Show popup based on status and redirect
+          if (result.status) {
+            await showAuthPopupAndRedirect(getMessageTypeFromStatus(result.status as UserStatus));
+          } else {
+            await showAuthPopupAndRedirect('session_expired');
+          }
         } else {
           if (result.user) {
             localStorage.setItem("user", JSON.stringify(result.user));
@@ -59,7 +116,8 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         console.error("Auth check failed:", error);
         localStorage.removeItem("auth_token");
         localStorage.removeItem("user");
-        window.location.replace(`/auth`);
+
+        await showAuthPopupAndRedirect('session_expired');
       }
     };
 
@@ -106,7 +164,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   if (isAuthenticated) {
     return (
       <div className="flex h-screen bg-gray-50 overflow-hidden">
-        <Sidebar 
+        <Sidebar
           isMobileOpen={isMobileSidebarOpen}
           onMobileClose={() => setIsMobileSidebarOpen(false)}
         />
