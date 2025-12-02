@@ -12,7 +12,8 @@ import {
   Users,
   Route,
   LogIn,
-  LogOut
+  LogOut,
+  AlertTriangle
 } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
@@ -26,6 +27,7 @@ interface Page {
   event_type: string;
   is_landing_page: number;
   is_exit_page: number;
+  http_status: number;
   exit_timestamp: string | null;
 }
 
@@ -277,9 +279,11 @@ export default function SessionJourneysPage() {
                         <div className={`flex items-start gap-4 ${session.has_exit_event ? 'pb-8' : ''} ${(index !== session.pages.length - 1 || session.has_exit_event) ? 'border-l-2 border-gray-200 ml-3' : ''}`}>
                           {/* Sequence Number with Icon Overlay */}
                           <div className="relative flex-shrink-0">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${page.is_landing_page === 1
-                              ? 'bg-green-500 text-white'
-                              : 'bg-blue-500 text-white'
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${page.http_status === 404
+                              ? 'bg-yellow-500 text-yellow-900'
+                              : page.is_landing_page === 1
+                                ? 'bg-green-500 text-white'
+                                : 'bg-blue-500 text-white'
                               }`}>
                               {page.page_sequence}
                             </div>
@@ -292,11 +296,15 @@ export default function SessionJourneysPage() {
                           </div>
 
                           {/* Page Details */}
-                          <div className="flex-1 bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                          <div className={`flex-1 rounded-lg p-4 transition-colors ${page.http_status === 404
+                            ? 'bg-yellow-50 border border-yellow-200 hover:bg-yellow-100'
+                            : 'bg-gray-50 hover:bg-gray-100'
+                            }`}>
                             <div className="flex items-start justify-between gap-4 mb-2">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="font-medium text-gray-900 truncate">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <h4 className={`font-medium truncate ${page.http_status === 404 ? 'text-yellow-900' : 'text-gray-900'
+                                    }`}>
                                     {getPageName(page.page_url)}
                                   </h4>
                                   {page.is_landing_page === 1 && (
@@ -305,8 +313,15 @@ export default function SessionJourneysPage() {
                                       {t('session.landing')}
                                     </span>
                                   )}
+                                  {page.http_status === 404 && (
+                                    <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full flex items-center gap-1">
+                                      <AlertTriangle className="w-3 h-3" />
+                                      404
+                                    </span>
+                                  )}
                                 </div>
-                                <p className="text-xs text-gray-500 truncate">{page.page_url}</p>
+                                <p className={`text-xs truncate ${page.http_status === 404 ? 'text-yellow-700' : 'text-gray-500'
+                                  }`}>{page.page_url}</p>
                               </div>
                               <div className="text-right flex-shrink-0">
                                 <div className="text-sm font-medium text-gray-900">

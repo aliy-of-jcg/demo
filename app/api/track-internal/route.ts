@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
           conversion_type: data.conversion_type || '',
           conversion_value: data.conversion_value || 0,
           conversion_metadata: data.conversion_metadata || '',
+          http_status: data.http_status || 200,
         }],
         format: 'JSONEachRow'
       });

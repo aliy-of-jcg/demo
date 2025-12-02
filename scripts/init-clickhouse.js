@@ -65,7 +65,7 @@ async function initSchema() {
       `,
     });
     console.log('✅ Table tracking_events created\n');
-    
+
     console.log('Creating table: visit_logs');
     await clickhouse.command({
       query: `
@@ -99,12 +99,13 @@ async function initSchema() {
       session_page_count Int32 DEFAULT 0,
       conversion_type String DEFAULT '',
       conversion_value Float64 DEFAULT 0,
-      conversion_metadata String DEFAULT ''
+      conversion_metadata String DEFAULT '',
+      http_status Int32 DEFAULT 200
     ) ENGINE = MergeTree()
     ORDER BY (timestamp, session_id, user_id)
     SETTINGS index_granularity = 8192
   `,
-});
+    });
     console.log('✅ Table visit_logs created\n');
 
     console.log('Verifying tables...');
@@ -116,7 +117,7 @@ async function initSchema() {
     console.log('📋 Tables in analytics database:', tables);
 
     console.log('\n✨ Schema initialization completed successfully!');
-    
+
     await clickhouse.close();
   } catch (error) {
     console.error('❌ Error initializing schema:', error);
