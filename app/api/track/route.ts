@@ -27,10 +27,10 @@ function normalizeDomain(url: string): string {
 // Check if domain is enabled (with caching and auto-registration)
 async function isDomainEnabled(domain: string): Promise<boolean> {
   if (!domain) return true; // Allow if domain can't be extracted
-  
+
   const now = Date.now();
   const cached = domainCache.get(domain);
-  
+
   // Always check database to get the latest updated_at timestamp
   // This ensures immediate effect when a domain is disabled/enabled
   const pool = getPool();
@@ -40,19 +40,19 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
       [domain]
     );
     const domainRows = rows as any[];
-    
+
     if (domainRows.length > 0) {
       // Domain exists in database
       const isEnabled = domainRows[0].is_enabled === 1;
       const dbUpdatedAt = new Date(domainRows[0].updated_at).getTime();
-      
+
       // If we have a cache entry, check if DB was updated after cache was refreshed
       if (cached) {
         // If DB is newer than cache, or status changed, update cache
         if (dbUpdatedAt > cached.updated_at || cached.is_enabled !== isEnabled) {
           console.log(`🔄 Cache invalidated for ${domain}: DB updated at ${new Date(dbUpdatedAt).toISOString()}, cache from ${new Date(cached.updated_at).toISOString()}`);
           domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-          
+
           // Update last_seen only if enabled
           if (isEnabled) {
             await pool.execute(
@@ -60,10 +60,10 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
               [domain]
             );
           }
-          
+
           return isEnabled;
         }
-        
+
         // Cache is still valid (DB hasn't been updated since cache refresh)
         // Return cached value if it's still fresh
         if ((now - cached.last_refresh) < CACHE_TTL) {
@@ -76,29 +76,29 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
           }
           return cached.is_enabled;
         }
-        
+
         // Cache is stale, refresh it
         domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-        
+
         if (isEnabled) {
           await pool.execute(
             'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
             [domain]
           );
         }
-        
+
         return isEnabled;
       } else {
         // No cache entry, create one
         domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-        
+
         if (isEnabled) {
           await pool.execute(
             'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
             [domain]
           );
         }
-        
+
         return isEnabled;
       }
     } else {
@@ -107,10 +107,10 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
         'INSERT INTO tracked_websites (domain, is_enabled, first_seen, last_seen) VALUES (?, TRUE, NOW(), NOW())',
         [domain]
       );
-      
+
       // Add to cache (use current timestamp as updated_at)
       domainCache.set(domain, { is_enabled: true, last_refresh: now, updated_at: now });
-      
+
       console.log(`✅ Auto-registered new domain: ${domain}`);
       return true;
     }
@@ -127,7 +127,7 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    
+
     const {
       event_type,
       page_url,
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     // Check if domain is enabled (with caching and auto-registration)
     const domain = normalizeDomain(page_url);
     const enabled = await isDomainEnabled(domain);
-    
+
     if (!enabled) {
       console.log(`🚫 Tracking blocked for disabled domain: ${domain}`);
       // Return 200 OK to avoid client errors, but don't track
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     // Lookup campaign_id and course_id from MySQL to preserve legacy data even after hard deletion
     let campaign_id = 0;
     let course_id = 0;
-    
+
     const pool = getPool();
     try {
       if (tracking_code && tracking_code !== '') {
@@ -188,20 +188,20 @@ export async function POST(request: NextRequest) {
           'SELECT campaign_id, c.course_id FROM utm_codes u LEFT JOIN campaigns c ON u.campaign_id = c.id WHERE u.tracking_code = ? LIMIT 1',
           [tracking_code]
         );
-        
+
         if ((utmRows as any[]).length > 0) {
           campaign_id = (utmRows as any[])[0].campaign_id || 0;
           course_id = (utmRows as any[])[0].course_id || 0;
         }
       }
-      
+
       // Fallback: if no tracking_code match, try matching by utm_campaign name (legacy data)
       if (campaign_id === 0 && utm_campaign && utm_campaign !== '') {
         const [campaignRows] = await pool.execute(
           'SELECT id, course_id FROM campaigns WHERE name = ? LIMIT 1',
           [utm_campaign]
         );
-        
+
         if ((campaignRows as any[]).length > 0) {
           campaign_id = (campaignRows as any[])[0].id || 0;
           course_id = (campaignRows as any[])[0].course_id || 0;
@@ -211,6 +211,9 @@ export async function POST(request: NextRequest) {
       // If lookup fails, continue with 0 values (for direct traffic or unmatched UTMs)
       console.error('Error looking up campaign/course ID:', error);
     }
+
+    // Normalize utm_source: convert '(direct)' to 'Direct' for consistency
+    const normalizedUtmSource = (utm_source === '(direct)' || utm_source === '') ? 'Direct' : (utm_source || '');
 
     // Insert into ClickHouse visit_logs table
     try {
@@ -225,7 +228,7 @@ export async function POST(request: NextRequest) {
           referrer: referrer || '',
           referrer_domain: referrer_domain || '',
           tracking_code: tracking_code || '',
-          utm_source: utm_source || '',
+          utm_source: normalizedUtmSource,
           utm_medium: utm_medium || '',
           utm_campaign: utm_campaign || '',
           utm_term: utm_term || '',

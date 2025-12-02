@@ -22,7 +22,7 @@ const corsHeaders = {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    
+
     const {
       event_type,
       page_url,
@@ -57,16 +57,16 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get('origin') || '';
     const referer = request.headers.get('referer') || '';
     const host = request.headers.get('host') || '';
-    
-    const isLocalhost = origin.includes('localhost') || 
-                       referer.includes('localhost') ||
-                       host.includes('localhost');
-    
-    const isInternalDomain = origin.includes('cosmos') || 
-                            origin.includes('vercel.app') ||
-                            referer.includes('cosmos') ||
-                            referer.includes('vercel.app');
-    
+
+    const isLocalhost = origin.includes('localhost') ||
+      referer.includes('localhost') ||
+      host.includes('localhost');
+
+    const isInternalDomain = origin.includes('cosmos') ||
+      origin.includes('vercel.app') ||
+      referer.includes('cosmos') ||
+      referer.includes('vercel.app');
+
     if (!isLocalhost && !isInternalDomain) {
       console.warn('[CosMos Internal] Blocked tracking from unauthorized origin:', origin || referer);
       return NextResponse.json(
@@ -84,6 +84,9 @@ export async function POST(request: NextRequest) {
       os
     });
 
+    // Normalize utm_source: convert '(direct)' to 'Direct' for consistency
+    const normalizedUtmSource = (utm_source === '(direct)' || utm_source === '') ? 'Direct' : (utm_source || '');
+
     // Insert into ClickHouse visit_logs table
     try {
       await clickhouse.insert({
@@ -95,7 +98,7 @@ export async function POST(request: NextRequest) {
           page_url: page_url || '',
           page_title: page_title || '',
           referrer: referrer || '',
-          utm_source: utm_source || '',
+          utm_source: normalizedUtmSource,
           utm_medium: utm_medium || '',
           utm_campaign: utm_campaign || '',
           utm_term: utm_term || '',
@@ -123,14 +126,14 @@ export async function POST(request: NextRequest) {
         format: 'JSONEachRow'
       });
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: true,
         message: 'Internal test tracking recorded'
       }, { headers: corsHeaders });
     } catch (error) {
       console.error('Failed to insert internal tracking data:', error);
       // Still return success to avoid blocking the user
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: true,
         warning: 'Data may not have been recorded'
       }, { headers: corsHeaders });
