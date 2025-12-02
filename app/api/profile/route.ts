@@ -100,7 +100,7 @@ export async function PATCH(req: NextRequest) {
 
         // Verify user exists and get current data
         const users = await query<any[]>(
-            'SELECT id, email, password_hash FROM users WHERE id = ?',
+            'SELECT id, email, contact_number, password_hash FROM users WHERE id = ?',
             [decoded.userId]
         );
 
@@ -169,6 +169,21 @@ export async function PATCH(req: NextRequest) {
             }
 
             if (contact_number) {
+                // Check if phone number is already taken by another user
+                if (contact_number !== user.contact_number) {
+                    const existingUsers = await query<any[]>(
+                        'SELECT id FROM users WHERE contact_number = ? AND id != ?',
+                        [contact_number, decoded.userId]
+                    );
+
+                    if (existingUsers.length > 0) {
+                        return NextResponse.json(
+                            { success: false, message: 'Phone number is already in use' },
+                            { status: 400 }
+                        );
+                    }
+                }
+
                 updates.push('contact_number = ?');
                 values.push(contact_number);
             }

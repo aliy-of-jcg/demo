@@ -1459,7 +1459,17 @@
     },
     "errors": {
       "updateFailed": "Failed to update profile",
-      "passwordChangeFailed": "Failed to change password"
+      "passwordChangeFailed": "Failed to change password",
+      "emailInUse": "Email is already in use",
+      "phoneInUse": "Phone number is already in use",
+      "incorrectPassword": "Current password is incorrect",
+      "passwordRequired": "Current password is required",
+      "passwordTooShort": "New password must be at least 6 characters",
+      "noFieldsToUpdate": "No fields to update",
+      "userNotFound": "User not found",
+      "invalidToken": "Invalid or expired token",
+      "authRequired": "Authentication required",
+      "internalError": "Internal server error"
     }
   },
   "userManagement": {

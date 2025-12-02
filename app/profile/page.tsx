@@ -22,6 +22,24 @@ export default function ProfilePage() {
     const [isLoadingProfile, setIsLoadingProfile] = useState(false);
     const [isLoadingPassword, setIsLoadingPassword] = useState(false);
 
+    // Map API error messages to translation keys
+    const getErrorMessage = (apiMessage: string): string => {
+        const errorMap: Record<string, string> = {
+            'Email is already in use': t('errors.emailInUse'),
+            'Phone number is already in use': t('errors.phoneInUse'),
+            'Current password is incorrect': t('errors.incorrectPassword'),
+            'Current password is required': t('errors.passwordRequired'),
+            'New password must be at least 6 characters': t('errors.passwordTooShort'),
+            'No fields to update': t('errors.noFieldsToUpdate'),
+            'User not found': t('errors.userNotFound'),
+            'Invalid or expired token': t('errors.invalidToken'),
+            'Authentication required': t('errors.authRequired'),
+            'Internal server error': t('errors.internalError')
+        };
+
+        return errorMap[apiMessage] || apiMessage || t('errors.updateFailed');
+    };
+
     // Store original user data (excluding password fields)
     const [originalUser, setOriginalUser] = useState({
         email: '',
@@ -116,7 +134,8 @@ export default function ProfilePage() {
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                throw new Error(data.message || t('errors.updateFailed'));
+                const errorMessage = getErrorMessage(data.message || '');
+                throw new Error(errorMessage);
             }
 
             // Update original user data to reflect the changes
@@ -135,7 +154,8 @@ export default function ProfilePage() {
             toast.success(t('success.profileUpdated'));
         } catch (error: any) {
             console.error('Profile update error:', error);
-            toast.error(error.message || t('errors.updateFailed'));
+            const errorMessage = getErrorMessage(error.message || '');
+            toast.error(errorMessage);
         } finally {
             setIsLoadingProfile(false);
         }
@@ -185,7 +205,8 @@ export default function ProfilePage() {
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                throw new Error(data.message || t('errors.passwordChangeFailed'));
+                const errorMessage = getErrorMessage(data.message || '');
+                throw new Error(errorMessage);
             }
 
             // Clear all password fields
@@ -198,7 +219,8 @@ export default function ProfilePage() {
             toast.success(t('success.passwordChanged'));
         } catch (error: any) {
             console.error('Password change error:', error);
-            toast.error(error.message || t('errors.passwordChangeFailed'));
+            const errorMessage = getErrorMessage(error.message || '');
+            toast.error(errorMessage || t('errors.passwordChangeFailed'));
         } finally {
             setIsLoadingPassword(false);
         }
