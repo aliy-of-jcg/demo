@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { User, Lock, Building2, Mail, Phone } from 'lucide-react';
+import { User, Lock, Building2, Mail, Phone, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { PageFooter } from '@/components/page-footer';
@@ -21,6 +21,8 @@ export default function ProfilePage() {
     const router = useRouter();
     const [isLoadingProfile, setIsLoadingProfile] = useState(false);
     const [isLoadingPassword, setIsLoadingPassword] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
 
     // Map API error messages to translation keys
     const getErrorMessage = (apiMessage: string): string => {
@@ -226,6 +228,57 @@ export default function ProfilePage() {
         }
     };
 
+    // Handle account deletion
+    const handleDeleteAccount = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!deletePassword) {
+            toast.error(t('validation.currentPasswordRequired'));
+            return;
+        }
+
+        setIsDeletingAccount(true);
+
+        try {
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch('/api/profile', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    currentPassword: deletePassword
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                const errorMessage = getErrorMessage(data.message || '');
+                throw new Error(errorMessage);
+            }
+
+            // Clear all local storage
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+
+            // Show success message
+            toast.success(t('success.accountDeleted'));
+
+            // Redirect to auth page after a short delay
+            setTimeout(() => {
+                router.push('/auth');
+            }, 1500);
+        } catch (error: any) {
+            console.error('Account deletion error:', error);
+            const errorMessage = getErrorMessage(error.message || '');
+            toast.error(errorMessage || t('errors.deleteFailed'));
+        } finally {
+            setIsDeletingAccount(false);
+        }
+    };
+
     if (!user) {
         return (
             <div className="p-4 sm:p-6 lg:p-8">
@@ -327,7 +380,7 @@ export default function ProfilePage() {
                     <button
                         type="submit"
                         disabled={isLoadingProfile || !hasChanges}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                         {isLoadingProfile ? t('buttons.updating') : t('buttons.updateProfile')}
                     </button>
@@ -389,9 +442,44 @@ export default function ProfilePage() {
                     <button
                         type="submit"
                         disabled={isLoadingPassword}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                         {isLoadingPassword ? t('buttons.updating') : t('buttons.changePassword')}
+                    </button>
+                </form>
+            </div>
+
+            {/* Delete Account Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                    <AlertTriangle className="w-5 h-5 text-gray-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">{t('sections.deleteAccount')}</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-6">{t('sections.deleteAccountWarning')}</p>
+
+                <form onSubmit={handleDeleteAccount} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {t('fields.currentPassword')} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="password"
+                            value={deletePassword}
+                            onChange={(e) => setDeletePassword(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            placeholder={t('placeholders.currentPassword')}
+                            required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">{t('hints.confirmIdentity')}</p>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={isDeletingAccount || !deletePassword.trim()}
+                        className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                        {isDeletingAccount ? t('buttons.deleting') : t('buttons.deleteAccount')}
                     </button>
                 </form>
             </div>

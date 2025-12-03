@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
         const users = await query<any[]>(
             `SELECT id, uuid, email, company_name, contact_number, user_type, status 
-             FROM users WHERE id = ?`,
+             FROM users WHERE id = ? AND deleted_at IS NULL`,
             [decoded.userId]
         );
 
@@ -98,9 +98,9 @@ export async function PATCH(req: NextRequest) {
         const body = await req.json();
         const { email, contact_number, company_name, currentPassword, newPassword } = body;
 
-        // Verify user exists and get current data
+        // Verify user exists and get current data (exclude deleted users)
         const users = await query<any[]>(
-            'SELECT id, email, contact_number, password_hash FROM users WHERE id = ?',
+            'SELECT id, email, contact_number, password_hash FROM users WHERE id = ? AND deleted_at IS NULL',
             [decoded.userId]
         );
 
@@ -149,10 +149,10 @@ export async function PATCH(req: NextRequest) {
         } else {
             // Profile update
             if (email) {
-                // Check if email is already taken by another user
+                // Check if email is already taken by another user (exclude deleted users)
                 if (email !== user.email) {
                     const existingUsers = await query<any[]>(
-                        'SELECT id FROM users WHERE email = ? AND id != ?',
+                        'SELECT id FROM users WHERE email = ? AND id != ? AND deleted_at IS NULL',
                         [email, decoded.userId]
                     );
 
@@ -169,10 +169,10 @@ export async function PATCH(req: NextRequest) {
             }
 
             if (contact_number) {
-                // Check if phone number is already taken by another user
+                // Check if phone number is already taken by another user (exclude deleted users)
                 if (contact_number !== user.contact_number) {
                     const existingUsers = await query<any[]>(
-                        'SELECT id FROM users WHERE contact_number = ? AND id != ?',
+                        'SELECT id FROM users WHERE contact_number = ? AND id != ? AND deleted_at IS NULL',
                         [contact_number, decoded.userId]
                     );
 
@@ -211,7 +211,7 @@ export async function PATCH(req: NextRequest) {
         // Fetch updated user data
         const updatedUsers = await query<any[]>(
             `SELECT id, uuid, email, company_name, contact_number, user_type, status 
-             FROM users WHERE id = ?`,
+             FROM users WHERE id = ? AND deleted_at IS NULL`,
             [decoded.userId]
         );
 
@@ -232,6 +232,87 @@ export async function PATCH(req: NextRequest) {
         });
     } catch (error: any) {
         console.error('Error updating profile:', error);
+        return NextResponse.json(
+            { success: false, message: 'Internal server error' },
+            { status: 500 }
+        );
+    }
+}
+
+/**
+ * DELETE /api/profile
+ * Soft delete current user's account
+ */
+export async function DELETE(req: NextRequest) {
+    try {
+        const token = extractToken(req);
+        if (!token) {
+            return NextResponse.json(
+                { success: false, message: 'Authentication required' },
+                { status: 401 }
+            );
+        }
+
+        const decoded = verifyToken(token);
+        if (!decoded) {
+            return NextResponse.json(
+                { success: false, message: 'Invalid or expired token' },
+                { status: 401 }
+            );
+        }
+
+        const body = await req.json();
+        const { currentPassword } = body;
+
+        if (!currentPassword) {
+            return NextResponse.json(
+                { success: false, message: 'Current password is required' },
+                { status: 400 }
+            );
+        }
+
+        // Verify user exists and get current data (exclude deleted users)
+        const users = await query<any[]>(
+            'SELECT id, password_hash FROM users WHERE id = ? AND deleted_at IS NULL',
+            [decoded.userId]
+        );
+
+        if (users.length === 0) {
+            return NextResponse.json(
+                { success: false, message: 'User not found' },
+                { status: 404 }
+            );
+        }
+
+        const user = users[0];
+
+        // Verify current password
+        const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isPasswordValid) {
+            return NextResponse.json(
+                { success: false, message: 'Current password is incorrect' },
+                { status: 400 }
+            );
+        }
+
+        // Soft delete: set deleted_at timestamp
+        await query(
+            'UPDATE users SET deleted_at = NOW() WHERE id = ?',
+            [decoded.userId]
+        );
+
+        // Invalidate all sessions for this user
+        await query(
+            'DELETE FROM sessions WHERE user_id = ?',
+            [decoded.userId]
+        );
+
+        return NextResponse.json({
+            success: true,
+            message: 'Account deleted successfully'
+        });
+    } catch (error: any) {
+        console.error('Error deleting account:', error);
         return NextResponse.json(
             { success: false, message: 'Internal server error' },
             { status: 500 }

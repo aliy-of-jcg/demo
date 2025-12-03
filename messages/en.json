@@ -1403,7 +1403,7 @@
   },
   "userMenu": {
     "userMenu": "User menu",
-    "settings": "Settings",
+    "profile": "Profile",
     "signOut": "Sign Out",
     "userTypes": {
       "owner": "Owner",
@@ -1419,7 +1419,10 @@
       "personalInfo": "Personal Information",
       "personalInfoDesc": "Update your email, phone number, and company information",
       "changePassword": "Change Password",
-      "changePasswordDesc": "Update your password to keep your account secure"
+      "changePasswordDesc": "Update your password to keep your account secure",
+      "deleteAccount": "Delete Account",
+      "deleteAccountWarning": "Once you delete your account, there is no going back. Please be certain.",
+      "deleteAccountDesc": ""
     },
     "fields": {
       "email": "Email Address",
@@ -1441,7 +1444,9 @@
     "buttons": {
       "updateProfile": "Update Profile",
       "changePassword": "Change Password",
-      "updating": "Updating..."
+      "updating": "Updating...",
+      "deleteAccount": "Delete Account",
+      "deleting": "Deleting..."
     },
     "validation": {
       "emailRequired": "Email is required",
@@ -1455,11 +1460,13 @@
     },
     "success": {
       "profileUpdated": "Profile updated successfully!",
-      "passwordChanged": "Password changed successfully!"
+      "passwordChanged": "Password changed successfully!",
+      "accountDeleted": "Account deleted successfully. You will be redirected to the login page."
     },
     "errors": {
       "updateFailed": "Failed to update profile",
       "passwordChangeFailed": "Failed to change password",
+      "deleteFailed": "Failed to delete account",
       "emailInUse": "Email is already in use",
       "phoneInUse": "Phone number is already in use",
       "incorrectPassword": "Current password is incorrect",

@@ -19,9 +19,9 @@ export const PATCH = requirePermissionWithParams('users:update', async (req: Nex
         const body = await req.json();
         const { status, user_type } = body;
 
-        // Check if user exists and is not an owner
+        // Check if user exists and is not an owner (exclude deleted users)
         const existingUsers = await query<any[]>(
-            'SELECT id, user_type FROM users WHERE id = ?',
+            'SELECT id, user_type FROM users WHERE id = ? AND deleted_at IS NULL',
             [userId]
         );
 
@@ -98,7 +98,7 @@ export const PATCH = requirePermissionWithParams('users:update', async (req: Nex
 
 /**
  * DELETE /api/users/[id]
- * Soft delete user (set to hidden)
+ * Soft delete user (set deleted_at timestamp)
  * Requires: users:delete permission (owner only)
  */
 export const DELETE = requirePermissionWithParams('users:delete', async (req: NextRequest, context: AuthContext, routeParams: { params: Record<string, string> }) => {
@@ -129,10 +129,16 @@ export const DELETE = requirePermissionWithParams('users:delete', async (req: Ne
             );
         }
 
-        // Soft delete by setting status to hidden
+        // Soft delete by setting deleted_at timestamp
         await query(
-            'UPDATE users SET status = ? WHERE id = ?',
-            ['hidden', userId]
+            'UPDATE users SET deleted_at = NOW() WHERE id = ?',
+            [userId]
+        );
+
+        // Invalidate all sessions for this user
+        await query(
+            'DELETE FROM sessions WHERE user_id = ?',
+            [userId]
         );
 
         return NextResponse.json({

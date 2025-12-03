@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     const body: SignupRequest = await req.json();
     const { company_name, email, password, contact_number, user_type } = body;
-    
+
     console.log(`📝 Signup API - Email: ${email}, Company: ${company_name}`);
 
     // Validation
@@ -52,15 +52,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user already exists
+    // Check if user already exists (exclude deleted users)
     const existingUser = await query<any[]>(
-      'SELECT id FROM users WHERE email = ?',
+      'SELECT id FROM users WHERE email = ? AND deleted_at IS NULL',
       [email]
     );
 
     if (existingUser.length > 0) {
       return NextResponse.json(
         { success: false, message: 'A user with this email already exists' } as SignupResponse,
+        { status: 409 }
+      );
+    }
+
+    // Check if phone number already exists (exclude deleted users)
+    const existingPhone = await query<any[]>(
+      'SELECT id FROM users WHERE contact_number = ? AND deleted_at IS NULL',
+      [contact_number]
+    );
+
+    if (existingPhone.length > 0) {
+      return NextResponse.json(
+        { success: false, message: 'A user with this phone number already exists' } as SignupResponse,
         { status: 409 }
       );
     }

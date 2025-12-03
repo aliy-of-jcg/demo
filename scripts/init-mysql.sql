@@ -7,15 +7,17 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   contact_number VARCHAR(50) NOT NULL,
   user_type ENUM('owner', 'admin', 'observer', 'regular') NOT NULL DEFAULT 'regular',
-  status ENUM('active', 'pending', 'stopped', 'blocked', 'hidden') DEFAULT 'active',
+  status ENUM('active', 'pending', 'stopped', 'blocked') DEFAULT 'active',
   last_login_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL DEFAULT NULL,
   INDEX idx_uuid (uuid),
   INDEX idx_email (email),
   INDEX idx_user_type (user_type),
   INDEX idx_status (status),
-  INDEX idx_company_name (company_name)
+  INDEX idx_company_name (company_name),
+  INDEX idx_deleted_at (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Sessions table for authentication tokens

@@ -38,8 +38,8 @@ function extractToken(req: NextRequest): string | null {
 async function fetchUserFromDB(userId: number): Promise<AuthenticatedUser | null> {
     try {
         const users = await query<any[]>(
-            `SELECT id, uuid, email, company_name, contact_number, user_type, status 
-       FROM users WHERE id = ?`,
+            `SELECT id, uuid, email, company_name, contact_number, user_type, status, deleted_at 
+       FROM users WHERE id = ? AND deleted_at IS NULL`,
             [userId]
         );
 
@@ -48,6 +48,12 @@ async function fetchUserFromDB(userId: number): Promise<AuthenticatedUser | null
         }
 
         const user = users[0];
+
+        // Double check deleted_at (though query should filter this)
+        if (user.deleted_at) {
+            return null;
+        }
+
         return {
             userId: user.id,
             uuid: user.uuid,

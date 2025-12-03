@@ -19,7 +19,7 @@ export const GET = requirePermission('users:read', async (req: NextRequest, cont
         let queryParams: any[] = [];
 
         if (user.user_type === 'owner') {
-            // Owners can see all non-owner users
+            // Owners can see all non-owner users (exclude deleted users)
             usersQuery = `SELECT 
                 id,
                 uuid,
@@ -31,10 +31,10 @@ export const GET = requirePermission('users:read', async (req: NextRequest, cont
                 created_at,
                 last_login_at
             FROM users
-            WHERE user_type != 'owner' AND status != 'hidden'
+            WHERE user_type != 'owner' AND deleted_at IS NULL
             ORDER BY created_at DESC`;
         } else {
-            // Admins and observers can see non-owner users (read-only view)
+            // Admins and observers can see non-owner users (read-only view, exclude deleted users)
             usersQuery = `SELECT 
                 id,
                 uuid,
@@ -46,7 +46,7 @@ export const GET = requirePermission('users:read', async (req: NextRequest, cont
                 created_at,
                 last_login_at
             FROM users
-            WHERE user_type != 'owner' AND status != 'hidden'
+            WHERE user_type != 'owner' AND deleted_at IS NULL
             ORDER BY created_at DESC`;
         }
 

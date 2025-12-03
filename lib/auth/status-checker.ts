@@ -33,11 +33,6 @@ export const STATUS_ACCESS_RULES: Record<
         accessLevel: 'none',
         message: 'Your account has been blocked. Please contact support if you believe this is an error.',
     },
-    hidden: {
-        canAccess: false,
-        accessLevel: 'none',
-        message: 'Account not found', // Generic message for security
-    },
 };
 
 /**
@@ -51,9 +46,7 @@ export function checkUserStatus(status: UserStatus): StatusCheckResult {
         // Determine appropriate status code
         let statusCode = 403; // Forbidden by default
 
-        if (status === 'hidden') {
-            statusCode = 401; // Unauthorized (pretend account doesn't exist)
-        } else if (status === 'pending') {
+        if (status === 'pending') {
             statusCode = 403; // Forbidden (waiting for approval)
         } else if (status === 'blocked') {
             statusCode = 403; // Forbidden (security restriction)

@@ -1,6 +1,6 @@
 // User types
 export type UserType = 'owner' | 'admin' | 'observer' | 'regular';
-export type UserStatus = 'active' | 'pending' | 'stopped' | 'blocked' | 'hidden';
+export type UserStatus = 'active' | 'pending' | 'stopped' | 'blocked';
 
 // Database user model
 export interface User {

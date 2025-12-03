@@ -43,24 +43,24 @@ export async function POST(req: NextRequest) {
     // Optionally: Re-validate user exists and is still active in database
     // This catches cases where user was deleted/deactivated after token was issued
     const users = await query<any[]>(
-      `SELECT id, uuid, email, company_name, contact_number, user_type, status 
-       FROM users WHERE id = ?`,
+      `SELECT id, uuid, email, company_name, contact_number, user_type, status, deleted_at 
+       FROM users WHERE id = ? AND deleted_at IS NULL`,
       [decoded.userId]
     );
 
     if (users.length === 0) {
       return NextResponse.json(
-        { valid: false, message: 'Invalid email or password', status: 'hidden' },
+        { valid: false, message: 'Invalid email or password', status: 'deleted' },
         { status: 401 }
       );
     }
 
     const user = users[0];
 
-    // Check user status - handle hidden status specially (pretend account doesn't exist)
-    if (user.status === 'hidden') {
+    // Check if user is deleted (double check, though query should filter this)
+    if (user.deleted_at) {
       return NextResponse.json(
-        { valid: false, message: 'Invalid email or password', status: 'hidden' },
+        { valid: false, message: 'Invalid email or password', status: 'deleted' },
         { status: 401 }
       );
     }

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fetch user
+    // Fetch user (exclude deleted users)
     const users = await query<any[]>(
       `SELECT 
         id,
@@ -29,13 +29,14 @@ export async function POST(req: NextRequest) {
         contact_number,
         password_hash,
         user_type,
-        status
+        status,
+        deleted_at
       FROM users
-      WHERE email = ?`,
+      WHERE email = ? AND deleted_at IS NULL`,
       [email]
     );
 
-    // For hidden status or non-existent users, return generic error (prevent account enumeration)
+    // For deleted or non-existent users, return generic error (prevent account enumeration)
     if (users.length === 0) {
       return NextResponse.json(
         { success: false, message: 'INVALID_CREDENTIALS', errorCode: 'INVALID_CREDENTIALS' } as LoginResponse,
@@ -45,8 +46,8 @@ export async function POST(req: NextRequest) {
 
     const user = users[0];
 
-    // Check user status - handle hidden status specially (pretend account doesn't exist)
-    if (user.status === 'hidden') {
+    // Check if user is deleted (double check, though query should filter this)
+    if (user.deleted_at) {
       // Return generic error to prevent account enumeration
       return NextResponse.json(
         { success: false, message: 'INVALID_CREDENTIALS', errorCode: 'INVALID_CREDENTIALS' } as LoginResponse,

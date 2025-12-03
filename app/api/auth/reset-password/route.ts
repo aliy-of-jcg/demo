@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Query token with user info
+    // Query token with user info (exclude deleted users)
     const tokens = await query<any[]>(
       `SELECT 
         prt.id,
@@ -56,10 +56,11 @@ export async function POST(req: NextRequest) {
         prt.used,
         u.email,
         u.company_name,
-        u.status
+        u.status,
+        u.deleted_at
       FROM password_reset_tokens prt
       JOIN users u ON prt.user_id = u.id
-      WHERE prt.token = ?`,
+      WHERE prt.token = ? AND u.deleted_at IS NULL`,
       [token]
     );
 
@@ -91,8 +92,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check user status - handle hidden status specially (pretend account doesn't exist)
-    if (tokenData.status === 'hidden') {
+    // Check if user is deleted (double check, though query should filter this)
+    if (tokenData.deleted_at) {
       return NextResponse.json(
         { success: false, message: 'Invalid email or password' },
         { status: 401 }

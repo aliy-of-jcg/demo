@@ -2,63 +2,63 @@ import mysql from 'mysql2/promise';
 
 // MySQL connection configuration
 const config = {
-    host: process.env.MYSQL_HOST || 'localhost',
-    port: parseInt(process.env.MYSQL_PORT || '3306'),
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE,
-    timezone: '+00:00', // Set connection timezone to UTC for proper TIMESTAMP handling
-    waitForConnections: true,
-    connectionLimit: 50, // Increased from 10 to 50
-    maxIdle: 10, // Maximum idle connections
-    idleTimeout: 60000, // Close idle connections after 60 seconds
-    queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 0,
+  host: process.env.MYSQL_HOST || 'localhost',
+  port: parseInt(process.env.MYSQL_PORT || '3306'),
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
+  timezone: '+00:00', // Set connection timezone to UTC for proper TIMESTAMP handling
+  waitForConnections: true,
+  connectionLimit: 50, // Increased from 10 to 50
+  maxIdle: 10, // Maximum idle connections
+  idleTimeout: 60000, // Close idle connections after 60 seconds
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
 };
 
 // Create connection pool
 let pool: mysql.Pool | null = null;
 
 export function getPool(): mysql.Pool {
-    if (!pool) {
-        pool = mysql.createPool(config);
-    }
-    return pool;
+  if (!pool) {
+    pool = mysql.createPool(config);
+  }
+  return pool;
 }
 
 export async function query<T = any>(
-    sql: string,
-    params?: any[]
+  sql: string,
+  params?: any[]
 ): Promise<T> {
-    const connection = await getPool().getConnection();
-    try {
-        // Set connection timezone to UTC to ensure TIMESTAMP values are retrieved in UTC
-        await connection.execute("SET time_zone = '+00:00'");
-        const [rows] = await connection.execute(sql, params);
-        return rows as T;
-    } finally {
-        connection.release();
-    }
+  const connection = await getPool().getConnection();
+  try {
+    // Set connection timezone to UTC to ensure TIMESTAMP values are retrieved in UTC
+    await connection.execute("SET time_zone = '+00:00'");
+    const [rows] = await connection.execute(sql, params);
+    return rows as T;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function queryOne<T = any>(
-    sql: string,
-    params?: any[]
+  sql: string,
+  params?: any[]
 ): Promise<T | null> {
-    const rows = await query<T[]>(sql, params);
-    return rows.length > 0 ? rows[0] : null;
+  const rows = await query<T[]>(sql, params);
+  return rows.length > 0 ? rows[0] : null;
 }
 
 export async function testConnection(): Promise<boolean> {
-    try {
-        const connection = await getPool().getConnection();
-        connection.release();
-        return true;
-    } catch (error) {
-        console.error('MySQL connection failed:', error);
-        return false;
-    }
+  try {
+    const connection = await getPool().getConnection();
+    connection.release();
+    return true;
+  } catch (error) {
+    console.error('MySQL connection failed:', error);
+    return false;
+  }
 }
 
 /**
@@ -70,8 +70,8 @@ export async function testConnection(): Promise<boolean> {
  * Each CREATE TABLE is executed separately to avoid multi-statement issues.
  */
 export async function initMySQLSchema(): Promise<void> {
-    try {
-        const createUsersTable = `
+  try {
+    const createUsersTable = `
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         uuid VARCHAR(36) NOT NULL UNIQUE,
@@ -80,19 +80,21 @@ export async function initMySQLSchema(): Promise<void> {
         password_hash VARCHAR(255) NOT NULL,
         contact_number VARCHAR(50) NOT NULL,
         user_type ENUM('owner', 'admin', 'observer', 'regular') NOT NULL DEFAULT 'regular',
-        status ENUM('active', 'pending', 'stopped', 'blocked', 'hidden') DEFAULT 'active',
+        status ENUM('active', 'pending', 'stopped', 'blocked') DEFAULT 'active',
         last_login_at TIMESTAMP NULL DEFAULT NULL,
         created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULL DEFAULT NULL,
         INDEX idx_uuid (uuid),
         INDEX idx_email (email),
         INDEX idx_user_type (user_type),
         INDEX idx_status (status),
-        INDEX idx_company_name (company_name)
+        INDEX idx_company_name (company_name),
+        INDEX idx_deleted_at (deleted_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-        const createSessionsTable = `
+    const createSessionsTable = `
       CREATE TABLE IF NOT EXISTS sessions (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -106,7 +108,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-        const createPasswordResetTable = `
+    const createPasswordResetTable = `
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -123,7 +125,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-        const createCoursesTable = `
+    const createCoursesTable = `
       CREATE TABLE IF NOT EXISTS courses (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -140,7 +142,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-        const createCampaignsTable = `
+    const createCampaignsTable = `
       CREATE TABLE IF NOT EXISTS campaigns (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -167,7 +169,7 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-        const createUtmCodesTable = `
+    const createUtmCodesTable = `
       CREATE TABLE IF NOT EXISTS utm_codes (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -197,24 +199,24 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
-        // Order matters: courses must be created before campaigns, campaigns before utm_codes
-        await query(createUsersTable);
-        await query(createSessionsTable);
-        await query(createPasswordResetTable);
-        await query(createCoursesTable);
-        await query(createCampaignsTable);
-        await query(createUtmCodesTable);
+    // Order matters: courses must be created before campaigns, campaigns before utm_codes
+    await query(createUsersTable);
+    await query(createSessionsTable);
+    await query(createPasswordResetTable);
+    await query(createCoursesTable);
+    await query(createCampaignsTable);
+    await query(createUtmCodesTable);
 
-        console.log('✅ MySQL schema initialized successfully');
-    } catch (error) {
-        // If initialization fails, log but don't fail
-        // Docker init should handle it on first container start
-        console.warn(
-            '⚠️ MySQL schema initialization warning:',
-            error instanceof Error ? error.message : String(error)
-        );
-        console.log('💡 Note: Tables should be created via Docker init or manually');
-    }
+    console.log('✅ MySQL schema initialized successfully');
+  } catch (error) {
+    // If initialization fails, log but don't fail
+    // Docker init should handle it on first container start
+    console.warn(
+      '⚠️ MySQL schema initialization warning:',
+      error instanceof Error ? error.message : String(error)
+    );
+    console.log('💡 Note: Tables should be created via Docker init or manually');
+  }
 }
 
 

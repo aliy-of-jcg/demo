@@ -1403,7 +1403,7 @@
   },
   "userMenu": {
     "userMenu": "사용자 메뉴",
-    "settings": "설정",
+    "profile": "프로필 설정",
     "signOut": "로그아웃",
     "userTypes": {
       "owner": "소유자",
@@ -1419,7 +1419,10 @@
       "personalInfo": "개인 정보",
       "personalInfoDesc": "이메일, 전화번호 및 회사 정보를 업데이트하세요",
       "changePassword": "비밀번호 변경",
-      "changePasswordDesc": "비밀번호를 업데이트하여 계정을 안전하게 유지하세요"
+      "changePasswordDesc": "비밀번호를 업데이트하여 계정을 안전하게 유지하세요",
+      "deleteAccount": "계정 삭제",
+      "deleteAccountWarning": "계정을 삭제하면 되돌릴 수 없습니다. 신중하게 결정해주세요.",
+      "deleteAccountDesc": ""
     },
     "fields": {
       "email": "이메일 주소",
@@ -1441,7 +1444,9 @@
     "buttons": {
       "updateProfile": "프로필 업데이트",
       "changePassword": "비밀번호 변경",
-      "updating": "업데이트 중..."
+      "updating": "업데이트 중...",
+      "deleteAccount": "계정 삭제",
+      "deleting": "삭제 중..."
     },
     "validation": {
       "emailRequired": "이메일은 필수입니다",
@@ -1455,11 +1460,13 @@
     },
     "success": {
       "profileUpdated": "프로필이 성공적으로 업데이트되었습니다!",
-      "passwordChanged": "비밀번호가 성공적으로 변경되었습니다!"
+      "passwordChanged": "비밀번호가 성공적으로 변경되었습니다!",
+      "accountDeleted": "계정이 성공적으로 삭제되었습니다. 로그인 페이지로 이동합니다."
     },
     "errors": {
       "updateFailed": "프로필 업데이트 실패",
       "passwordChangeFailed": "비밀번호 변경 실패",
+      "deleteFailed": "계정 삭제 실패",
       "emailInUse": "이미 사용 중인 이메일입니다",
       "phoneInUse": "이미 사용 중인 전화번호입니다",
       "incorrectPassword": "현재 비밀번호가 올바르지 않습니다",
