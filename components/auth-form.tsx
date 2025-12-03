@@ -59,9 +59,7 @@ export function AuthForm() {
       if (!formData.contact_number.trim()) {
         newErrors.contact_number = tErrors('contactNumberRequired');
       }
-      if (!selectedUserType) {
-        newErrors.user_type = tErrors('userTypeRequired');
-      }
+      // User type is now optional - will use system default if not selected
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = tErrors('passwordsNoMatch');
       }
@@ -141,7 +139,7 @@ export function AuthForm() {
           email: formData.email,
           password: formData.password,
           contact_number: formData.contact_number,
-          user_type: selectedUserType,
+          ...(selectedUserType && { user_type: selectedUserType }), // Only include if selected, API will use default if not provided
         }),
       });
 
@@ -219,17 +217,20 @@ export function AuthForm() {
             </div>
           )}
 
-          {/* User Type Selection - Only for Signup */}
+          {/* User Type Selection - Optional for Signup (uses system default if not selected) */}
           {mode === "signup" && (
             <div className="space-y-3">
-              <Label>{tSignup('userTypeLabel')}</Label>
+              <Label>{tSignup('userTypeLabel')} <span className="text-gray-400 text-xs font-normal">(Optional)</span></Label>
+              <p className="text-xs text-gray-500 -mt-1">
+                If not selected, system default role will be used.
+              </p>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => selectUserType("admin")}
                   className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-indigo-500 hover:bg-indigo-50 ${selectedUserType === "admin"
-                      ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600 ring-offset-2"
-                      : "border-gray-200"
+                    ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-600 ring-offset-2"
+                    : "border-gray-200"
                     }`}
                 >
                   {selectedUserType === "admin" && (
@@ -245,8 +246,8 @@ export function AuthForm() {
                   type="button"
                   onClick={() => selectUserType("observer")}
                   className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-purple-500 hover:bg-purple-50 ${selectedUserType === "observer"
-                      ? "border-purple-600 bg-purple-50 ring-2 ring-purple-600 ring-offset-2"
-                      : "border-gray-200"
+                    ? "border-purple-600 bg-purple-50 ring-2 ring-purple-600 ring-offset-2"
+                    : "border-gray-200"
                     }`}
                 >
                   {selectedUserType === "observer" && (
@@ -262,8 +263,8 @@ export function AuthForm() {
                   type="button"
                   onClick={() => selectUserType("regular")}
                   className={`relative flex flex-col items-center gap-1 rounded-lg border-2 p-3 transition-all hover:border-green-500 hover:bg-green-50 ${selectedUserType === "regular"
-                      ? "border-green-600 bg-green-50 ring-2 ring-green-600 ring-offset-2"
-                      : "border-gray-200"
+                    ? "border-green-600 bg-green-50 ring-2 ring-green-600 ring-offset-2"
+                    : "border-gray-200"
                     }`}
                 >
                   {selectedUserType === "regular" && (
@@ -275,12 +276,22 @@ export function AuthForm() {
                   <span className="text-xs font-semibold">{tSignup('regular')}</span>
                 </button>
               </div>
-              {errors.user_type && (
-                <p className="text-sm text-red-600">{errors.user_type}</p>
+              {selectedUserType && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedUserType(null);
+                    if (errors.user_type) {
+                      const newErrors = { ...errors };
+                      delete newErrors.user_type;
+                      setErrors(newErrors);
+                    }
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  Clear selection (use system default)
+                </button>
               )}
-              <p className="text-xs text-gray-500">
-                {tSignup('userTypeNote')}
-              </p>
             </div>
           )}
 

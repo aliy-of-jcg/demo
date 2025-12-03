@@ -199,6 +199,40 @@ export async function initMySQLSchema(): Promise<void> {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
 
+    const createTrackedWebsitesTable = `
+      CREATE TABLE IF NOT EXISTS tracked_websites (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        domain VARCHAR(255) NOT NULL UNIQUE COMMENT 'Normalized domain (lowercase, no www, no protocol)',
+        is_enabled BOOLEAN DEFAULT TRUE COMMENT 'Whether tracking is enabled for this domain',
+        first_seen TIMESTAMP NULL DEFAULT NULL COMMENT 'First time this domain was tracked',
+        last_seen TIMESTAMP NULL DEFAULT NULL COMMENT 'Most recent tracking event',
+        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_domain (domain),
+        INDEX idx_is_enabled (is_enabled),
+        INDEX idx_last_seen (last_seen)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+
+    const createSystemSettingsTable = `
+      CREATE TABLE IF NOT EXISTS system_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        setting_key VARCHAR(100) NOT NULL UNIQUE COMMENT 'Unique setting identifier',
+        setting_value TEXT NOT NULL COMMENT 'Setting value (stored as string)',
+        value_type ENUM('string', 'number', 'boolean', 'json') NOT NULL DEFAULT 'string' COMMENT 'Data type of the value',
+        category VARCHAR(50) NOT NULL COMMENT 'Setting category (defaults, features, etc)',
+        description TEXT COMMENT 'Human-readable description',
+        is_editable BOOLEAN DEFAULT TRUE COMMENT 'Whether setting can be modified via UI',
+        updated_by INT NULL COMMENT 'User ID who last updated this setting',
+        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_setting_key (setting_key),
+        INDEX idx_category (category),
+        INDEX idx_is_editable (is_editable)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+
     // Order matters: courses must be created before campaigns, campaigns before utm_codes
     await query(createUsersTable);
     await query(createSessionsTable);
@@ -206,6 +240,22 @@ export async function initMySQLSchema(): Promise<void> {
     await query(createCoursesTable);
     await query(createCampaignsTable);
     await query(createUtmCodesTable);
+    await query(createTrackedWebsitesTable);
+    await query(createSystemSettingsTable);
+
+    // Insert default system settings if they don't exist
+    const insertDefaultSettings = `
+      INSERT INTO system_settings (setting_key, setting_value, value_type, category, description, is_editable) VALUES
+      ('default_date_range', '7', 'number', 'defaults', 'Default date range for analytics in days', TRUE),
+      ('default_timezone', 'Asia/Seoul', 'string', 'defaults', 'Default timezone for the system', TRUE),
+      ('default_campaign_status', 'waiting', 'string', 'defaults', 'Default status for new campaigns', TRUE),
+      ('default_user_role', 'regular', 'string', 'defaults', 'Default role for new user signups', TRUE),
+      ('default_language', 'en', 'string', 'defaults', 'Default language for the system', TRUE),
+      ('session_timeout_minutes', '120', 'number', 'defaults', 'Session timeout in minutes', TRUE),
+      ('allow_new_signups', '1', 'boolean', 'features', 'Allow new user registrations', TRUE)
+      ON DUPLICATE KEY UPDATE setting_key=setting_key;
+    `;
+    await query(insertDefaultSettings);
 
     console.log('✅ MySQL schema initialized successfully');
   } catch (error) {

@@ -1387,6 +1387,7 @@
     "utmGenerator": "UTM 생성기",
     "analyticsTrackingSystem": "분석 및 추적 시스템",
     "systemManagement": "시스템 관리",
+    "systemSettings": "시스템 설정",
     "userManagement": "사용자 관리",
     "closeMenu": "메뉴 닫기",
     "logAnalysisItems": {

@@ -1387,6 +1387,7 @@
     "utmGenerator": "UTM Generator",
     "analyticsTrackingSystem": "Analytics & Tracking System",
     "systemManagement": "System Management",
+    "systemSettings": "System Settings",
     "userManagement": "User Management",
     "closeMenu": "Close menu",
     "logAnalysisItems": {
@@ -1566,5 +1567,69 @@
       "unauthorized": "You do not have permission to access this page"
     },
     "loading": "Loading users..."
+  },
+  "systemSettings": {
+    "title": "System Settings",
+    "subtitle": "Configure system-wide defaults and feature toggles",
+    "saveSettings": "Save Settings",
+    "saving": "Saving...",
+    "successMessage": "Settings saved successfully!",
+    "errorMessage": "Failed to save settings",
+    "loadingError": "Failed to load settings",
+    "sections": {
+      "defaults": "System Defaults",
+      "features": "Feature Toggles"
+    },
+    "fields": {
+      "default_date_range": {
+        "label": "Default Date Range",
+        "description": "Default analytics date range in days",
+        "placeholder": "7"
+      },
+      "default_timezone": {
+        "label": "Default Timezone",
+        "description": "System timezone for time-based analysis",
+        "placeholder": "Select timezone"
+      },
+      "default_campaign_status": {
+        "label": "Default Campaign Status",
+        "description": "Default status for new campaigns",
+        "options": {
+          "active": "Active",
+          "waiting": "Waiting",
+          "paused": "Paused",
+          "ended": "Ended"
+        }
+      },
+      "default_user_role": {
+        "label": "Default User Role",
+        "description": "Default role for new user signups",
+        "options": {
+          "owner": "Owner",
+          "admin": "Admin",
+          "observer": "Observer",
+          "regular": "Regular"
+        }
+      },
+      "default_language": {
+        "label": "Default Language",
+        "description": "System default language",
+        "options": {
+          "en": "English",
+          "ko": "Korean"
+        }
+      },
+      "session_timeout_minutes": {
+        "label": "Session Timeout (Minutes)",
+        "description": "User session expiration time in minutes",
+        "placeholder": "120"
+      },
+      "allow_new_signups": {
+        "label": "Allow New Signups",
+        "description": "Enable or disable new user registration",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      }
+    }
   }
 }

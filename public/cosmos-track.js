@@ -58,6 +58,7 @@
   const CONFIG = {
     apiEndpoint: 'https://dev.cosmosai.co.kr/api/track',
     apiEndpointInternal: 'https://dev.cosmosai.co.kr/api/track-internal',
+    sessionTimeoutEndpoint: 'https://dev.cosmosai.co.kr/api/system/settings/session-timeout',
 
     requireUTMParams: false, // Now tracks ALL visitors, not just UTM ones
     enableDomainValidation: false, // Google Analytics approach: allow all domains
@@ -69,8 +70,8 @@
     lastVisitStorageKey: 'cosmos_last_visit',
     lastActivityStorageKey: 'cosmos_last_activity',
 
-    sessionTimeoutMinutes: 2,
-    visitTimeoutMinutes: 2,
+    sessionTimeoutMinutes: 2, // Default, will be fetched from API
+    visitTimeoutMinutes: 2, // Default, will be fetched from API
     pageViewDebounceMs: 500,
   };
 
@@ -94,10 +95,27 @@
 
   if (isInternalDomain) {
     CONFIG.apiEndpoint = CONFIG.apiEndpointInternal;
+    CONFIG.sessionTimeoutEndpoint = 'http://localhost:3000/api/system/settings/session-timeout';
     console.log('[CosMos] Using internal testing endpoint:', CONFIG.apiEndpoint);
   } else {
     console.log('[CosMos] Using production endpoint:', CONFIG.apiEndpoint);
   }
+
+  // Fetch session timeout from API
+  (function fetchSessionTimeout() {
+    fetch(CONFIG.sessionTimeoutEndpoint)
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        if (data.success && data.timeout_minutes) {
+          CONFIG.sessionTimeoutMinutes = data.timeout_minutes;
+          CONFIG.visitTimeoutMinutes = data.timeout_minutes;
+          console.log('[CosMos] Session timeout loaded:', data.timeout_minutes, 'minutes');
+        }
+      })
+      .catch(function (error) {
+        console.log('[CosMos] Failed to fetch session timeout, using default:', error);
+      });
+  })();
 
   // ============================================================
   // UTILITY FUNCTIONS

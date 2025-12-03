@@ -53,6 +53,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   ];
 
   const systemManagementItems = [
+    { name: t('systemSettings'), href: '/system-settings' },
     { name: t('logAnalysisItems.trackedWebsites'), href: '/tracked-websites' },
     { name: t('userManagement'), href: "/user-management" },
   ];

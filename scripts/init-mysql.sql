@@ -135,3 +135,32 @@ CREATE TABLE IF NOT EXISTS tracked_websites (
   INDEX idx_is_enabled (is_enabled),
   INDEX idx_last_seen (last_seen)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- System settings table (for system-wide defaults and feature flags)
+CREATE TABLE IF NOT EXISTS system_settings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  setting_key VARCHAR(100) NOT NULL UNIQUE COMMENT 'Unique setting identifier',
+  setting_value TEXT NOT NULL COMMENT 'Setting value (stored as string)',
+  value_type ENUM('string', 'number', 'boolean', 'json') NOT NULL DEFAULT 'string' COMMENT 'Data type of the value',
+  category VARCHAR(50) NOT NULL COMMENT 'Setting category (defaults, features, etc)',
+  description TEXT COMMENT 'Human-readable description',
+  is_editable BOOLEAN DEFAULT TRUE COMMENT 'Whether setting can be modified via UI',
+  updated_by INT NULL COMMENT 'User ID who last updated this setting',
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_setting_key (setting_key),
+  INDEX idx_category (category),
+  INDEX idx_is_editable (is_editable)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert default system settings
+INSERT INTO system_settings (setting_key, setting_value, value_type, category, description, is_editable) VALUES
+('default_date_range', '7', 'number', 'defaults', 'Default date range for analytics in days', TRUE),
+('default_timezone', 'Asia/Seoul', 'string', 'defaults', 'Default timezone for the system', TRUE),
+('default_campaign_status', 'waiting', 'string', 'defaults', 'Default status for new campaigns', TRUE),
+('default_user_role', 'regular', 'string', 'defaults', 'Default role for new user signups', TRUE),
+('default_language', 'en', 'string', 'defaults', 'Default language for the system', TRUE),
+('session_timeout_minutes', '120', 'number', 'defaults', 'Session timeout in minutes', TRUE),
+('allow_new_signups', '1', 'boolean', 'features', 'Allow new user registrations', TRUE)
+ON DUPLICATE KEY UPDATE setting_key=setting_key;

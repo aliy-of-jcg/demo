@@ -3,17 +3,38 @@ import { query } from '@/lib/mysql';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { generateToken } from '@/lib/jwt';
+import { getSetting } from '@/lib/system-settings';
 import type { SignupRequest, SignupResponse } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
   try {
+    // Check if new signups are allowed
+    const allowNewSignups = await getSetting('allow_new_signups');
+
+    if (allowNewSignups === false) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'New user registrations are currently disabled. Please contact an administrator.'
+        } as SignupResponse,
+        { status: 403 }
+      );
+    }
+
     const body: SignupRequest = await req.json();
-    const { company_name, email, password, contact_number, user_type } = body;
+    let { company_name, email, password, contact_number, user_type } = body;
 
     console.log(`📝 Signup API - Email: ${email}, Company: ${company_name}`);
 
+    // If user_type is not provided, use default from system settings
+    if (!user_type) {
+      const defaultUserRole = await getSetting('default_user_role');
+      user_type = (defaultUserRole as any) || 'regular';
+      console.log(`Using default user role: ${user_type}`);
+    }
+
     // Validation
-    if (!company_name || !email || !password || !contact_number || !user_type) {
+    if (!company_name || !email || !password || !contact_number) {
       return NextResponse.json(
         { success: false, message: 'All fields are required' } as SignupResponse,
         { status: 400 }
