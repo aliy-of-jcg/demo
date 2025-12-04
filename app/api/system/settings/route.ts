@@ -76,7 +76,7 @@ export const PUT = requirePermission('system:update', async (req: NextRequest, c
         }
 
         // Update settings
-        const success = await updateSettings(settings, user.id);
+        const success = await updateSettings(settings, user.userId);
 
         if (!success) {
             return NextResponse.json(
@@ -84,12 +84,6 @@ export const PUT = requirePermission('system:update', async (req: NextRequest, c
                 { status: 500 }
             );
         }
-
-        console.log('System settings updated:', {
-            userId: user.id,
-            updatedSettings: Object.keys(settings),
-            timestamp: new Date().toISOString(),
-        });
 
         return NextResponse.json({
             success: true,

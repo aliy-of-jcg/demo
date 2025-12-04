@@ -208,12 +208,12 @@ export default function SessionJourneysPage() {
               hour12: false,
             });
             const parts = formatter.formatToParts(fallbackDate);
-            const year = parts.find(p => p.type === 'year')?.value;
-            const month = parts.find(p => p.type === 'month')?.value;
-            const day = parts.find(p => p.type === 'day')?.value;
-            const hour = parts.find(p => p.type === 'hour')?.value;
-            const minute = parts.find(p => p.type === 'minute')?.value;
-            const second = parts.find(p => p.type === 'second')?.value;
+            const year = parts.find(p => p.type === 'year')?.value || '0000';
+            const month = parts.find(p => p.type === 'month')?.value || '01';
+            const day = parts.find(p => p.type === 'day')?.value || '01';
+            const hour = parts.find(p => p.type === 'hour')?.value || '00';
+            const minute = parts.find(p => p.type === 'minute')?.value || '00';
+            const second = parts.find(p => p.type === 'second')?.value || '00';
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
           }
         }
@@ -235,12 +235,12 @@ export default function SessionJourneysPage() {
 
       // Format: YYYY-MM-DD HH:mm:ss
       const parts = formatter.formatToParts(date);
-      const year = parts.find(p => p.type === 'year')?.value;
-      const month = parts.find(p => p.type === 'month')?.value;
-      const day = parts.find(p => p.type === 'day')?.value;
-      const hour = parts.find(p => p.type === 'hour')?.value;
-      const minute = parts.find(p => p.type === 'minute')?.value;
-      const second = parts.find(p => p.type === 'second')?.value;
+      const year = parts.find(p => p.type === 'year')?.value || '0000';
+      const month = parts.find(p => p.type === 'month')?.value || '01';
+      const day = parts.find(p => p.type === 'day')?.value || '01';
+      const hour = parts.find(p => p.type === 'hour')?.value || '00';
+      const minute = parts.find(p => p.type === 'minute')?.value || '00';
+      const second = parts.find(p => p.type === 'second')?.value || '00';
 
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
     } catch (error) {

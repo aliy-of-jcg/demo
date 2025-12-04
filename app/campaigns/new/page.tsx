@@ -438,7 +438,7 @@ function NewCampaignPageContent() {
                     </label>
                     <select
                       value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'waiting' | 'paused' | 'ended' })}
                       className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="waiting">{t('status.waiting')}</option>
