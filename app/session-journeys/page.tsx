@@ -119,27 +119,31 @@ export default function SessionJourneysPage() {
 
   const formatTime = (timestamp: string) => {
     // Convert timestamp to system timezone synchronously (matches timezone name display)
-    // API now returns UTC timestamps, we convert to current system timezone on client
-    // This ensures timestamps update immediately when timezone changes, without page reload
+    // API now returns UTC timestamps in ISO format (e.g., "2025-12-04T07:08:02Z")
+    // We convert to current system timezone on client
     if (!timestamp) {
       return '';
     }
 
     if (settingsLoading) {
       // While loading, show original format
-      return timestamp.split(' ')[1]?.substring(0, 5) || timestamp;
+      const timePart = timestamp.includes('T')
+        ? timestamp.split('T')[1]?.split('.')[0]?.substring(0, 5)
+        : timestamp.split(' ')[1]?.substring(0, 5);
+      return timePart || timestamp;
     }
 
     try {
-      // Parse the timestamp from API (now in UTC/ISO format)
+      // Parse the timestamp from API (now in UTC/ISO format with Z suffix)
+      // new Date() correctly parses ISO format with Z as UTC
       const date = new Date(timestamp);
 
       if (isNaN(date.getTime())) {
-        // Fallback: try parsing as space-separated format
+        // Fallback: try parsing as space-separated format and add Z for UTC
         const parts = timestamp.split(' ');
         if (parts.length >= 2) {
           const datePart = parts[0];
-          const timePart = parts[1];
+          const timePart = parts[1].split('.')[0]; // Remove milliseconds if present
           const fallbackDate = new Date(`${datePart}T${timePart}Z`); // Add Z for UTC
           if (!isNaN(fallbackDate.getTime())) {
             const timezone = getDefaultTimezone();
@@ -152,7 +156,10 @@ export default function SessionJourneysPage() {
             return formatter.format(fallbackDate);
           }
         }
-        return timestamp.split(' ')[1]?.substring(0, 5) || timestamp;
+        const timePart = timestamp.includes('T')
+          ? timestamp.split('T')[1]?.split('.')[0]?.substring(0, 5)
+          : timestamp.split(' ')[1]?.substring(0, 5);
+        return timePart || timestamp;
       }
 
       // Format in CURRENT system timezone (synchronously with timezone name)
@@ -169,31 +176,37 @@ export default function SessionJourneysPage() {
     } catch (error) {
       console.error('Error formatting time:', error);
       // Fallback to original format
-      return timestamp.split(' ')[1]?.substring(0, 5) || timestamp;
+      const timePart = timestamp.includes('T')
+        ? timestamp.split('T')[1]?.split('.')[0]?.substring(0, 5)
+        : timestamp.split(' ')[1]?.substring(0, 5);
+      return timePart || timestamp;
     }
   };
 
   const formatDateTime = (timestamp: string) => {
     // Convert timestamp to system timezone synchronously (matches timezone name display)
-    // API now returns UTC timestamps, we convert to current system timezone on client
+    // API now returns UTC timestamps in ISO format (e.g., "2025-12-04T07:08:02Z")
+    // We convert to current system timezone on client
     if (!timestamp) {
       return '';
     }
 
     if (settingsLoading) {
-      return timestamp.replace('T', ' ').substring(0, 19);
+      // While loading, show original format (remove Z and replace T with space)
+      return timestamp.replace('T', ' ').replace('Z', '').substring(0, 19);
     }
 
     try {
-      // Parse the timestamp from API (now in UTC/ISO format)
+      // Parse the timestamp from API (now in UTC/ISO format with Z suffix)
+      // new Date() correctly parses ISO format with Z as UTC
       const date = new Date(timestamp);
 
       if (isNaN(date.getTime())) {
-        // Fallback: try parsing as space-separated format
+        // Fallback: try parsing as space-separated format and add Z for UTC
         const parts = timestamp.split(' ');
         if (parts.length >= 2) {
           const datePart = parts[0];
-          const timePart = parts[1];
+          const timePart = parts[1].split('.')[0]; // Remove milliseconds if present
           const fallbackDate = new Date(`${datePart}T${timePart}Z`); // Add Z for UTC
           if (!isNaN(fallbackDate.getTime())) {
             const timezone = getDefaultTimezone();
@@ -207,17 +220,17 @@ export default function SessionJourneysPage() {
               second: '2-digit',
               hour12: false,
             });
-            const parts = formatter.formatToParts(fallbackDate);
-            const year = parts.find(p => p.type === 'year')?.value || '0000';
-            const month = parts.find(p => p.type === 'month')?.value || '01';
-            const day = parts.find(p => p.type === 'day')?.value || '01';
-            const hour = parts.find(p => p.type === 'hour')?.value || '00';
-            const minute = parts.find(p => p.type === 'minute')?.value || '00';
-            const second = parts.find(p => p.type === 'second')?.value || '00';
+            const formatParts = formatter.formatToParts(fallbackDate);
+            const year = formatParts.find(p => p.type === 'year')?.value || '0000';
+            const month = formatParts.find(p => p.type === 'month')?.value || '01';
+            const day = formatParts.find(p => p.type === 'day')?.value || '01';
+            const hour = formatParts.find(p => p.type === 'hour')?.value || '00';
+            const minute = formatParts.find(p => p.type === 'minute')?.value || '00';
+            const second = formatParts.find(p => p.type === 'second')?.value || '00';
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
           }
         }
-        return timestamp.replace('T', ' ').substring(0, 19);
+        return timestamp.replace('T', ' ').replace('Z', '').substring(0, 19);
       }
 
       // Format in CURRENT system timezone (synchronously with timezone name)
@@ -234,18 +247,18 @@ export default function SessionJourneysPage() {
       });
 
       // Format: YYYY-MM-DD HH:mm:ss
-      const parts = formatter.formatToParts(date);
-      const year = parts.find(p => p.type === 'year')?.value || '0000';
-      const month = parts.find(p => p.type === 'month')?.value || '01';
-      const day = parts.find(p => p.type === 'day')?.value || '01';
-      const hour = parts.find(p => p.type === 'hour')?.value || '00';
-      const minute = parts.find(p => p.type === 'minute')?.value || '00';
-      const second = parts.find(p => p.type === 'second')?.value || '00';
+      const formatParts = formatter.formatToParts(date);
+      const year = formatParts.find(p => p.type === 'year')?.value || '0000';
+      const month = formatParts.find(p => p.type === 'month')?.value || '01';
+      const day = formatParts.find(p => p.type === 'day')?.value || '01';
+      const hour = formatParts.find(p => p.type === 'hour')?.value || '00';
+      const minute = formatParts.find(p => p.type === 'minute')?.value || '00';
+      const second = formatParts.find(p => p.type === 'second')?.value || '00';
 
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
     } catch (error) {
       console.error('Error formatting datetime:', error);
-      return timestamp.replace('T', ' ').substring(0, 19);
+      return timestamp.replace('T', ' ').replace('Z', '').substring(0, 19);
     }
   };
 

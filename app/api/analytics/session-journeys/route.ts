@@ -88,6 +88,19 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     const data = await result.json() as Array<any>;
 
+    // Helper function to convert ClickHouse timestamp string to ISO format with UTC indicator
+    const toISOString = (timestampStr: string): string => {
+      if (!timestampStr) return timestampStr;
+      // ClickHouse toString returns format like "2025-12-04 07:08:02"
+      // Convert to ISO format: "2025-12-04T07:08:02Z"
+      if (timestampStr.includes('T') || timestampStr.endsWith('Z')) {
+        // Already in ISO format
+        return timestampStr;
+      }
+      // Replace space with T and add Z for UTC
+      return timestampStr.replace(' ', 'T') + 'Z';
+    };
+
     // Process the results to format the page journey
     const sessions = data.map((session: any) => {
       // Parse all events (pageviews and page_exit events)
@@ -95,7 +108,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         page_url: page[0],
         page_title: page[1],
         page_sequence: page[2],
-        timestamp: page[3],
+        timestamp: toISOString(page[3]), // Convert to ISO format with UTC indicator
         time_on_page: page[4],
         event_type: page[5],
         is_landing_page: page[6],
@@ -127,8 +140,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       return {
         session_id: session.session_id,
         user_id: session.user_id,
-        session_start: session.session_start,
-        session_end: session.session_end,
+        session_start: toISOString(session.session_start), // Convert to ISO format with UTC indicator
+        session_end: toISOString(session.session_end), // Convert to ISO format with UTC indicator
         total_pages: session.total_pages,
         landing_page: session.landing_page,
         exit_page: session.exit_page,

@@ -37,20 +37,27 @@ export default function PerformanceAnalysisPage() {
   // Initialize date range from system defaults (GA behavior)
   // On page reload, defaults are applied automatically
   const [dateRange, setDateRange] = useState(() => {
-    // Use system default if available, otherwise fallback to 30 days
-    try {
-      return getInitialDateRange();
-    } catch {
-      // Fallback if context not ready yet
-      const date = new Date();
-      const start = new Date();
-      start.setDate(start.getDate() - 30);
-      return {
-        start: start.toISOString().split('T')[0],
-        end: date.toISOString().split('T')[0]
-      };
-    }
+    // Fallback to 30 days initially (will be updated when settings load)
+    const date = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: date.toISOString().split('T')[0]
+    };
   });
+
+  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  useEffect(() => {
+    if (!settingsLoading) {
+      try {
+        const initialRange = getInitialDateRange();
+        setDateRange(initialRange);
+      } catch (err) {
+        // Fallback handled by useState initializer
+      }
+    }
+  }, [settingsLoading, getInitialDateRange]);
 
   const [data, setData] = useState<PerformanceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,6 +77,11 @@ export default function PerformanceAnalysisPage() {
 
   // Fetch data from API
   useEffect(() => {
+    // Wait for settings to load before fetching to ensure correct date range
+    if (settingsLoading) {
+      return;
+    }
+
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -95,7 +107,7 @@ export default function PerformanceAnalysisPage() {
     };
 
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, settingsLoading]);
 
   // Channel colors mapping
   const getChannelColor = (channel: string) => {

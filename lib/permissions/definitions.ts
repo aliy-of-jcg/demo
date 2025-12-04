@@ -30,7 +30,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
         analytics: ['read', 'export'],
         utm_codes: ['create', 'read', 'update', 'delete', 'manage'],
         settings: ['read', 'update'], // Limited settings access
-        system: [], // No system access
+        system: ['read', 'update', 'manage'], // Full system settings access (same as owner)
     },
     observer: {
         users: ['read'],
