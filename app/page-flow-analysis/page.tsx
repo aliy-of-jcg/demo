@@ -98,6 +98,11 @@ export default function PageFlowAnalysisPage() {
 
   // Fetch domains for dropdown
   useEffect(() => {
+    // Wait for system settings to load so we fetch once with the correct defaults
+    if (settingsLoading) {
+      return;
+    }
+
     const fetchDomains = async () => {
       setDomainsLoading(true);
       try {
@@ -119,10 +124,15 @@ export default function PageFlowAnalysisPage() {
     };
 
     fetchDomains();
-  }, [dateRange]);
+  }, [dateRange, settingsLoading]);
 
   // Fetch data
   useEffect(() => {
+    // Wait for system settings to load so we fetch once with the correct defaults
+    if (settingsLoading) {
+      return;
+    }
+
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -158,7 +168,7 @@ export default function PageFlowAnalysisPage() {
     };
 
     fetchData();
-  }, [dateRange, limit, debouncedSearch, selectedDomain]);
+  }, [dateRange, limit, debouncedSearch, selectedDomain, settingsLoading]);
 
   // Truncate long URLs for display
   const truncateUrl = (url: string, maxLength: number = 50) => {

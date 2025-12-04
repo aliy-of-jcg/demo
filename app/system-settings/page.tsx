@@ -22,6 +22,16 @@ function SystemSettingsPageContent() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
+    // Store original settings to detect changes
+    const [originalSettings, setOriginalSettings] = useState<Partial<SystemSettingsMap>>({
+        default_date_range: 7,
+        default_timezone: "Asia/Seoul",
+        default_campaign_status: "waiting",
+        default_user_role: "regular",
+        session_timeout_minutes: 2,
+        allow_new_signups: true,
+    });
+
     const [settings, setSettings] = useState<Partial<SystemSettingsMap>>({
         default_date_range: 7,
         default_timezone: "Asia/Seoul",
@@ -54,7 +64,7 @@ function SystemSettingsPageContent() {
                 // Filter out legacy/unsupported settings
                 const { default_currency, default_language, ...cleanSettings } = data.settings as any;
                 // Ensure all settings have default values
-                setSettings({
+                const fetchedSettings = {
                     default_date_range: 7,
                     default_timezone: 'Asia/Seoul',
                     default_campaign_status: 'waiting',
@@ -62,7 +72,9 @@ function SystemSettingsPageContent() {
                     session_timeout_minutes: 2,
                     allow_new_signups: true,
                     ...cleanSettings, // Override with fetched values (without legacy fields)
-                });
+                };
+                setSettings(fetchedSettings);
+                setOriginalSettings(fetchedSettings); // Store original for change detection
             } else {
                 console.error('Invalid response:', data);
             }
@@ -92,6 +104,9 @@ function SystemSettingsPageContent() {
                 throw new Error(data.message || "Failed to save settings");
             }
 
+            // Update original settings to reflect the changes
+            setOriginalSettings(settings);
+
             // Show success toast with reload message
             toast.success(
                 <div>
@@ -114,6 +129,14 @@ function SystemSettingsPageContent() {
 
     // Read-only mode for observers
     const isReadOnly = canRead && !canUpdate;
+
+    // Detect changes by comparing current settings with original
+    const hasChanges = useMemo(() => {
+        return Object.keys(settings).some(key => {
+            const typedKey = key as keyof SystemSettingsMap;
+            return settings[typedKey] !== originalSettings[typedKey];
+        });
+    }, [settings, originalSettings]);
 
     // Get all available timezones (comprehensive list like GA)
     const timezones = useMemo(() => getAllTimezones(), []);
@@ -352,7 +375,7 @@ function SystemSettingsPageContent() {
                         <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end">
                             <button
                                 onClick={handleSave}
-                                disabled={saving}
+                                disabled={saving || !hasChanges}
                                 className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {saving ? (

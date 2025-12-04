@@ -172,7 +172,8 @@ export default function CampaignAnalysisPage() {
 
   // Fetch campaign analysis data when campaign or filters change
   useEffect(() => {
-    if (!selectedCampaign) return;
+    // Wait for system settings to load so we fetch once with the correct defaults
+    if (settingsLoading || !selectedCampaign) return;
 
     const fetchData = async () => {
       setLoading(true);
@@ -201,7 +202,7 @@ export default function CampaignAnalysisPage() {
     };
 
     fetchData();
-  }, [selectedCampaign, selectedPlatform, dateRange]);
+  }, [selectedCampaign, selectedPlatform, dateRange, settingsLoading]);
 
   // Platform badge colors
   const platformColors: Record<string, string> = {

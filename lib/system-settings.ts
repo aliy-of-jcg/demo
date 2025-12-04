@@ -30,7 +30,10 @@ export interface SystemSettingsMap {
 // Cache for settings to avoid repeated DB queries
 let settingsCache: Map<string, any> | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_TTL = 5000; // 5 seconds (reduced for faster updates)
+// Cache TTL for system settings
+// GA-style behavior: treat settings as long-lived global config and rely on explicit invalidation
+// 24 hours in milliseconds
+const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 /**
  * Parse setting value based on its type

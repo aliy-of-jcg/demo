@@ -90,6 +90,11 @@ export default function ChannelPerformancePage() {
 
   // Fetch data from API
   useEffect(() => {
+    // Wait for system settings to load so we fetch once with the correct defaults
+    if (settingsLoading) {
+      return;
+    }
+
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -115,7 +120,7 @@ export default function ChannelPerformancePage() {
     };
 
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, settingsLoading]);
 
   // Color mapping for different channels
   const getChannelColor = (channel: string) => {

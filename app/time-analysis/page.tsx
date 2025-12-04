@@ -108,6 +108,11 @@ export default function TimeAnalysisPage() {
 
   // Fetch data
   useEffect(() => {
+    // Wait for system settings to load so we fetch once with the correct defaults
+    if (settingsLoading) {
+      return;
+    }
+
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -133,7 +138,7 @@ export default function TimeAnalysisPage() {
     };
 
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, settingsLoading]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">

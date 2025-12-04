@@ -180,8 +180,13 @@ function TrackedWebsitesPageContent() {
   };
 
   useEffect(() => {
+    // Wait for system settings to load so we fetch once with the correct defaults
+    if (settingsLoading) {
+      return;
+    }
+
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, settingsLoading]);
 
   // Close tooltip when clicking outside
   useEffect(() => {
