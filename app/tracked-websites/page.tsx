@@ -72,10 +72,9 @@ function TrackedWebsitesPageContent() {
     if (!settingsLoading) {
       try {
         const initialRange = getInitialDateRange();
-        console.log('[TrackedWebsites] Applying default date range from settings:', initialRange);
         setDateRange(initialRange);
       } catch (err) {
-        console.warn('[TrackedWebsites] Failed to get initial date range, using fallback:', err);
+        // Fallback handled by useState initializer
       }
     }
   }, [settingsLoading, getInitialDateRange]);

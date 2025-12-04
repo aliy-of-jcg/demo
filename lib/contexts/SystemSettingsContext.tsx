@@ -46,27 +46,18 @@ export function SystemSettingsProvider({ children }: SystemSettingsProviderProps
                 const response = await fetchWithAuth('/api/system/settings/defaults');
                 const data = await response.json();
 
-                console.log('[SystemSettingsProvider] Fetching defaults...', {
-                    status: response.status,
-                    ok: response.ok,
-                    data
-                });
-
                 if (!response.ok) {
                     throw new Error(data.message || 'Failed to fetch system defaults');
                 }
 
                 if (data.success && data.settings) {
-                    console.log('[SystemSettingsProvider] Settings loaded:', data.settings);
                     setSettings(data.settings);
                 } else {
                     throw new Error('Invalid response from server');
                 }
             } catch (err) {
-                console.error('[SystemSettingsProvider] Failed to fetch settings:', err);
                 setError(err instanceof Error ? err.message : 'Failed to load system settings');
                 // Set fallback defaults on error
-                console.warn('[SystemSettingsProvider] Using fallback defaults due to error');
                 setSettings({
                     default_date_range: 7,
                     default_timezone: 'Asia/Seoul',

@@ -76,11 +76,10 @@ export default function SessionJourneysPage() {
     if (!settingsLoading) {
       try {
         const initialRange = getInitialDateRange();
-        console.log('[SessionJourneys] Applying default date range from settings:', initialRange);
         setStartDate(initialRange.start);
         setEndDate(initialRange.end);
       } catch (err) {
-        console.warn('[SessionJourneys] Failed to get initial date range, using fallback:', err);
+        // Fallback handled by useState initializer
       }
     }
   }, [settingsLoading, getInitialDateRange]);
@@ -119,13 +118,135 @@ export default function SessionJourneysPage() {
   };
 
   const formatTime = (timestamp: string) => {
-    // Timestamp is already in KST from the API
-    return timestamp.split(' ')[1]?.substring(0, 5) || timestamp;
+    // Convert timestamp to system timezone synchronously (matches timezone name display)
+    // API now returns UTC timestamps, we convert to current system timezone on client
+    // This ensures timestamps update immediately when timezone changes, without page reload
+    if (!timestamp) {
+      return '';
+    }
+
+    if (settingsLoading) {
+      // While loading, show original format
+      return timestamp.split(' ')[1]?.substring(0, 5) || timestamp;
+    }
+
+    try {
+      // Parse the timestamp from API (now in UTC/ISO format)
+      const date = new Date(timestamp);
+
+      if (isNaN(date.getTime())) {
+        // Fallback: try parsing as space-separated format
+        const parts = timestamp.split(' ');
+        if (parts.length >= 2) {
+          const datePart = parts[0];
+          const timePart = parts[1];
+          const fallbackDate = new Date(`${datePart}T${timePart}Z`); // Add Z for UTC
+          if (!isNaN(fallbackDate.getTime())) {
+            const timezone = getDefaultTimezone();
+            const formatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: timezone,
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+            return formatter.format(fallbackDate);
+          }
+        }
+        return timestamp.split(' ')[1]?.substring(0, 5) || timestamp;
+      }
+
+      // Format in CURRENT system timezone (synchronously with timezone name)
+      // This ensures timestamps update when timezone changes without page reload
+      const timezone = getDefaultTimezone();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+
+      return formatter.format(date);
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      // Fallback to original format
+      return timestamp.split(' ')[1]?.substring(0, 5) || timestamp;
+    }
   };
 
   const formatDateTime = (timestamp: string) => {
-    // Timestamp is already in KST from the API
-    return timestamp.replace('T', ' ').substring(0, 19);
+    // Convert timestamp to system timezone synchronously (matches timezone name display)
+    // API now returns UTC timestamps, we convert to current system timezone on client
+    if (!timestamp) {
+      return '';
+    }
+
+    if (settingsLoading) {
+      return timestamp.replace('T', ' ').substring(0, 19);
+    }
+
+    try {
+      // Parse the timestamp from API (now in UTC/ISO format)
+      const date = new Date(timestamp);
+
+      if (isNaN(date.getTime())) {
+        // Fallback: try parsing as space-separated format
+        const parts = timestamp.split(' ');
+        if (parts.length >= 2) {
+          const datePart = parts[0];
+          const timePart = parts[1];
+          const fallbackDate = new Date(`${datePart}T${timePart}Z`); // Add Z for UTC
+          if (!isNaN(fallbackDate.getTime())) {
+            const timezone = getDefaultTimezone();
+            const formatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: timezone,
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+            });
+            const parts = formatter.formatToParts(fallbackDate);
+            const year = parts.find(p => p.type === 'year')?.value;
+            const month = parts.find(p => p.type === 'month')?.value;
+            const day = parts.find(p => p.type === 'day')?.value;
+            const hour = parts.find(p => p.type === 'hour')?.value;
+            const minute = parts.find(p => p.type === 'minute')?.value;
+            const second = parts.find(p => p.type === 'second')?.value;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
+          }
+        }
+        return timestamp.replace('T', ' ').substring(0, 19);
+      }
+
+      // Format in CURRENT system timezone (synchronously with timezone name)
+      const timezone = getDefaultTimezone();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+
+      // Format: YYYY-MM-DD HH:mm:ss
+      const parts = formatter.formatToParts(date);
+      const year = parts.find(p => p.type === 'year')?.value;
+      const month = parts.find(p => p.type === 'month')?.value;
+      const day = parts.find(p => p.type === 'day')?.value;
+      const hour = parts.find(p => p.type === 'hour')?.value;
+      const minute = parts.find(p => p.type === 'minute')?.value;
+      const second = parts.find(p => p.type === 'second')?.value;
+
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
+    } catch (error) {
+      console.error('Error formatting datetime:', error);
+      return timestamp.replace('T', ' ').substring(0, 19);
+    }
   };
 
   const getPageName = (url: string) => {
@@ -148,11 +269,7 @@ export default function SessionJourneysPage() {
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">{t('title')}</h1>
             </div>
             <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium rounded-full self-start sm:self-auto">
-              {!settingsLoading ? (() => {
-                const tz = getDefaultTimezone();
-                console.log('[SessionJourneys] Displaying timezone:', tz, 'formatted:', formatTimezoneForDisplay(tz));
-                return formatTimezoneForDisplay(tz);
-              })() : 'Loading...'}
+              {!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()) : 'Loading...'}
             </span>
           </div>
           <p className="text-sm sm:text-base text-gray-600">

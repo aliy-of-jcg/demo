@@ -118,10 +118,9 @@ export default function CampaignAnalysisPage() {
     if (!settingsLoading) {
       try {
         const initialRange = getInitialDateRange();
-        console.log('[CampaignAnalysis] Applying default date range from settings:', initialRange);
         setDateRange(initialRange);
       } catch (err) {
-        console.warn('[CampaignAnalysis] Failed to get initial date range, using fallback:', err);
+        // Fallback handled by useState initializer
       }
     }
   }, [settingsLoading, getInitialDateRange]);

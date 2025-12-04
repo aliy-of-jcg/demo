@@ -43,18 +43,14 @@ function SystemSettingsPageContent() {
             const response = await fetchWithAuth(`/api/system/settings?t=${Date.now()}`);
             const data = await response.json();
 
-            console.log('API Response:', { status: response.status, data });
-
             if (!response.ok) {
                 // Don't redirect, just show error
                 const errorMsg = `API Error ${response.status}: ${data.message || 'Unknown error'}`;
-                console.error(errorMsg);
                 toast.error(errorMsg);
                 return;
             }
 
             if (data.success && data.settings) {
-                console.log('Fetched settings:', data.settings);
                 // Filter out legacy/unsupported settings
                 const { default_currency, default_language, ...cleanSettings } = data.settings as any;
                 // Ensure all settings have default values

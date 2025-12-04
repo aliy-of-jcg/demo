@@ -35,8 +35,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         SELECT DISTINCT
           session_id,
           user_id,
-          toString(toTimeZone(MIN(timestamp), '${timezone}')) as session_start,
-          toString(toTimeZone(MAX(timestamp), '${timezone}')) as session_end,
+          toString(MIN(timestamp)) as session_start,
+          toString(MAX(timestamp)) as session_end,
           COUNT(*) as total_pages,
           -- GA Logic: Session duration = time from first pageview to last pageview (excluding exit page time)
           -- Only count pageview events, not page_exit events
@@ -62,7 +62,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           v.page_url,
           v.page_title,
           v.page_sequence,
-          toString(toTimeZone(v.timestamp, '${timezone}')) as timestamp,
+          toString(v.timestamp) as timestamp,
           v.time_on_page,
           v.event_type,
           v.is_landing_page,

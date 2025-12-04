@@ -65,10 +65,9 @@ export default function ChannelPerformancePage() {
     if (!settingsLoading) {
       try {
         const initialRange = getInitialDateRange();
-        console.log('[ChannelPerformance] Applying default date range from settings:', initialRange);
         setDateRange(initialRange);
       } catch (err) {
-        console.warn('[ChannelPerformance] Failed to get initial date range, using fallback:', err);
+        // Fallback handled by useState initializer
       }
     }
   }, [settingsLoading, getInitialDateRange]);

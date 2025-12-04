@@ -45,7 +45,6 @@ function NewCampaignPageContent() {
   const [formData, setFormData] = useState(() => {
     try {
       const defaultStatus = getDefaultCampaignStatus();
-      console.log('[NewCampaign] Initializing with default campaign status:', defaultStatus);
       return {
         name: '',
         utm_name: '',
@@ -67,7 +66,6 @@ function NewCampaignPageContent() {
       };
     } catch {
       // Fallback if context not ready
-      console.warn('[NewCampaign] Context not ready, using fallback status: waiting');
       return {
         name: '',
         utm_name: '',
@@ -110,7 +108,6 @@ function NewCampaignPageContent() {
       setFormData(prev => {
         // If status is still 'waiting' (fallback) and default is different, update it
         if (prev.status === 'waiting' && defaultStatus !== 'waiting') {
-          console.log('[NewCampaign] Updating status from default:', defaultStatus);
           return { ...prev, status: defaultStatus };
         }
         return prev;

@@ -49,27 +49,17 @@ export function ProtectedRoute({
     useEffect(() => {
         // Wait for auth to load
         if (isLoading) {
-            console.log('[ProtectedRoute] Waiting for auth to load...');
             return;
         }
 
         // Check authentication
         if (!isAuthenticated || !user) {
-            console.log('[ProtectedRoute] Not authenticated, redirecting to /auth');
             router.replace('/auth');
             return;
         }
 
-        console.log('[ProtectedRoute] User loaded:', {
-            userType: user.user_type,
-            userId: user.id,
-            status: user.status,
-            permission,
-        });
-
         // Check status (via canAccess which includes status check)
         if (requireActive && !canAccess) {
-            console.log('[ProtectedRoute] Account not active, redirecting');
             router.replace('/auth?error=account_inactive');
             return;
         }
@@ -79,11 +69,6 @@ export function ProtectedRoute({
 
         if (permission) {
             hasAccess = hasPermission(permission);
-            console.log('[ProtectedRoute] Permission check result:', {
-                permission,
-                hasAccess,
-                userType: user.user_type,
-            });
         } else if (permissions && permissions.length > 0) {
             if (requireAll) {
                 hasAccess = hasAllPermissions(permissions);
@@ -98,19 +83,11 @@ export function ProtectedRoute({
         // If no access and showAccessDeniedMessage is true, don't redirect - show message instead
         if (!hasAccess) {
             if (showAccessDeniedMessage) {
-                console.log('[ProtectedRoute] Access denied, showing message instead of redirecting');
                 return;
             }
-            console.log('[ProtectedRoute] Access denied, redirecting to:', redirectTo, {
-                permission,
-                userType: user.user_type,
-                userId: user.id,
-            });
             router.replace(redirectTo);
             return;
         }
-
-        console.log('[ProtectedRoute] Access granted');
     }, [isLoading, isAuthenticated, user, permission, permissions, requireAll, redirectTo, router, hasPermission, hasAnyPermission, hasAllPermissions, requireActive, canAccess, showAccessDeniedMessage]);
 
     // Show loading state
@@ -136,11 +113,6 @@ export function ProtectedRoute({
         hasAccess = false;
     } else if (permission) {
         hasAccess = hasPermission(permission);
-        console.log('[ProtectedRoute] Render phase permission check:', {
-            permission,
-            hasAccess,
-            userType: user.user_type,
-        });
     } else if (permissions && permissions.length > 0) {
         if (requireAll) {
             hasAccess = hasAllPermissions(permissions);

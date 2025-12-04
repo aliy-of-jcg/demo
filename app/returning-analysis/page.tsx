@@ -75,10 +75,9 @@ export default function ReturningAnalysisPage() {
     if (!settingsLoading) {
       try {
         const initialRange = getInitialDateRange();
-        console.log('[ReturningAnalysis] Applying default date range from settings:', initialRange);
         setDateRange(initialRange);
       } catch (err) {
-        console.warn('[ReturningAnalysis] Failed to get initial date range, using fallback:', err);
+        // Fallback handled by useState initializer
       }
     }
   }, [settingsLoading, getInitialDateRange]);
