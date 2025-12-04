@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,16 +12,19 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
 
-    console.log(`🌍 Environment Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
 
-    // Build WHERE clause for date filtering (using KST timezone)
+    console.log(`🌍 Environment Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Timezone: ${timezone}`);
+
+    // Build WHERE clause for date filtering (using system default timezone)
     let whereClause = '1=1';
 
     if (startDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= '${startDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= '${startDate}'`;
     }
     if (endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= '${endDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= '${endDate}'`;
     }
 
     // 1. Device Type Breakdown (normalize to lowercase using subquery)

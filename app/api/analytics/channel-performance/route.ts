@@ -3,6 +3,7 @@ import clickhouse from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +42,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       return date.toISOString().split('T')[0];
     })();
 
-    console.log(`📊 Channel Performance Analysis API - Date Range: ${startDate} to ${endDate}`);
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
+
+    console.log(`📊 Channel Performance Analysis API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
 
     const pool = getPool();
 
@@ -63,7 +67,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countDistinct(user_id) as users,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs
-      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
         AND utm_source != ''
         AND utm_source != 'Direct'
         AND utm_source != '(direct)'
@@ -86,7 +90,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs
       WHERE 
         (utm_source = 'Direct' OR utm_source = '(direct)' OR utm_source = '')
-        AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
     `;
 
     const directTrafficResult = await clickhouse.query({

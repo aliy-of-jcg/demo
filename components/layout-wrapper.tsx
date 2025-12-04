@@ -7,6 +7,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Loader2, Menu } from "lucide-react";
 import Swal from 'sweetalert2';
 import type { UserStatus } from "@/lib/types";
+import { SystemSettingsProvider } from "@/lib/contexts/SystemSettingsContext";
 
 // Hardcoded Korean messages for auth popups
 const AUTH_MESSAGES: Record<string, { title: string; text: string; icon: 'error' | 'warning' | 'info' }> = {
@@ -163,23 +164,25 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   // Authenticated: show admin panel with sidebar
   if (isAuthenticated) {
     return (
-      <div className="flex h-screen bg-gray-50 overflow-hidden">
-        <Sidebar
-          isMobileOpen={isMobileSidebarOpen}
-          onMobileClose={() => setIsMobileSidebarOpen(false)}
-        />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
-          {/* Mobile Menu Button - Fixed at top */}
-          <button
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="lg:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu className="w-6 h-6 text-gray-700" />
-          </button>
-          {children}
-        </main>
-      </div>
+      <SystemSettingsProvider>
+        <div className="flex h-screen bg-gray-50 overflow-hidden">
+          <Sidebar
+            isMobileOpen={isMobileSidebarOpen}
+            onMobileClose={() => setIsMobileSidebarOpen(false)}
+          />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
+            {/* Mobile Menu Button - Fixed at top */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              aria-label="Open menu"
+            >
+              <Menu className="w-6 h-6 text-gray-700" />
+            </button>
+            {children}
+          </main>
+        </div>
+      </SystemSettingsProvider>
     );
   }
 

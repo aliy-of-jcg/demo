@@ -7,6 +7,8 @@ import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
+import { formatTimezoneForDisplay } from '@/lib/utils/timezones';
 
 interface HourlyData {
   hour: number;
@@ -61,14 +63,33 @@ export default function TimeAnalysisPage() {
     return dayMap[day] || day;
   };
 
-  const [dateRange, setDateRange] = useState({
-    start: (() => {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      return date.toISOString().split('T')[0];
-    })(),
-    end: new Date().toISOString().split('T')[0]
+  const { getInitialDateRange, isLoading: settingsLoading, getDefaultTimezone } = useSystemSettings();
+
+  // Initialize date range from system defaults (GA behavior)
+  // On page reload, defaults are applied automatically
+  const [dateRange, setDateRange] = useState(() => {
+    // Fallback to 30 days initially (will be updated when settings load)
+    const date = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: date.toISOString().split('T')[0]
+    };
   });
+
+  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  useEffect(() => {
+    if (!settingsLoading) {
+      try {
+        const initialRange = getInitialDateRange();
+        console.log('[TimeAnalysis] Applying default date range from settings:', initialRange);
+        setDateRange(initialRange);
+      } catch (err) {
+        console.warn('[TimeAnalysis] Failed to get initial date range, using fallback:', err);
+      }
+    }
+  }, [settingsLoading, getInitialDateRange]);
 
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,7 +144,7 @@ export default function TimeAnalysisPage() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
             <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium rounded-full inline-block w-fit">
-              {t('timezone')}
+              {!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()) : 'Loading...'}
             </span>
           </div>
           <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
@@ -232,7 +253,7 @@ export default function TimeAnalysisPage() {
           {/* Hourly Trend */}
           <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
-              {t('charts.hourlyTrend')} <span className="text-xs sm:text-sm font-normal text-gray-500">({t('timezone')})</span>
+              {t('charts.hourlyTrend')} <span className="text-xs sm:text-sm font-normal text-gray-500">({!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()) : 'Loading...'})</span>
             </h2>
             {data.hourly.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
@@ -245,7 +266,7 @@ export default function TimeAnalysisPage() {
                   />
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip
-                    labelFormatter={(hour) => `Hour: ${hour.toString().padStart(2, '0')}:00 ${t('timezone')}`}
+                    labelFormatter={(hour) => `Hour: ${hour.toString().padStart(2, '0')}:00 ${!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()).split(' ')[0] : ''}`}
                     contentStyle={{ fontSize: '12px' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px' }} />
@@ -300,7 +321,7 @@ export default function TimeAnalysisPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
             <div className="p-3 sm:p-4 border-b border-gray-200">
               <h2 className="text-base sm:text-lg font-semibold text-gray-900">
-                {t('tables.hourlyDetails')} <span className="text-xs sm:text-sm font-normal text-gray-500">({t('timezone')})</span>
+                {t('tables.hourlyDetails')} <span className="text-xs sm:text-sm font-normal text-gray-500">({!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()) : 'Loading...'})</span>
               </h2>
             </div>
             {/* Desktop Table */}
@@ -342,7 +363,7 @@ export default function TimeAnalysisPage() {
                 data.hourly.map((row, idx) => (
                   <div key={idx} className="p-4 hover:bg-gray-50">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-semibold text-gray-900">{row.hour.toString().padStart(2, '0')}:00 KST</span>
+                      <span className="text-sm font-semibold text-gray-900">{row.hour.toString().padStart(2, '0')}:00 {!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()).split(' ')[0] : ''}</span>
                       <span className="text-sm font-medium text-green-600">{row.conversions} conversions</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">

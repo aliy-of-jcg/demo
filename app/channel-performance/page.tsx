@@ -7,6 +7,7 @@ import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 
 interface Campaign {
   campaign_id: number;
@@ -44,14 +45,33 @@ interface ApiResponse {
 
 export default function ChannelPerformancePage() {
   const t = useTranslations('channelPerformance');
-  const [dateRange, setDateRange] = useState({
-    start: (() => {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      return date.toISOString().split('T')[0];
-    })(),
-    end: new Date().toISOString().split('T')[0]
+  const { getInitialDateRange, isLoading: settingsLoading } = useSystemSettings();
+
+  // Initialize date range from system defaults (GA behavior)
+  // On page reload, defaults are applied automatically
+  const [dateRange, setDateRange] = useState(() => {
+    // Fallback to 30 days initially (will be updated when settings load)
+    const date = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: date.toISOString().split('T')[0]
+    };
   });
+
+  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  useEffect(() => {
+    if (!settingsLoading) {
+      try {
+        const initialRange = getInitialDateRange();
+        console.log('[ChannelPerformance] Applying default date range from settings:', initialRange);
+        setDateRange(initialRange);
+      } catch (err) {
+        console.warn('[ChannelPerformance] Failed to get initial date range, using fallback:', err);
+      }
+    }
+  }, [settingsLoading, getInitialDateRange]);
 
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);

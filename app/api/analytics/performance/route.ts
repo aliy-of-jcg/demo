@@ -3,6 +3,7 @@ import clickhouse from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       return date.toISOString().split('T')[0];
     })();
 
-    console.log(`📊 Performance Dashboard API - Date Range: ${startDate} to ${endDate}`);
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
+
+    console.log(`📊 Performance Dashboard API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
 
     // Calculate comparison period (previous period of same length)
     const startMs = new Date(startDate).getTime();
@@ -35,7 +39,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
           SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / countDistinct(user_id) as conversion_rate
         FROM analytics.visit_logs
-        WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       `;
 
       const metricsResult = await clickhouse.query({
@@ -70,7 +74,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / countDistinct(user_id) as conversion_rate
       FROM analytics.visit_logs
-      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       GROUP BY channel
       ORDER BY visitors DESC
       LIMIT 10
@@ -114,10 +118,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       // Query 4: Daily Visitor Trend (current period)
       const trendQuery = `
       SELECT 
-        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
+        toDate(toTimeZone(timestamp, '${timezone}')) as date,
         countDistinct(user_id) as visitors
       FROM analytics.visit_logs
-      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       GROUP BY date
       ORDER BY date ASC
     `;
@@ -134,10 +138,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       // Query 5: Comparison Period Trend
       const comparisonTrendQuery = `
       SELECT 
-        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
+        toDate(toTimeZone(timestamp, '${timezone}')) as date,
         countDistinct(user_id) as visitors
       FROM analytics.visit_logs
-      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${comparisonStart}') AND toDate('${comparisonEnd}')
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${comparisonStart}') AND toDate('${comparisonEnd}')
       GROUP BY date
       ORDER BY date ASC
     `;

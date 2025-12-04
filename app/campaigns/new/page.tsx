@@ -10,6 +10,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 
 interface Course {
   id: number;
@@ -22,6 +23,7 @@ function NewCampaignPageContent() {
   const searchParams = useSearchParams();
   const duplicateId = searchParams.get('duplicate');
   const t = useTranslations('campaigns.create');
+  const { getDefaultCampaignStatus, isLoading: settingsLoading } = useSystemSettings();
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,24 +41,53 @@ function NewCampaignPageContent() {
     landing_url: useRef<HTMLInputElement>(null),
   };
 
-  const [formData, setFormData] = useState({
-    name: '',
-    utm_name: '',  // Added: Name for the tracking link/UTM code
-    course_id: '',
-    source: 'select',
-    medium: 'select',
-    status: 'waiting',
-    start_date: '',
-    end_date: '',
-    budget: '',
-    daily_budget: '',
-    description: '',
-    utm_campaign: '',
-    utm_source: '',
-    utm_medium: '',
-    utm_term: '',
-    utm_content: '',
-    landing_url: ''
+  // Initialize form data with system defaults (GA behavior)
+  const [formData, setFormData] = useState(() => {
+    try {
+      const defaultStatus = getDefaultCampaignStatus();
+      console.log('[NewCampaign] Initializing with default campaign status:', defaultStatus);
+      return {
+        name: '',
+        utm_name: '',
+        course_id: '',
+        source: 'select',
+        medium: 'select',
+        status: defaultStatus,
+        start_date: '',
+        end_date: '',
+        budget: '',
+        daily_budget: '',
+        description: '',
+        utm_campaign: '',
+        utm_source: '',
+        utm_medium: '',
+        utm_term: '',
+        utm_content: '',
+        landing_url: ''
+      };
+    } catch {
+      // Fallback if context not ready
+      console.warn('[NewCampaign] Context not ready, using fallback status: waiting');
+      return {
+        name: '',
+        utm_name: '',
+        course_id: '',
+        source: 'select',
+        medium: 'select',
+        status: 'waiting' as const,
+        start_date: '',
+        end_date: '',
+        budget: '',
+        daily_budget: '',
+        description: '',
+        utm_campaign: '',
+        utm_source: '',
+        utm_medium: '',
+        utm_term: '',
+        utm_content: '',
+        landing_url: ''
+      };
+    }
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -70,6 +101,22 @@ function NewCampaignPageContent() {
       fetchDuplicateCampaign(duplicateId);
     }
   }, [duplicateId]);
+
+  // Update status when system settings load (if user hasn't changed it)
+  useEffect(() => {
+    if (!settingsLoading && !duplicateId) {
+      // Only update if status is still the fallback value (user hasn't changed it)
+      const defaultStatus = getDefaultCampaignStatus();
+      setFormData(prev => {
+        // If status is still 'waiting' (fallback) and default is different, update it
+        if (prev.status === 'waiting' && defaultStatus !== 'waiting') {
+          console.log('[NewCampaign] Updating status from default:', defaultStatus);
+          return { ...prev, status: defaultStatus };
+        }
+        return prev;
+      });
+    }
+  }, [settingsLoading, getDefaultCampaignStatus, duplicateId]);
 
   const fetchDuplicateCampaign = async (id: string) => {
     setLoadingDuplicate(true);

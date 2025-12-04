@@ -10,6 +10,7 @@ import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 
 interface WebsiteData {
   domain: string;
@@ -48,18 +49,36 @@ interface ApiResponse {
 function TrackedWebsitesPageContent() {
   const t = useTranslations('trackedWebsites');
   const { hasPermission } = usePermission();
+  const { getInitialDateRange, isLoading: settingsLoading } = useSystemSettings();
 
   // Check if user can manage tracked websites (settings:update permission)
   const canManageWebsites = hasPermission('settings:update');
 
-  const [dateRange, setDateRange] = useState({
-    start: (() => {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      return date.toISOString().split('T')[0];
-    })(),
-    end: new Date().toISOString().split('T')[0]
+  // Initialize date range from system defaults (GA behavior)
+  // On page reload, defaults are applied automatically
+  const [dateRange, setDateRange] = useState(() => {
+    // Fallback to 30 days initially (will be updated when settings load)
+    const date = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: date.toISOString().split('T')[0]
+    };
   });
+
+  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  useEffect(() => {
+    if (!settingsLoading) {
+      try {
+        const initialRange = getInitialDateRange();
+        console.log('[TrackedWebsites] Applying default date range from settings:', initialRange);
+        setDateRange(initialRange);
+      } catch (err) {
+        console.warn('[TrackedWebsites] Failed to get initial date range, using fallback:', err);
+      }
+    }
+  }, [settingsLoading, getInitialDateRange]);
 
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);

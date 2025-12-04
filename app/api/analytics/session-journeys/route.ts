@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,16 +13,19 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const endDate = searchParams.get('end_date');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    console.log(`🛤️ Session Journeys API - Fetching up to ${limit} sessions`);
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
 
-    // Build WHERE clause for date filtering (using KST timezone)
+    console.log(`🛤️ Session Journeys API - Fetching up to ${limit} sessions, Timezone: ${timezone}`);
+
+    // Build WHERE clause for date filtering (using system default timezone)
     let whereClause = '1=1';
 
     if (startDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= '${startDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= '${startDate}'`;
     }
     if (endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= '${endDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= '${endDate}'`;
     }
 
     // Fetch all sessions with their complete page journeys
@@ -31,8 +35,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         SELECT DISTINCT
           session_id,
           user_id,
-          toString(toTimeZone(MIN(timestamp), 'Asia/Seoul')) as session_start,
-          toString(toTimeZone(MAX(timestamp), 'Asia/Seoul')) as session_end,
+          toString(toTimeZone(MIN(timestamp), '${timezone}')) as session_start,
+          toString(toTimeZone(MAX(timestamp), '${timezone}')) as session_end,
           COUNT(*) as total_pages,
           -- GA Logic: Session duration = time from first pageview to last pageview (excluding exit page time)
           -- Only count pageview events, not page_exit events
@@ -58,7 +62,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           v.page_url,
           v.page_title,
           v.page_sequence,
-          toString(toTimeZone(v.timestamp, 'Asia/Seoul')) as timestamp,
+          toString(toTimeZone(v.timestamp, '${timezone}')) as timestamp,
           v.time_on_page,
           v.event_type,
           v.is_landing_page,

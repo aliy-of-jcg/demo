@@ -2,18 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
+
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
     const campaignId = searchParams.get('campaignId');
 
     // Build WHERE clause
-    const whereConditions = [`toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`];
+    const whereConditions = [`toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`];
     whereConditions.push(`event_type = 'conversion'`);
 
     if (campaignId && campaignId !== 'all') {
@@ -47,7 +51,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Get conversion trend over time
     const conversionTrendQuery = `
       SELECT 
-        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
+        toDate(toTimeZone(timestamp, '${timezone}')) as date,
         conversion_type,
         COUNT(*) as count,
         SUM(conversion_value) as total_value
@@ -99,7 +103,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion' AND conversion_type = 'trial_start') as trial_conversions,
         SUM(CASE WHEN event_type = 'conversion' THEN conversion_value ELSE 0 END) as total_revenue
       FROM analytics.visit_logs
-      WHERE toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       ${campaignId && campaignId !== 'all' ? `AND campaign_id = ${campaignId}` : ''}
     `;
 

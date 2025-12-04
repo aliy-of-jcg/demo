@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 
 interface CampaignData {
   id: number;
@@ -90,6 +91,7 @@ interface Campaign {
 
 export default function CampaignAnalysisPage() {
   const t = useTranslations('campaignAnalysis');
+  const { getInitialDateRange, isLoading: settingsLoading } = useSystemSettings();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<string>('');
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
@@ -97,14 +99,32 @@ export default function CampaignAnalysisPage() {
   const [expandedUtms, setExpandedUtms] = useState<Set<number>>(new Set());
   const [utmSourceFilter, setUtmSourceFilter] = useState<string>('all');
   const [utmMediumFilter, setUtmMediumFilter] = useState<string>('all');
-  const [dateRange, setDateRange] = useState({
-    start: (() => {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      return date.toISOString().split('T')[0];
-    })(),
-    end: new Date().toISOString().split('T')[0]
+
+  // Initialize date range from system defaults (GA behavior)
+  // On page reload, defaults are applied automatically
+  const [dateRange, setDateRange] = useState(() => {
+    // Fallback to 30 days initially (will be updated when settings load)
+    const date = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    return {
+      start: start.toISOString().split('T')[0],
+      end: date.toISOString().split('T')[0]
+    };
   });
+
+  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  useEffect(() => {
+    if (!settingsLoading) {
+      try {
+        const initialRange = getInitialDateRange();
+        console.log('[CampaignAnalysis] Applying default date range from settings:', initialRange);
+        setDateRange(initialRange);
+      } catch (err) {
+        console.warn('[CampaignAnalysis] Failed to get initial date range, using fallback:', err);
+      }
+    }
+  }, [settingsLoading, getInitialDateRange]);
 
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -733,9 +753,8 @@ export default function CampaignAnalysisPage() {
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {filteredUtms.map((utm) => (
-                            <>
+                            <Fragment key={utm.id}>
                               <tr
-                                key={utm.id}
                                 className="hover:bg-gray-50 transition-colors cursor-pointer"
                                 onClick={() => toggleUtmExpansion(utm.id)}
                               >
@@ -832,7 +851,7 @@ export default function CampaignAnalysisPage() {
                                   </td>
                                 </tr>
                               )}
-                            </>
+                            </Fragment>
                           ))}
                         </tbody>
                       </table>

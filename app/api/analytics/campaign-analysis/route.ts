@@ -4,6 +4,7 @@ import { getPool } from '@/lib/mysql';
 import { RowDataPacket } from 'mysql2';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +57,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     const campaign = campaignRows[0];
+
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
 
     // 2. Get all tracking codes for this campaign (include hidden for historical analytics)
     const [trackingCodes] = await pool.query<RowDataPacket[]>(
@@ -115,13 +119,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     if (startDate && endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
     } else {
       if (startDate) {
-        whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+        whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
       }
       if (endDate) {
-        whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+        whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
       }
     }
 
@@ -168,13 +172,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
 
       if (startDate && endDate) {
-        clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+        clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
       } else {
         if (startDate) {
-          clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+          clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
         }
         if (endDate) {
-          clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+          clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
         }
       }
 
@@ -201,13 +205,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
 
       if (startDate && endDate) {
-        clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+        clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
       } else {
         if (startDate) {
-          clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+          clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
         }
         if (endDate) {
-          clickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+          clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
         }
       }
 
@@ -235,13 +239,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         let legacyClickWhereClause = `utm_campaign IN (${utmCampaignsList}) AND tracking_code != '' AND tracking_code IS NOT NULL`;
 
         if (startDate && endDate) {
-          legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+          legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
         } else {
           if (startDate) {
-            legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+            legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
           }
           if (endDate) {
-            legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+            legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
           }
         }
 
@@ -350,7 +354,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // This ensures each user is counted only once per day per campaign
     const dailyQuery = `
       SELECT 
-        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
+        toDate(toTimeZone(timestamp, '${timezone}')) as date,
         countDistinct(user_id) as visitors,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs
@@ -417,13 +421,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           let utmWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
 
           if (startDate && endDate) {
-            utmWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+            utmWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
           } else {
             if (startDate) {
-              utmWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+              utmWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
             }
             if (endDate) {
-              utmWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+              utmWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
             }
           }
 
@@ -449,13 +453,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           let utmClickWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
 
           if (startDate && endDate) {
-            utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+            utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
           } else {
             if (startDate) {
-              utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+              utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
             }
             if (endDate) {
-              utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+              utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
             }
           }
 
@@ -476,7 +480,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           // Get daily data for this UTM
           const utmDailyQuery = `
             SELECT 
-              toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
+              toDate(toTimeZone(timestamp, '${timezone}')) as date,
               countDistinct(user_id) as visitors,
               countIf(event_type = 'conversion') as conversions
             FROM analytics.visit_logs

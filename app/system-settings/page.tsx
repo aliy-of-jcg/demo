@@ -1,25 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Save, Settings, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Save, Settings, Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import { SystemSettingsMap } from "@/lib/system-settings";
 import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { usePermission } from "@/lib/hooks/usePermission";
-
-// Available options
-const TIMEZONES = [
-    { value: "Asia/Seoul", label: "Asia/Seoul (KST - UTC+9)" },
-    { value: "UTC", label: "UTC (Coordinated Universal Time)" },
-    { value: "America/New_York", label: "America/New_York (EST/EDT)" },
-    { value: "America/Los_Angeles", label: "America/Los_Angeles (PST/PDT)" },
-    { value: "Europe/London", label: "Europe/London (GMT/BST)" },
-    { value: "Asia/Shanghai", label: "Asia/Shanghai (CST - UTC+8)" },
-    { value: "Asia/Singapore", label: "Asia/Singapore (SGT - UTC+8)" },
-    { value: "Europe/Berlin", label: "Europe/Berlin (CET/CEST)" },
-    { value: "Australia/Sydney", label: "Australia/Sydney (AEST/AEDT)" },
-];
+import { getAllTimezones } from "@/lib/utils/timezones";
+import { toast } from "sonner";
 
 function SystemSettingsPageContent() {
     const t = useTranslations("systemSettings");
@@ -32,8 +21,6 @@ function SystemSettingsPageContent() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const [settings, setSettings] = useState<Partial<SystemSettingsMap>>({
         default_date_range: 7,
@@ -51,7 +38,6 @@ function SystemSettingsPageContent() {
     const fetchSettings = async () => {
         try {
             setLoading(true);
-            setError(null);
 
             // Use fetchWithAuth to include Authorization header
             const response = await fetchWithAuth(`/api/system/settings?t=${Date.now()}`);
@@ -63,7 +49,7 @@ function SystemSettingsPageContent() {
                 // Don't redirect, just show error
                 const errorMsg = `API Error ${response.status}: ${data.message || 'Unknown error'}`;
                 console.error(errorMsg);
-                setError(errorMsg);
+                toast.error(errorMsg);
                 return;
             }
 
@@ -85,7 +71,7 @@ function SystemSettingsPageContent() {
                 console.error('Invalid response:', data);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : t("loadingError"));
+            toast.error(err instanceof Error ? err.message : t("loadingError"));
             console.error("Failed to fetch settings:", err);
         } finally {
             setLoading(false);
@@ -95,8 +81,6 @@ function SystemSettingsPageContent() {
     const handleSave = async () => {
         try {
             setSaving(true);
-            setError(null);
-            setSuccessMessage(null);
 
             // Filter out legacy/unsupported settings
             const { default_currency, default_language, ...cleanSettings } = settings as any;
@@ -112,10 +96,20 @@ function SystemSettingsPageContent() {
                 throw new Error(data.message || "Failed to save settings");
             }
 
-            setSuccessMessage(t("successMessage"));
-            setTimeout(() => setSuccessMessage(null), 3000);
+            // Show success toast with reload message
+            toast.success(
+                <div>
+                    <p className="font-medium">{t("successMessage")}</p>
+                    <p className="text-sm mt-1 text-gray-600">
+                        {t("reloadMessage", { defaultValue: "Please reload the page to see the changes take effect." })}
+                    </p>
+                </div>,
+                {
+                    duration: 5000, // Show longer so user can read the reload message
+                }
+            );
         } catch (err) {
-            setError(err instanceof Error ? err.message : t("errorMessage"));
+            toast.error(err instanceof Error ? err.message : t("errorMessage"));
             console.error("Failed to save settings:", err);
         } finally {
             setSaving(false);
@@ -124,6 +118,9 @@ function SystemSettingsPageContent() {
 
     // Read-only mode for observers
     const isReadOnly = canRead && !canUpdate;
+
+    // Get all available timezones (comprehensive list like GA)
+    const timezones = useMemo(() => getAllTimezones(), []);
 
     if (loading) {
         return (
@@ -158,21 +155,6 @@ function SystemSettingsPageContent() {
                     </div>
                     <p className="text-gray-600">{t("subtitle")}</p>
                 </div>
-
-                {/* Error Message - Only show data/server errors (auth handled by ProtectedRoute) */}
-                {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
-                        <AlertCircle className="w-5 h-5 text-red-600 mr-3 flex-shrink-0 mt-0.5" />
-                        <p className="text-red-800">{error}</p>
-                    </div>
-                )}
-
-                {/* Success Message */}
-                {successMessage && (
-                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-green-800">{successMessage}</p>
-                    </div>
-                )}
 
                 {/* Settings Form */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -226,7 +208,7 @@ function SystemSettingsPageContent() {
                                     className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isReadOnly ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
                                         }`}
                                 >
-                                    {TIMEZONES.map((tz) => (
+                                    {timezones.map((tz) => (
                                         <option key={tz.value} value={tz.value}>
                                             {tz.label}
                                         </option>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 /**
  * Returning Visitor Analysis API
@@ -83,20 +84,23 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
 
-    console.log(`🔄 Returning Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
 
-    // Build WHERE clause for date filtering (standardized to match performance dashboard)
+    console.log(`🔄 Returning Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Timezone: ${timezone}`);
+
+    // Build WHERE clause for date filtering (using system default timezone)
     let whereClause = '1=1';
 
     // Date filtering
     if (startDate && endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
     } else {
       if (startDate) {
-        whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDate}')`;
+        whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
       }
       if (endDate) {
-        whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')`;
+        whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
       }
     }
 
@@ -379,7 +383,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM (
         SELECT 
           vl.user_id,
-          toDate(toTimeZone(vl.timestamp, 'Asia/Seoul')) as date,
+          toDate(toTimeZone(vl.timestamp, '${timezone}')) as date,
           if(
             first_session_date >= toDate('${startDate || '1970-01-01'}') 
             AND first_session_date <= toDate('${endDate || '2099-12-31'}'),

@@ -191,3 +191,13 @@ export async function getSettingsWithDefaults(): Promise<SystemSettingsMap> {
     };
 }
 
+/**
+ * Get the system default timezone
+ * Uses cached settings for performance
+ * @returns IANA timezone string (e.g., 'Asia/Seoul')
+ */
+export async function getDefaultTimezone(): Promise<string> {
+    const settings = await getSettingsWithDefaults();
+    return settings.default_timezone;
+}
+

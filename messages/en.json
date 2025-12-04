@@ -1095,7 +1095,7 @@
       "avgSessionDuration": "Avg Session Duration"
     },
     "session": {
-      "sessionStart": "Session Start (KST)",
+      "sessionStart": "Session Start",
       "duration": "Duration",
       "device": "Device",
       "source": "Source",
@@ -1576,6 +1576,7 @@
     "successMessage": "Settings saved successfully!",
     "errorMessage": "Failed to save settings",
     "loadingError": "Failed to load settings",
+    "reloadMessage": "Please reload the page to see the changes take effect.",
     "sections": {
       "defaults": "System Defaults",
       "features": "Feature Toggles"

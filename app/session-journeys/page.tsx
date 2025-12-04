@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
+import { formatTimezoneForDisplay } from '@/lib/utils/timezones';
 
 interface Page {
   page_url: string;
@@ -53,16 +55,35 @@ interface Session {
 
 export default function SessionJourneysPage() {
   const t = useTranslations('sessionJourneys');
+  const { getInitialDateRange, isLoading: settingsLoading, getDefaultTimezone } = useSystemSettings();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Initialize date range from system defaults (GA behavior)
+  // On page reload, defaults are applied automatically
   const [startDate, setStartDate] = useState(() => {
+    // Fallback to 30 days initially (will be updated when settings load)
     const date = new Date();
-    date.setDate(date.getDate() - 7);
+    date.setDate(date.getDate() - 30);
     return date.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
+
+  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  useEffect(() => {
+    if (!settingsLoading) {
+      try {
+        const initialRange = getInitialDateRange();
+        console.log('[SessionJourneys] Applying default date range from settings:', initialRange);
+        setStartDate(initialRange.start);
+        setEndDate(initialRange.end);
+      } catch (err) {
+        console.warn('[SessionJourneys] Failed to get initial date range, using fallback:', err);
+      }
+    }
+  }, [settingsLoading, getInitialDateRange]);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -127,7 +148,11 @@ export default function SessionJourneysPage() {
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">{t('title')}</h1>
             </div>
             <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium rounded-full self-start sm:self-auto">
-              {t('timezone')}
+              {!settingsLoading ? (() => {
+                const tz = getDefaultTimezone();
+                console.log('[SessionJourneys] Displaying timezone:', tz, 'formatted:', formatTimezoneForDisplay(tz));
+                return formatTimezoneForDisplay(tz);
+              })() : 'Loading...'}
             </span>
           </div>
           <p className="text-sm sm:text-base text-gray-600">
@@ -225,7 +250,9 @@ export default function SessionJourneysPage() {
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 sm:p-6 border-b border-gray-200">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div>
-                      <div className="text-xs text-gray-500 mb-1">{t('session.sessionStart')}</div>
+                      <div className="text-xs text-gray-500 mb-1">
+                        {t('session.sessionStart')} {!settingsLoading && `(${formatTimezoneForDisplay(getDefaultTimezone()).split(' ')[0]})`}
+                      </div>
                       <div className="text-xs sm:text-sm font-medium text-gray-900 flex items-center gap-1.5 sm:gap-2">
                         <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
                         <span className="break-all">{formatDateTime(session.session_start)}</span>
@@ -330,7 +357,7 @@ export default function SessionJourneysPage() {
                               </div>
                               <div className="text-left sm:text-right flex-shrink-0">
                                 <div className="text-xs sm:text-sm font-medium text-gray-900">
-                                  {formatTime(page.timestamp)} <span className="text-xs text-gray-500">{t('timezone').split(' ')[0]}</span>
+                                  {formatTime(page.timestamp)} <span className="text-xs text-gray-500">{!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()).split(' ')[0] : ''}</span>
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   {page.time_on_page > 0 ? `${page.time_on_page}s` : '-'}
@@ -377,7 +404,7 @@ export default function SessionJourneysPage() {
                             </div>
                             <div className="text-left sm:text-right flex-shrink-0">
                               <div className="text-xs sm:text-sm font-medium text-red-900">
-                                {formatTime(session.session_end)} <span className="text-xs text-red-700">{t('timezone').split(' ')[0]}</span>
+                                {formatTime(session.session_end)} <span className="text-xs text-red-700">{!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()).split(' ')[0] : ''}</span>
                               </div>
                               <div className="text-xs text-red-700">
                                 {formatDuration(session.duration)} {t('session.total')}

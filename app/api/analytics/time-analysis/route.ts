@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 // Type definitions for the analytics data
 interface TimeAnalysisData {
@@ -56,22 +57,25 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
 
-    console.log(`⏰ Time Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}`);
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
 
-    // Build WHERE clause for date filtering (using KST timezone)
+    console.log(`⏰ Time Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Timezone: ${timezone}`);
+
+    // Build WHERE clause for date filtering (using system default timezone)
     let whereClause = '1=1';
 
     if (startDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= '${startDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= '${startDate}'`;
     }
     if (endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= '${endDate}'`;
+      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= '${endDate}'`;
     }
 
-    // 1. Hourly Distribution (0-23 hours) - KST (UTC+9)
+    // 1. Hourly Distribution (0-23 hours) - using system default timezone
     const hourlyQuery = `
       SELECT 
-        toHour(toTimeZone(timestamp, 'Asia/Seoul')) as hour,
+        toHour(toTimeZone(timestamp, '${timezone}')) as hour,
         countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
@@ -102,10 +106,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       };
     });
 
-    // 2. Day of Week Distribution (1=Monday, 7=Sunday) - KST (UTC+9)
+    // 2. Day of Week Distribution (1=Monday, 7=Sunday) - using system default timezone
     const dayOfWeekQuery = `
       SELECT 
-        toDayOfWeek(toTimeZone(timestamp, 'Asia/Seoul')) as day_of_week,
+        toDayOfWeek(toTimeZone(timestamp, '${timezone}')) as day_of_week,
         countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
@@ -140,10 +144,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       };
     });
 
-    // 3. Daily trends over the selected period - KST (UTC+9)
+    // 3. Daily trends over the selected period - using system default timezone
     const dailyTrendQuery = `
       SELECT 
-        toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
+        toDate(toTimeZone(timestamp, '${timezone}')) as date,
         countDistinct(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions

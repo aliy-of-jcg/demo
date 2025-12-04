@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 import { Calendar, Users, TrendingUp, DollarSign, Target } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
@@ -31,14 +32,24 @@ interface PerformanceData {
 
 export default function PerformanceAnalysisPage() {
   const t = useTranslations('performance');
+  const { getInitialDateRange, isLoading: settingsLoading } = useSystemSettings();
 
-  const [dateRange, setDateRange] = useState({
-    start: (() => {
+  // Initialize date range from system defaults (GA behavior)
+  // On page reload, defaults are applied automatically
+  const [dateRange, setDateRange] = useState(() => {
+    // Use system default if available, otherwise fallback to 30 days
+    try {
+      return getInitialDateRange();
+    } catch {
+      // Fallback if context not ready yet
       const date = new Date();
-      date.setDate(date.getDate() - 30);
-      return date.toISOString().split('T')[0];
-    })(),
-    end: new Date().toISOString().split('T')[0]
+      const start = new Date();
+      start.setDate(start.getDate() - 30);
+      return {
+        start: start.toISOString().split('T')[0],
+        end: date.toISOString().split('T')[0]
+      };
+    }
   });
 
   const [data, setData] = useState<PerformanceData | null>(null);

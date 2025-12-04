@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { getDefaultTimezone } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,16 +16,19 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const endDate = searchParams.get('end_date');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    console.log(`🐛 DEBUG Session Journeys - Tracking domains: ${DEBUG_DOMAINS.join(', ')}`);
+    // Get timezone from system settings (GA behavior: use system default)
+    const timezone = await getDefaultTimezone();
+
+    console.log(`🐛 DEBUG Session Journeys - Tracking domains: ${DEBUG_DOMAINS.join(', ')}, Timezone: ${timezone}`);
 
     // Build WHERE clause with domain filtering
     let whereClause = '1=1';
 
     if (startDate) {
-      whereClause += ` AND toDate(toDateTime(timestamp, 'Asia/Seoul')) >= '${startDate}'`;
+      whereClause += ` AND toDate(toDateTime(timestamp, '${timezone}')) >= '${startDate}'`;
     }
     if (endDate) {
-      whereClause += ` AND toDate(toDateTime(timestamp, 'Asia/Seoul')) <= '${endDate}'`;
+      whereClause += ` AND toDate(toDateTime(timestamp, '${timezone}')) <= '${endDate}'`;
     }
 
     // Add domain filtering
@@ -38,8 +42,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         SELECT DISTINCT
           session_id,
           user_id,
-          toString(toDateTime(MIN(timestamp), 'Asia/Seoul')) as session_start,
-          toString(toDateTime(MAX(timestamp), 'Asia/Seoul')) as session_end,
+          toString(toDateTime(MIN(timestamp), '${timezone}')) as session_start,
+          toString(toDateTime(MAX(timestamp), '${timezone}')) as session_end,
           COUNT(*) as total_pages,
           -- GA Logic: Session duration = time from first pageview to last pageview (excluding exit page time)
           -- Only count pageview events, not page_exit events
@@ -66,7 +70,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           v.page_url,
           v.page_title,
           v.page_sequence,
-          toString(toDateTime(v.timestamp, 'Asia/Seoul')) as timestamp,
+          toString(toDateTime(v.timestamp, '${timezone}')) as timestamp,
           v.time_on_page,
           v.event_type,
           v.is_landing_page,
