@@ -23,7 +23,6 @@ export interface SystemSettingsMap {
     default_timezone: string;
     default_campaign_status: 'active' | 'waiting' | 'paused' | 'ended';
     default_user_role: 'admin' | 'observer' | 'regular';
-    default_language: 'en' | 'ko';
     session_timeout_minutes: number;
     allow_new_signups: boolean;
 }
@@ -187,8 +186,7 @@ export async function getSettingsWithDefaults(): Promise<SystemSettingsMap> {
         default_timezone: settings.default_timezone ?? 'Asia/Seoul',
         default_campaign_status: (settings.default_campaign_status as any) ?? 'waiting',
         default_user_role: (settings.default_user_role as any) ?? 'regular',
-        default_language: (settings.default_language as any) ?? 'en',
-        session_timeout_minutes: settings.session_timeout_minutes ?? 120,
+        session_timeout_minutes: settings.session_timeout_minutes ?? 2,
         allow_new_signups: settings.allow_new_signups ?? true,
     };
 }

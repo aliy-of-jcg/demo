@@ -8,6 +8,7 @@ import Swal from 'sweetalert2';
 import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 
 interface WebsiteData {
@@ -44,7 +45,7 @@ interface ApiResponse {
   };
 }
 
-export default function TrackedWebsitesPage() {
+function TrackedWebsitesPageContent() {
   const t = useTranslations('trackedWebsites');
   const { hasPermission } = usePermission();
 
@@ -650,6 +651,14 @@ export default function TrackedWebsitesPage() {
         <PageFooter />
       </div>
     </div>
+  );
+}
+
+export default function TrackedWebsitesPage() {
+  return (
+    <ProtectedRoute permission="users:read" showAccessDeniedMessage={true}>
+      <TrackedWebsitesPageContent />
+    </ProtectedRoute>
   );
 }
 

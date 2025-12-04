@@ -1611,18 +1611,10 @@
           "regular": "Regular"
         }
       },
-      "default_language": {
-        "label": "Default Language",
-        "description": "System default language",
-        "options": {
-          "en": "English",
-          "ko": "Korean"
-        }
-      },
       "session_timeout_minutes": {
         "label": "Session Timeout (Minutes)",
         "description": "User session expiration time in minutes",
-        "placeholder": "120"
+        "placeholder": "2"
       },
       "allow_new_signups": {
         "label": "Allow New Signups",

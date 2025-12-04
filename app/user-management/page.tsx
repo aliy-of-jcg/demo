@@ -607,7 +607,7 @@ function UserManagementPageContent() {
 
 export default function UserManagementPage() {
     return (
-        <ProtectedRoute permission="users:read">
+        <ProtectedRoute permission="users:read" showAccessDeniedMessage={true}>
             <UserManagementPageContent />
         </ProtectedRoute>
     );

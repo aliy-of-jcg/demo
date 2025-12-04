@@ -57,7 +57,6 @@ export const PUT = requirePermission('system:update', async (req: NextRequest, c
             'default_timezone',
             'default_campaign_status',
             'default_user_role',
-            'default_language',
             'session_timeout_minutes',
             'allow_new_signups',
         ];

@@ -250,8 +250,7 @@ export async function initMySQLSchema(): Promise<void> {
       ('default_timezone', 'Asia/Seoul', 'string', 'defaults', 'Default timezone for the system', TRUE),
       ('default_campaign_status', 'waiting', 'string', 'defaults', 'Default status for new campaigns', TRUE),
       ('default_user_role', 'regular', 'string', 'defaults', 'Default role for new user signups', TRUE),
-      ('default_language', 'en', 'string', 'defaults', 'Default language for the system', TRUE),
-      ('session_timeout_minutes', '120', 'number', 'defaults', 'Session timeout in minutes', TRUE),
+      ('session_timeout_minutes', '2', 'number', 'defaults', 'Session timeout in minutes', TRUE),
       ('allow_new_signups', '1', 'boolean', 'features', 'Allow new user registrations', TRUE)
       ON DUPLICATE KEY UPDATE setting_key=setting_key;
     `;

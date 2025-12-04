@@ -74,12 +74,7 @@ export function ProtectedRoute({
             return;
         }
 
-        // If showAccessDeniedMessage is true, don't redirect - show message instead
-        if (showAccessDeniedMessage) {
-            return;
-        }
-
-        // Check permissions
+        // Check permissions first
         let hasAccess = false;
 
         if (permission) {
@@ -100,7 +95,12 @@ export function ProtectedRoute({
             hasAccess = true;
         }
 
+        // If no access and showAccessDeniedMessage is true, don't redirect - show message instead
         if (!hasAccess) {
+            if (showAccessDeniedMessage) {
+                console.log('[ProtectedRoute] Access denied, showing message instead of redirecting');
+                return;
+            }
             console.log('[ProtectedRoute] Access denied, redirecting to:', redirectTo, {
                 permission,
                 userType: user.user_type,

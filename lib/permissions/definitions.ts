@@ -39,7 +39,7 @@ export const PERMISSION_MATRIX: PermissionMatrix = {
         analytics: ['read'],
         utm_codes: ['read'],
         settings: [],
-        system: [],
+        system: ['read'], // Read-only access to system settings
     },
     regular: {
         users: [],

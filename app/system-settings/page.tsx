@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { Save, Settings, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { SystemSettingsMap } from "@/lib/system-settings";
 import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { usePermission } from "@/lib/hooks/usePermission";
 
 // Available options
 const TIMEZONES = [
@@ -13,15 +15,21 @@ const TIMEZONES = [
     { value: "America/New_York", label: "America/New_York (EST/EDT)" },
     { value: "America/Los_Angeles", label: "America/Los_Angeles (PST/PDT)" },
     { value: "Europe/London", label: "Europe/London (GMT/BST)" },
-    { value: "Asia/Tokyo", label: "Asia/Tokyo (JST - UTC+9)" },
     { value: "Asia/Shanghai", label: "Asia/Shanghai (CST - UTC+8)" },
     { value: "Asia/Singapore", label: "Asia/Singapore (SGT - UTC+8)" },
     { value: "Europe/Berlin", label: "Europe/Berlin (CET/CEST)" },
     { value: "Australia/Sydney", label: "Australia/Sydney (AEST/AEDT)" },
 ];
 
-export default function SystemSettingsPage() {
+function SystemSettingsPageContent() {
     const t = useTranslations("systemSettings");
+    const { hasPermission } = usePermission();
+
+    // Check if user can update system settings (owner/admin only)
+    const canUpdate = hasPermission('system:update');
+    // Check if user can read system settings (owner/admin/observer)
+    const canRead = hasPermission('system:read');
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -32,8 +40,7 @@ export default function SystemSettingsPage() {
         default_timezone: "Asia/Seoul",
         default_campaign_status: "waiting",
         default_user_role: "regular",
-        default_language: "en",
-        session_timeout_minutes: 120,
+        session_timeout_minutes: 2,
         allow_new_signups: true,
     });
 
@@ -62,18 +69,17 @@ export default function SystemSettingsPage() {
 
             if (data.success && data.settings) {
                 console.log('Fetched settings:', data.settings);
-                // Filter out default_currency if it exists (legacy data)
-                const { default_currency, ...cleanSettings } = data.settings as any;
+                // Filter out legacy/unsupported settings
+                const { default_currency, default_language, ...cleanSettings } = data.settings as any;
                 // Ensure all settings have default values
                 setSettings({
                     default_date_range: 7,
                     default_timezone: 'Asia/Seoul',
                     default_campaign_status: 'waiting',
                     default_user_role: 'regular',
-                    default_language: 'en',
-                    session_timeout_minutes: 120,
+                    session_timeout_minutes: 2,
                     allow_new_signups: true,
-                    ...cleanSettings, // Override with fetched values (without currency)
+                    ...cleanSettings, // Override with fetched values (without legacy fields)
                 });
             } else {
                 console.error('Invalid response:', data);
@@ -92,8 +98,8 @@ export default function SystemSettingsPage() {
             setError(null);
             setSuccessMessage(null);
 
-            // Filter out default_currency if it somehow got into state
-            const { default_currency, ...cleanSettings } = settings as any;
+            // Filter out legacy/unsupported settings
+            const { default_currency, default_language, ...cleanSettings } = settings as any;
 
             const response = await fetchWithAuth("/api/system/settings", {
                 method: "PUT",
@@ -115,6 +121,9 @@ export default function SystemSettingsPage() {
             setSaving(false);
         }
     };
+
+    // Read-only mode for observers
+    const isReadOnly = canRead && !canUpdate;
 
     if (loading) {
         return (
@@ -193,7 +202,9 @@ export default function SystemSettingsPage() {
                                             default_date_range: parseInt(e.target.value) || 7,
                                         })
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={isReadOnly}
+                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isReadOnly ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+                                        }`}
                                     placeholder={t("fields.default_date_range.placeholder")}
                                 />
                             </div>
@@ -211,7 +222,9 @@ export default function SystemSettingsPage() {
                                     onChange={(e) =>
                                         setSettings({ ...settings, default_timezone: e.target.value })
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={isReadOnly}
+                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isReadOnly ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+                                        }`}
                                 >
                                     {TIMEZONES.map((tz) => (
                                         <option key={tz.value} value={tz.value}>
@@ -237,7 +250,9 @@ export default function SystemSettingsPage() {
                                             default_campaign_status: e.target.value as any,
                                         })
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={isReadOnly}
+                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isReadOnly ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+                                        }`}
                                 >
                                     <option value="active">
                                         {t("fields.default_campaign_status.options.active")}
@@ -270,7 +285,9 @@ export default function SystemSettingsPage() {
                                             default_user_role: e.target.value as any,
                                         })
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={isReadOnly}
+                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isReadOnly ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+                                        }`}
                                 >
                                     <option value="admin">
                                         {t("fields.default_user_role.options.admin")}
@@ -280,33 +297,6 @@ export default function SystemSettingsPage() {
                                     </option>
                                     <option value="regular">
                                         {t("fields.default_user_role.options.regular")}
-                                    </option>
-                                </select>
-                            </div>
-
-                            {/* Default Language */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    {t("fields.default_language.label")}
-                                </label>
-                                <p className="text-sm text-gray-500 mb-2">
-                                    {t("fields.default_language.description")}
-                                </p>
-                                <select
-                                    value={settings.default_language || "en"}
-                                    onChange={(e) =>
-                                        setSettings({
-                                            ...settings,
-                                            default_language: e.target.value as any,
-                                        })
-                                    }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    <option value="en">
-                                        {t("fields.default_language.options.en")}
-                                    </option>
-                                    <option value="ko">
-                                        {t("fields.default_language.options.ko")}
                                     </option>
                                 </select>
                             </div>
@@ -323,14 +313,16 @@ export default function SystemSettingsPage() {
                                     type="number"
                                     min="1"
                                     max="10080"
-                                    value={settings.session_timeout_minutes || 120}
+                                    value={settings.session_timeout_minutes || 2}
                                     onChange={(e) =>
                                         setSettings({
                                             ...settings,
-                                            session_timeout_minutes: parseInt(e.target.value) || 120,
+                                            session_timeout_minutes: parseInt(e.target.value) || 2,
                                         })
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    disabled={isReadOnly}
+                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isReadOnly ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+                                        }`}
                                     placeholder={t("fields.session_timeout_minutes.placeholder")}
                                 />
                             </div>
@@ -362,8 +354,11 @@ export default function SystemSettingsPage() {
                                             allow_new_signups: !settings.allow_new_signups,
                                         })
                                     }
-                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${settings.allow_new_signups ? "bg-blue-600" : "bg-gray-300"
-                                        }`}
+                                    disabled={isReadOnly}
+                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isReadOnly
+                                        ? 'bg-gray-300 cursor-not-allowed opacity-60'
+                                        : 'cursor-pointer'
+                                        } ${settings.allow_new_signups ? "bg-blue-600" : "bg-gray-300"}`}
                                 >
                                     <span
                                         className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${settings.allow_new_signups ? "translate-x-5" : "translate-x-0"
@@ -374,29 +369,52 @@ export default function SystemSettingsPage() {
                         </div>
                     </div>
 
-                    {/* Save Button */}
-                    <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end">
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                    {t("saving")}
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="w-5 h-5 mr-2" />
-                                    {t("saveSettings")}
-                                </>
-                            )}
-                        </button>
-                    </div>
+                    {/* Save Button - Only show if user can update */}
+                    {canUpdate && (
+                        <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end">
+                            <button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {saving ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                        {t("saving")}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="w-5 h-5 mr-2" />
+                                        {t("saveSettings")}
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Read-only indicator for observers */}
+                    {isReadOnly && (
+                        <div className="p-6 bg-gray-50 border-t border-gray-200">
+                            <div className="flex items-center justify-center text-sm text-gray-500">
+                                <AlertCircle className="w-4 h-4 mr-2" />
+                                Read-only mode - You can view settings but cannot modify them
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function SystemSettingsPage() {
+    return (
+        <ProtectedRoute
+            permission="system:read"
+            showAccessDeniedMessage={true}
+        >
+            <SystemSettingsPageContent />
+        </ProtectedRoute>
     );
 }
 
