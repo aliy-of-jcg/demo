@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calendar, Globe, Activity, Users, Eye, TrendingUp, Ban, CheckCircle, Info } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
@@ -64,6 +64,7 @@ function TrackedWebsitesPageContent() {
   // Check if user can manage tracked websites (settings:update permission)
   const canManageWebsites = hasPermission('settings:update');
   const trackingEnabled = getAllowTracking();
+  const loggedTrackingOffRef = useRef(false);
 
   // Initialize date range from system defaults (GA behavior)
   // On page reload, defaults are applied automatically
@@ -231,6 +232,19 @@ function TrackedWebsitesPageContent() {
       day: 'numeric'
     });
   };
+
+  // Graceful one-time console notice when tracking is disabled
+  useEffect(() => {
+    if (settingsLoading) return;
+    if (trackingEnabled) return;
+    if (loggedTrackingOffRef.current) return;
+    loggedTrackingOffRef.current = true;
+    console.log(
+      "%cCosMos AI Tracking Disabled%c – Global tracking is turned off in System Settings. No events are being collected.",
+      "color:#ff9800;font-weight:bold;",
+      "color:inherit;"
+    );
+  }, [settingsLoading, trackingEnabled]);
 
   // Format domain for display (remove protocol)
   const formatDomain = (domain: string) => {
