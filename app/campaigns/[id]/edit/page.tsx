@@ -36,6 +36,7 @@ export default function EditCampaignPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingCampaign, setFetchingCampaign] = useState(true);
+  const [initialData, setInitialData] = useState<typeof formData | null>(null);
 
   // Refs for scrolling to error fields
   const fieldRefs = {
@@ -108,7 +109,7 @@ export default function EditCampaignPage() {
 
       if (data.success && data.campaign) {
         const campaign = data.campaign;
-        setFormData({
+        const mapped = {
           name: campaign.name || '',
           course_id: campaign.course_id?.toString() || '',
           source: campaign.source || 'select',
@@ -119,7 +120,9 @@ export default function EditCampaignPage() {
           budget: campaign.budget?.toString() || '',
           daily_budget: campaign.daily_budget?.toString() || '',
           description: campaign.description || ''
-        });
+        };
+        setFormData(mapped);
+        setInitialData(mapped);
       } else {
         toast.error('Campaign not found');
         router.push('/campaigns');
@@ -192,6 +195,12 @@ export default function EditCampaignPage() {
     e.preventDefault();
 
     if (!validateForm()) {
+      return;
+    }
+
+    // Prevent no-op submissions
+    if (initialData && JSON.stringify(formData) === JSON.stringify(initialData)) {
+      toast.info('No changes to save');
       return;
     }
 
@@ -523,7 +532,7 @@ export default function EditCampaignPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (initialData ? JSON.stringify(formData) === JSON.stringify(initialData) : false)}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Updating...' : 'Update'}

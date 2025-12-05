@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageFooter } from '@/components/page-footer';
@@ -105,9 +105,16 @@ export default function CoursesPage() {
     price: '',
     status: 'active'
   });
+  const [initialFormData, setInitialFormData] = useState<typeof formData | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<number | null>(null);
+
+  const isUpdateDisabled = useMemo(() => {
+    if (!editingCourse) return false;
+    if (!initialFormData) return true;
+    return JSON.stringify(formData) === JSON.stringify(initialFormData);
+  }, [editingCourse, formData, initialFormData]);
 
   // Close modal when clicking outside or pressing Escape
   useEffect(() => {
@@ -214,6 +221,12 @@ export default function CoursesPage() {
     }
   };
 
+  const normalizeDuration = (value: string | number | null | undefined) => {
+    if (value === null || value === undefined) return '';
+    const parsed = typeof value === 'number' ? value : parseInt(value, 10);
+    return Number.isNaN(parsed) ? '' : parsed.toString();
+  };
+
   const handleOpenModal = (course: Course | null = null) => {
     // Permission check for creating new course
     if (!course && !canCreateCourse) {
@@ -223,14 +236,16 @@ export default function CoursesPage() {
 
     if (course) {
       setEditingCourse(course);
-      setFormData({
+      const mapped = {
         name: course.name,
         code: course.code,
         category: course.category || '',
-        duration: course.duration || '',
+        duration: normalizeDuration(course.duration),
         price: course.price?.toString() || '',
         status: course.status
-      });
+      };
+      setFormData(mapped);
+      setInitialFormData(mapped);
     } else {
       setEditingCourse(null);
       setFormData({
@@ -241,6 +256,7 @@ export default function CoursesPage() {
         price: '',
         status: 'active'
       });
+      setInitialFormData(null);
     }
     setShowModal(true);
   };
@@ -261,6 +277,11 @@ export default function CoursesPage() {
 
     if (!formData.duration || formData.duration.trim() === '') {
       toast.error(t('modal.validation.durationRequired'));
+      return;
+    }
+
+    if (editingCourse && initialFormData && JSON.stringify(formData) === JSON.stringify(initialFormData)) {
+      toast.info('No changes to save');
       return;
     }
 
@@ -292,6 +313,10 @@ export default function CoursesPage() {
 
         await fetchCourses();
         handleCloseModal();
+        // reset dirty baseline after successful save
+        if (editingCourse) {
+          setInitialFormData(formData);
+        }
         return data;
       })(),
       {
@@ -815,7 +840,8 @@ export default function CoursesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-3 sm:px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={isUpdateDisabled}
+                  className="px-3 sm:px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingCourse ? t('modal.actions.update') : t('modal.actions.add')}
                 </button>

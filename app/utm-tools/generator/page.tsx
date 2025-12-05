@@ -32,6 +32,7 @@ function UTMGeneratorPageContent() {
     utm_content: '',
     campaign_id: ''
   });
+  const [initialFormData, setInitialFormData] = useState<typeof formData | null>(null);
 
   // Auto-fill only UTM name when campaign is selected (NOT source/medium)
   useEffect(() => {
@@ -84,6 +85,15 @@ function UTMGeneratorPageContent() {
       }
 
       setFormData({
+        name: data.utm_code.name || '',
+        landing_url: data.utm_code.landing_url || '',
+        utm_source: data.utm_code.utm_source || '',
+        utm_medium: data.utm_code.utm_medium || '',
+        utm_term: data.utm_code.utm_term || '',
+        utm_content: data.utm_code.utm_content || '',
+        campaign_id: data.utm_code.campaign_id?.toString() || ''
+      });
+      setInitialFormData({
         name: data.utm_code.name || '',
         landing_url: data.utm_code.landing_url || '',
         utm_source: data.utm_code.utm_source || '',
@@ -194,6 +204,7 @@ function UTMGeneratorPageContent() {
       utm_content: '',
       campaign_id: ''
     });
+    setInitialFormData(isEditMode ? null : null);
   };
 
   const handleChange = (field: string, value: string) => {
@@ -221,6 +232,11 @@ function UTMGeneratorPageContent() {
     // Check if name is filled (should be auto-filled from campaign)
     if (!formData.name) {
       toast.error(t('validation.ensureCampaign'));
+      return;
+    }
+
+    if (isEditMode && initialFormData && JSON.stringify(formData) === JSON.stringify(initialFormData)) {
+      toast.info(t('error.noChanges') || 'No changes to save');
       return;
     }
 
@@ -434,7 +450,12 @@ function UTMGeneratorPageContent() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={
+                    saving ||
+                    (isEditMode && initialFormData
+                      ? JSON.stringify(formData) === JSON.stringify(initialFormData)
+                      : false)
+                  }
                   className="w-full sm:w-auto px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {saving ? (
