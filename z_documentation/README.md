@@ -14,7 +14,6 @@ A comprehensive marketing analytics and campaign management platform built with 
   - Environment Analysis (devices, browsers, OS)
   - Time-based Visitor Patterns (KST timezone support)
   - Returning User Analysis
-  - Conversion Tracking & Analysis
   - Session Journeys - Complete page-by-page user journey visualization
   - Tracked Websites Management - Domain-level tracking and statistics
 - 🔗 **UTM Tools** - Link generator and tracking utilities with custom tracking codes
@@ -168,7 +167,6 @@ demo/
 │   │   ├── analytics/     # Analytics endpoints
 │   │   │   ├── campaign-analysis/    # Campaign performance metrics
 │   │   │   ├── channel-performance/  # Channel/source analysis
-│   │   │   ├── conversion-analysis/  # Conversion tracking analytics
 │   │   │   ├── environment-analysis/ # Device/browser/OS stats
 │   │   │   ├── page-flow-analysis/   # User navigation flow
 │   │   │   ├── performance/          # Dashboard metrics
@@ -315,7 +313,6 @@ CosMos AI uses a dual-database architecture optimized for both real-time analyti
 - `/api/analytics/*` - Analytics data aggregation
   - Campaign performance metrics
   - Channel and source analysis
-  - Conversion tracking
   - Environment analysis (device/browser/OS)
   - Page flow visualization
   - Time-based patterns (KST timezone)
@@ -360,7 +357,6 @@ CosMos AI uses a dual-database architecture optimized for both real-time analyti
 - Automatic session and visitor tracking
 - UTM parameter preservation
 - Device and browser detection
-- Conversion event tracking
 
 ### Data Flow
 
@@ -394,7 +390,6 @@ CosMos AI uses a dual-database architecture optimized for both real-time analyti
 - Device and environment detection
 - Geographic IP location tracking
 - Referrer source analysis
-- Conversion tracking and attribution
 
 
 ## 🔧 Configuration
@@ -576,36 +571,19 @@ allowedDomains: [
 ]
 ```
 
-#### 6. Track Conversions (Optional)
-Add conversion tracking to your landing page:
-```javascript
-// When user completes a signup
-window.CosmosTracker.trackConversion({
-  type: 'signup',
-  value: 0
-});
-
-// When user makes a purchase
-window.CosmosTracker.trackConversion({
-  type: 'purchase',
-  value: 99.99,
-  metadata: { product: 'premium-plan' }
-});
-```
-
-#### 7. View Analytics
+#### 6. View Analytics
 Access various analytics modules:
 
 **Dashboard (Performance)**
 - Overview of all campaigns
-- Total clicks, visitors, conversions
+- Total clicks, visitors
 - Budget tracking
 - Recent activity
 
 **Campaign Analysis**
 - Individual campaign performance
 - Click-through rates
-- Conversion rates by campaign
+- Campaign visitor statistics
 
 **Channel Performance**
 - Traffic by source (Google, Facebook, etc.)
@@ -646,14 +624,9 @@ Access various analytics modules:
 **Tracked Websites Management**
 - Domain-level tracking statistics
 - Website active/inactive status management
-- Domain-specific sessions, visitors, pageviews, and conversions
+- Domain-specific sessions, visitors, pageviews
 - First seen and last seen timestamp tracking
 - Performance dashboard per website
-
-**Conversion Analysis**
-- Conversion rates by campaign
-- Conversion value tracking
-- Attribution analysis
 
 **Debug Tools**
 - Session debugging page
@@ -668,15 +641,40 @@ Access various analytics modules:
 - Delete users (soft delete)
 - User statistics dashboard (Total, Active, Pending, Blocked)
 - Last login tracking and account creation dates
-- System Settings Management
-  - Default date range settings
-  - Default timezone settings (KST support)
-  - Default campaign status settings
-  - Default user role settings
-  - Session timeout settings (in minutes)
-  - Allow/block new signups toggle
-  - Enable/disable tracking toggle
-  - Cached settings management (24-hour TTL)
+
+#### System Settings Management
+
+CosMos AI provides Owner-only system settings management to control global platform behavior.
+
+**Global Tracking Control**
+- **Enable/Disable Tracking**: The `allow_tracking` setting allows you to globally enable or disable all tracking functionality across the system
+  - When disabled, all tracking events are ignored and the `cosmos-track.js` script will not collect any data
+  - This is useful for GDPR compliance, maintenance, or testing purposes
+  - Settings are applied in real-time with automatic cache invalidation
+
+**Timezone Support**
+- **Default Timezone Setting**: Configure the system's default timezone using the `default_timezone` setting
+  - Default: `Asia/Seoul` (KST, UTC+9)
+  - Supports IANA timezone format (e.g., `America/New_York`, `Europe/London`, `Asia/Tokyo`)
+  - All time-based analytics are displayed according to the configured timezone
+  - Time Analysis page shows visitor patterns by timezone
+  - Session timestamps are stored and displayed according to the configured timezone
+
+**Other System Settings**
+- **Default Date Range**: Default date range for analytics pages (default: 7 days)
+- **Default Campaign Status**: Default status for newly created campaigns (default: `waiting`)
+- **Default User Role**: Default role for newly registered users (default: `regular`)
+- **Session Timeout**: User session timeout duration in minutes (default: 120 minutes)
+  - This setting is automatically fetched by the `cosmos-track.js` script
+  - When a session times out, a new session begins
+- **Allow New Signups**: The `allow_new_signups` setting allows you to enable or disable new user registrations
+  - When disabled, the signup page becomes inaccessible
+
+**Settings Management Features**
+- **Cache System**: Settings are cached for 24 hours for performance optimization
+- **Real-time Updates**: Cache is automatically invalidated when settings are changed, ensuring immediate effect
+- **Owner Only**: System settings can only be modified by users with Owner role
+- **API Endpoints**: Settings can be queried and updated via `/api/system/settings` endpoint
 
 **User Profile Management**
 - View and update profile information
@@ -809,7 +807,6 @@ Additional documentation is available in the `z_documentation/` directory:
 - **`CLIPBOARD_FALLBACK_IMPLEMENTATION.md`** - Clipboard functionality
 
 ### Implementation Guides
-- **`zz_temp-md-files/CONVERSION_TRACKING_GUIDE.md`** - Conversion tracking setup
 - **`zz_temp-md-files/EXTERNAL_TRACKING_INSTALLATION.md`** - External script integration
 - **`zz_temp-md-files/TRACKING_VALIDATION_GUIDE.md`** - Testing and validation
 

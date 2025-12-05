@@ -1405,6 +1405,11 @@
       "pageFlowAnalysis": "Page Flow Analysis",
       "sessionJourneys": "Session Journeys",
       "trackedWebsites": "Tracked Websites"
+    },
+    "docs": {
+      "title": "Docs & Guides",
+      "logOverview": "Log/Analytics Overview",
+      "trackingSetup": "Tracking Script Setup"
     }
   },
   "userMenu": {

@@ -14,7 +14,6 @@ Next.js 14로 구축된 포괄적인 마케팅 분석 및 캠페인 관리 플�
   - 환경 분석 (기기, 브라우저, OS)
   - 시간 기반 방문자 패턴 (KST 시간대 지원)
   - 재방문 사용자 분석
-  - 전환 추적 및 분석
   - 세션 여정 - 페이지별 사용자 여정 시각화
   - 추적 웹사이트 관리 - 도메인별 추적 및 통계
 - 🔗 **UTM 도구** - 사용자 정의 추적 코드를 사용한 링크 생성기 및 추적 유틸리티
@@ -168,7 +167,6 @@ demo/
 │   │   ├── analytics/     # 분석 엔드포인트
 │   │   │   ├── campaign-analysis/    # 캠페인 성능 지표
 │   │   │   ├── channel-performance/  # 채널/소스 분석
-│   │   │   ├── conversion-analysis/  # 전환 추적 분석
 │   │   │   ├── environment-analysis/ # 기기/브라우저/OS 통계
 │   │   │   ├── page-flow-analysis/   # 사용자 네비게이션 흐름
 │   │   │   ├── performance/          # 대시보드 지표
@@ -575,36 +573,19 @@ allowedDomains: [
 ]
 ```
 
-#### 6. 전환 추적 (선택사항)
-랜딩 페이지에 전환 추적 추가:
-```javascript
-// 사용자가 회원가입을 완료할 때
-window.CosmosTracker.trackConversion({
-  type: 'signup',
-  value: 0
-});
-
-// 사용자가 구매할 때
-window.CosmosTracker.trackConversion({
-  type: 'purchase',
-  value: 99.99,
-  metadata: { product: 'premium-plan' }
-});
-```
-
-#### 7. 분석 보기
+#### 6. 분석 보기
 다양한 분석 모듈에 액세스:
 
 **대시보드 (성능)**
 - 모든 캠페인 개요
-- 총 클릭, 방문자, 전환
+- 총 클릭, 방문자
 - 예산 추적
 - 최근 활동
 
 **캠페인 분석**
 - 개별 캠페인 성능
 - 클릭률
-- 캠페인별 전환율
+- 캠페인별 방문자 통계
 
 **채널 성능**
 - 소스별 트래픽 (Google, Facebook 등)
@@ -649,17 +630,10 @@ window.CosmosTracker.trackConversion({
 - 첫 방문 및 마지막 방문 시간 추적
 - 웹사이트별 성능 대시보드
 
-**전환 분석**
-- 캠페인별 전환율
-- 전환 가치 추적
-- 속성 분석
-
 **디버그 도구**
 - 세션 디버깅 페이지
 - 실시간 세션 데이터 검증
 - 추적 링크 테스트 및 검증
-
-**시스템 관리 (Owner 전용)**
 - 포괄적인 사용자 관리 기능이 있는 사용자 관리 페이지
 - 필터링 및 검색 기능이 있는 모든 사용자 보기
 - 사용자 유형 업데이트 (Admin, Observer, Regular)
@@ -667,15 +641,6 @@ window.CosmosTracker.trackConversion({
 - 사용자 삭제 (소프트 삭제)
 - 사용자 통계 대시보드 (전체, 활성, 대기 중, 차단됨)
 - 마지막 로그인 추적 및 계정 생성 날짜
-- 시스템 설정 관리
-  - 기본 날짜 범위 설정
-  - 기본 시간대 설정 (KST 지원)
-  - 기본 캠페인 상태 설정
-  - 기본 사용자 역할 설정
-  - 세션 타임아웃 설정 (분 단위)
-  - 신규 가입 허용/차단 토글
-  - 추적 활성화/비활성화 토글
-  - 캐시된 설정 관리 (24시간 TTL)
 
 **사용자 프로필 관리**
 - 프로필 정보 보기 및 업데이트
@@ -808,7 +773,6 @@ window.CosmosTracker.trackConversion({
 - **`CLIPBOARD_FALLBACK_IMPLEMENTATION.md`** - 클립보드 기능
 
 ### 구현 가이드
-- **`zz_temp-md-files/CONVERSION_TRACKING_GUIDE.md`** - 전환 추적 설정
 - **`zz_temp-md-files/EXTERNAL_TRACKING_INSTALLATION.md`** - 외부 스크립트 통합
 - **`zz_temp-md-files/TRACKING_VALIDATION_GUIDE.md`** - 테스트 및 검증
 

@@ -1405,6 +1405,11 @@
       "pageFlowAnalysis": "페이지 흐름 분석",
       "sessionJourneys": "세션 여정",
       "trackedWebsites": "추적 웹사이트"
+    },
+    "docs": {
+      "title": "문서 & 가이드",
+      "logOverview": "로그/분석 페이지 개요",
+      "trackingSetup": "트래킹 스크립트 설치 가이드"
     }
   },
   "userMenu": {
