@@ -2,14 +2,23 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Save, Settings, Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Save, Settings, Loader2, RefreshCw, AlertCircle, HelpCircle } from "lucide-react";
 import { SystemSettingsMap } from "@/lib/system-settings";
 import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { getAllTimezones } from "@/lib/utils/timezones";
 import { toast } from "sonner";
-import Swal from "sweetalert2";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function SystemSettingsPageContent() {
     const t = useTranslations("systemSettings");
@@ -22,6 +31,7 @@ function SystemSettingsPageContent() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [showSaveDialog, setShowSaveDialog] = useState(false);
 
     // Store original settings to detect changes
     const [originalSettings, setOriginalSettings] = useState<Partial<SystemSettingsMap>>({
@@ -90,23 +100,10 @@ function SystemSettingsPageContent() {
         }
     };
 
-    const handleSave = async () => {
-        // Show confirmation dialog
-        const result = await Swal.fire({
-            title: t("swal.saveTitle"),
-            text: t("swal.saveText"),
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonColor: "#2563eb",
-            cancelButtonColor: "#6b7280",
-            confirmButtonText: t("swal.saveConfirm"),
-            cancelButtonText: t("swal.saveCancel"),
-        });
-
-        if (!result.isConfirmed) return;
-
+    const handleSaveConfirm = async () => {
         try {
             setSaving(true);
+            setShowSaveDialog(false);
 
             // Filter out legacy/unsupported settings
             const { default_currency, default_language, ...cleanSettings } = settings as any;
@@ -422,23 +419,59 @@ function SystemSettingsPageContent() {
                     {/* Save Button - Only show if user can update */}
                     {canUpdate && (
                         <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-end">
-                            <button
-                                onClick={handleSave}
-                                disabled={saving || !hasChanges}
-                                className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                {saving ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                        {t("saving")}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="w-5 h-5 mr-2" />
-                                        {t("saveSettings")}
-                                    </>
-                                )}
-                            </button>
+                            <AlertDialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                                <button
+                                    onClick={() => setShowSaveDialog(true)}
+                                    disabled={saving || !hasChanges}
+                                    className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                            {t("saving")}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-5 h-5 mr-2" />
+                                            {t("saveSettings")}
+                                        </>
+                                    )}
+                                </button>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-blue-100 rounded-full">
+                                                <HelpCircle className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                            <AlertDialogTitle className="text-left">
+                                                {t("swal.saveTitle")}
+                                            </AlertDialogTitle>
+                                        </div>
+                                        <AlertDialogDescription className="text-left pt-2">
+                                            {t("swal.saveText")}
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel disabled={saving}>
+                                            {t("swal.saveCancel")}
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleSaveConfirm}
+                                            disabled={saving}
+                                            className="bg-blue-600 hover:bg-blue-700 focus:ring-blue-600 text-white"
+                                        >
+                                            {saving ? (
+                                                <span className="flex items-center gap-2">
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    {t("saving")}
+                                                </span>
+                                            ) : (
+                                                t("swal.saveConfirm")
+                                            )}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
                     )}
 

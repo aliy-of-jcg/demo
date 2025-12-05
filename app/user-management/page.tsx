@@ -6,15 +6,24 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, UserCheck, UserPlus, UserX, Search, Shield, Eye, User as UserIcon, Lock, Trash2 } from "lucide-react";
+import { Users, UserCheck, UserPlus, UserX, Search, Shield, Eye, User as UserIcon, Lock, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import Swal from "sweetalert2";
 import { formatDistanceToNow, isToday, isYesterday, format } from "date-fns";
 import type { UserType } from "@/lib/types";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
 import { useDebounce } from '@/lib/hooks/useDebounce';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface User {
     id: number;
@@ -42,6 +51,8 @@ function UserManagementPageContent() {
     const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
     const typeMenuRef = useRef<HTMLDivElement>(null);
     const statusMenuRef = useRef<HTMLDivElement>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
     // Check if user has update/delete permissions
     const canUpdateUsers = hasPermission('users:update');
@@ -105,44 +116,37 @@ function UserManagementPageContent() {
 
 
     const handleDeleteUser = async (user: User) => {
-        const deleteMessage = t("actions.delete.text", { company_name: user.company_name });
-        const highlightedMessage = deleteMessage.replace(
-            user.company_name,
-            `<strong style="color: #ef4444; font-size: 1.1em; font-weight: 600;">${user.company_name}</strong>`
-        );
+        setUserToDelete(user);
+        setShowDeleteDialog(true);
+    };
 
-        const result = await Swal.fire({
-            title: t("actions.delete.title"),
-            html: highlightedMessage,
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: t("actions.delete.confirm"),
-            cancelButtonText: t("actions.delete.cancel"),
-            confirmButtonColor: "#ef4444",
-        });
+    const handleDeleteConfirm = async () => {
+        if (!userToDelete) return;
 
-        if (result.isConfirmed) {
-            try {
-                toast.promise(
-                    fetchWithAuth(`/api/users/${user.id}`, {
-                        method: "DELETE",
-                    }).then(async (response) => {
-                        const data = await response.json();
-                        if (!data.success) {
-                            throw new Error(data.message);
-                        }
-                        await fetchUsers();
-                        return data;
-                    }),
-                    {
-                        loading: t("actions.delete.deleting"),
-                        success: t("actions.delete.success"),
-                        error: t("actions.delete.error"),
+        setShowDeleteDialog(false);
+
+        try {
+            toast.promise(
+                fetchWithAuth(`/api/users/${userToDelete.id}`, {
+                    method: "DELETE",
+                }).then(async (response) => {
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.message);
                     }
-                );
-            } catch (error) {
-                console.error("Error deleting user:", error);
-            }
+                    await fetchUsers();
+                    setUserToDelete(null);
+                    return data;
+                }),
+                {
+                    loading: t("actions.delete.deleting"),
+                    success: t("actions.delete.success"),
+                    error: t("actions.delete.error"),
+                }
+            );
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            setUserToDelete(null);
         }
     };
 
@@ -601,6 +605,36 @@ function UserManagementPageContent() {
                     </div>
                 </div>
             )}
+
+            {/* Delete User Dialog */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-red-100 rounded-full">
+                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                            </div>
+                            <AlertDialogTitle className="text-left">
+                                {t("actions.delete.title")}
+                            </AlertDialogTitle>
+                        </div>
+                        <AlertDialogDescription className="text-left pt-2">
+                            {userToDelete && t("actions.delete.text", { company_name: userToDelete.company_name })}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>
+                            {t("actions.delete.cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteConfirm}
+                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+                        >
+                            {t("actions.delete.confirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

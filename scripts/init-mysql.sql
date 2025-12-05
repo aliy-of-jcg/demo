@@ -161,5 +161,6 @@ INSERT INTO system_settings (setting_key, setting_value, value_type, category, d
 ('default_campaign_status', 'waiting', 'string', 'defaults', 'Default status for new campaigns', TRUE),
 ('default_user_role', 'regular', 'string', 'defaults', 'Default role for new user signups', TRUE),
 ('session_timeout_minutes', '2', 'number', 'defaults', 'Session timeout in minutes', TRUE),
-('allow_new_signups', '1', 'boolean', 'features', 'Allow new user registrations', TRUE)
+('allow_new_signups', '1', 'boolean', 'features', 'Allow new user registrations', TRUE),
+('allow_tracking', '1', 'boolean', 'features', 'Allow analytics tracking', TRUE)
 ON DUPLICATE KEY UPDATE setting_key=setting_key;

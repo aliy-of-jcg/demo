@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye, Info } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye, Info, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
-import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { copyToClipboard } from '@/lib/clipboard';
@@ -13,6 +12,16 @@ import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Campaign {
   id: number;
@@ -114,6 +123,8 @@ export default function CampaignsPage() {
   const [courses, setCourses] = useState<{ id: number; name: string }[]>([]);
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<number | null>(null);
 
   // Close action menu when clicking outside
   useEffect(() => {
@@ -236,22 +247,18 @@ export default function CampaignsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    const result = await Swal.fire({
-      title: t('delete.title'),
-      text: t('delete.text'),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#6b7280',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: t('delete.confirm'),
-      cancelButtonText: t('delete.cancel')
-    });
+    setCampaignToDelete(id);
+    setShowDeleteDialog(true);
+  };
 
-    if (!result.isConfirmed) return;
+  const handleDeleteConfirm = async () => {
+    if (campaignToDelete === null) return;
+
+    setShowDeleteDialog(false);
 
     toast.promise(
       (async () => {
-        const response = await fetchWithAuth(`/api/campaigns/${id}`, {
+        const response = await fetchWithAuth(`/api/campaigns/${campaignToDelete}`, {
           method: 'DELETE'
         });
 
@@ -262,6 +269,7 @@ export default function CampaignsPage() {
         }
 
         await fetchCampaigns();
+        setCampaignToDelete(null);
         return data;
       })(),
       {
@@ -1022,6 +1030,34 @@ export default function CampaignsPage() {
       <div className="mt-6 sm:mt-8">
         <PageFooter />
       </div>
+
+      {/* Delete Campaign Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-left">
+                {t('delete.title')}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-left pt-2">
+              {t('delete.text')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('delete.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+            >
+              {t('delete.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

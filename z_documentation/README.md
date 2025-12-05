@@ -750,7 +750,7 @@ Access various analytics modules:
 - **next-intl 4.5** - Internationalization (i18n) and multi-language support
 - **next-swagger-doc 0.4** - API documentation with Swagger UI
 - **swagger-ui-react 5.29** - Interactive API documentation interface
-- **SweetAlert2 11.26** - Beautiful, responsive alerts and modals
+- **Radix UI Alert Dialog** - Beautiful, accessible modal dialogs
 - **class-variance-authority 0.7** - CVA for component variants
 - **clsx 2.1** - Conditional className utility
 - **tailwind-merge 2.4** - Merge Tailwind classes without conflicts

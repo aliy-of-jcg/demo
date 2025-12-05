@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { UserType, UserStatus } from '@/lib/types';
-import Swal from 'sweetalert2';
+import { showAuthDialog } from '@/lib/utils/auth-dialog';
 
 // Hardcoded Korean messages for auth popups
 const AUTH_MESSAGES: Record<string, { title: string; text: string; icon: 'error' | 'warning' | 'info' }> = {
@@ -28,17 +28,7 @@ async function showAuthPopupAndRedirect(messageType: string, redirectUrl: string
         }
 
         const message = AUTH_MESSAGES[messageType] || AUTH_MESSAGES.session_expired;
-        await Swal.fire({
-            title: message.title,
-            text: message.text,
-            icon: message.icon,
-            confirmButtonText: '확인',
-            confirmButtonColor: '#6366f1',
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            showCloseButton: true,
-            didClose: () => { isShowingPopup = false; },
-        });
+        await showAuthDialog(message.title, message.text, message.icon);
 
         window.location.replace(redirectUrl);
     } catch (error) {

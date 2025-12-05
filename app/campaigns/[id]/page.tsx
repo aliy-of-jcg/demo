@@ -3,15 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Edit, Calendar, DollarSign, TrendingUp, Link as LinkIcon, Plus, Copy, Check, ExternalLink, Trash2 } from 'lucide-react';
+import { ChevronLeft, Edit, Calendar, DollarSign, TrendingUp, Link as LinkIcon, Plus, Copy, Check, ExternalLink, Trash2, AlertTriangle, Ban, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Campaign {
   id: number;
@@ -83,6 +92,10 @@ export default function CampaignDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [linkToDelete, setLinkToDelete] = useState<number | null>(null);
+  const [showToggleDialog, setShowToggleDialog] = useState(false);
+  const [toggleDialogData, setToggleDialogData] = useState<{ id: number, currentStatus: string, name: string } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     utm_source: '',
@@ -212,23 +225,19 @@ export default function CampaignDetailsPage() {
   };
 
   const handleDeleteTrackingLink = async (id: number) => {
-    const result = await Swal.fire({
-      title: t('detail.swal.deleteTitle'),
-      text: t('detail.swal.deleteText'),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: t('detail.swal.deleteConfirm'),
-      cancelButtonText: t('detail.swal.deleteCancel')
-    });
+    setLinkToDelete(id);
+    setShowDeleteDialog(true);
+  };
 
-    if (!result.isConfirmed) return;
+  const handleDeleteConfirm = async () => {
+    if (linkToDelete === null) return;
+
+    setShowDeleteDialog(false);
 
     toast.promise(
       (async () => {
         // Hard delete - actually remove from database
-        const response = await fetchWithAuth(`/api/utm-codes/${id}`, {
+        const response = await fetchWithAuth(`/api/utm-codes/${linkToDelete}`, {
           method: 'DELETE'
         });
 
@@ -250,27 +259,17 @@ export default function CampaignDetailsPage() {
   };
 
   const handleToggleStatus = async (id: number, currentStatus: string, name: string) => {
+    setToggleDialogData({ id, currentStatus, name });
+    setShowToggleDialog(true);
+  };
+
+  const handleToggleConfirm = async () => {
+    if (!toggleDialogData) return;
+
+    const { id, currentStatus, name } = toggleDialogData;
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    const action = newStatus === 'active' ? t('detail.swal.activateAction') : t('detail.swal.deactivateAction');
-    const actionText = newStatus === 'active'
-      ? t('utmTools.list.toggle.activateTitle').replace('UTM Link?', 'Tracking Link?').replace('UTM 링크?', '추적 링크?')
-      : t('utmTools.list.toggle.deactivateTitle').replace('UTM Link?', 'Tracking Link?').replace('UTM 링크?', '추적 링크?');
 
-    const result = await Swal.fire({
-      title: actionText,
-      html: `
-        <p>${t('detail.swal.toggleText', { action, name })}</p>
-        ${newStatus === 'inactive' ? `<p class="text-sm text-orange-600 mt-2">${t('detail.swal.inactiveWarning')}</p>` : `<p class="text-sm text-green-600 mt-2">${t('detail.swal.activeInfo')}</p>`}
-      `,
-      icon: newStatus === 'inactive' ? 'warning' : 'info',
-      showCancelButton: true,
-      confirmButtonColor: newStatus === 'inactive' ? '#f59e0b' : '#10b981',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: t('detail.swal.toggleConfirm', { action }),
-      cancelButtonText: t('detail.swal.toggleCancel')
-    });
-
-    if (!result.isConfirmed) return;
+    setShowToggleDialog(false);
 
     toast.promise(
       (async () => {
@@ -287,11 +286,12 @@ export default function CampaignDetailsPage() {
         }
 
         await fetchTrackingLinks();
+        setToggleDialogData(null);
         return data;
       })(),
       {
-        loading: newStatus === 'active' ? t('detail.toast.activating') : t('detail.toast.deactivating'),
-        success: newStatus === 'active' ? t('detail.toast.activated') : t('detail.toast.deactivated'),
+        loading: toggleDialogData!.currentStatus === 'active' ? t('detail.toast.deactivating') : t('detail.toast.activating'),
+        success: toggleDialogData!.currentStatus === 'active' ? t('detail.toast.deactivated') : t('detail.toast.activated'),
         error: (err) => err.message
       }
     );
@@ -969,6 +969,80 @@ export default function CampaignDetailsPage() {
       <div className="mt-8">
         <PageFooter />
       </div>
+
+      {/* Delete Tracking Link Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-left">
+                {t('detail.swal.deleteTitle')}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-left pt-2">
+              {t('detail.swal.deleteText')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('detail.swal.deleteCancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+            >
+              {t('detail.swal.deleteConfirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Toggle Status Dialog */}
+      <AlertDialog open={showToggleDialog} onOpenChange={setShowToggleDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${toggleDialogData?.currentStatus === 'active' ? 'bg-orange-100' : 'bg-green-100'}`}>
+                {toggleDialogData?.currentStatus === 'active' ? (
+                  <Ban className="w-5 h-5 text-orange-600" />
+                ) : (
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                )}
+              </div>
+              <AlertDialogTitle className="text-left">
+                {toggleDialogData?.currentStatus === 'active'
+                  ? t('utmTools.list.toggle.deactivateTitle').replace('UTM Link?', 'Tracking Link?').replace('UTM 링크?', '추적 링크?')
+                  : t('utmTools.list.toggle.activateTitle').replace('UTM Link?', 'Tracking Link?').replace('UTM 링크?', '추적 링크?')}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-left pt-2">
+              {toggleDialogData && (
+                <div className="space-y-2">
+                  <p>{t('detail.swal.toggleText', {
+                    action: toggleDialogData.currentStatus === 'active' ? t('detail.swal.deactivateAction') : t('detail.swal.activateAction'),
+                    name: toggleDialogData.name
+                  })}</p>
+                  <p className={`text-sm ${toggleDialogData.currentStatus === 'active' ? 'text-orange-600' : 'text-green-600'}`}>
+                    {toggleDialogData.currentStatus === 'active' ? t('detail.swal.inactiveWarning') : t('detail.swal.activeInfo')}
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('detail.swal.toggleCancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleConfirm}
+              className={`${toggleDialogData?.currentStatus === 'active' ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-600' : 'bg-green-600 hover:bg-green-700 focus:ring-green-600'} text-white`}
+            >
+              {toggleDialogData && t('detail.swal.toggleConfirm', {
+                action: toggleDialogData.currentStatus === 'active' ? t('detail.swal.deactivateAction') : t('detail.swal.activateAction')
+              })}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

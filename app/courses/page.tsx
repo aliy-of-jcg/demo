@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen } from 'lucide-react';
+import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import Swal from 'sweetalert2';
 import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useTranslations } from 'next-intl';
@@ -11,6 +10,16 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Course {
   id: number;
@@ -97,6 +106,8 @@ export default function CoursesPage() {
     status: 'active'
   });
   const modalRef = useRef<HTMLDivElement>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<number | null>(null);
 
   // Close modal when clicking outside or pressing Escape
   useEffect(() => {
@@ -292,22 +303,18 @@ export default function CoursesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    const result = await Swal.fire({
-      title: t('delete.title'),
-      text: t('delete.text'),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#6b7280',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: t('delete.confirm'),
-      cancelButtonText: t('delete.cancel')
-    });
+    setCourseToDelete(id);
+    setShowDeleteDialog(true);
+  };
 
-    if (!result.isConfirmed) return;
+  const handleDeleteConfirm = async () => {
+    if (courseToDelete === null) return;
+
+    setShowDeleteDialog(false);
 
     toast.promise(
       (async () => {
-        const response = await fetchWithAuth(`/api/courses/${id}`, {
+        const response = await fetchWithAuth(`/api/courses/${courseToDelete}`, {
           method: 'DELETE',
         });
 
@@ -326,6 +333,7 @@ export default function CoursesPage() {
         }
 
         await fetchCourses();
+        setCourseToDelete(null);
         return data;
       })(),
       {
@@ -821,6 +829,36 @@ export default function CoursesPage() {
       <div className="mt-6 sm:mt-8">
         <PageFooter />
       </div>
+
+      {/* Delete Course Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-left">
+                {t('delete.title')}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-left pt-2">
+              {t('delete.text')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t('delete.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+            >
+              {t('delete.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

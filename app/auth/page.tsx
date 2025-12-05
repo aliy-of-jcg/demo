@@ -4,15 +4,29 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { AuthFooter } from "@/components/auth-footer";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, Info, AlertCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Swal from "sweetalert2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AuthPage() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const tLogin = useTranslations("auth.login");
   const t = useTranslations("auth");
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [authDialogData, setAuthDialogData] = useState<{
+    title: string;
+    text: string;
+    icon: 'error' | 'warning' | 'info';
+  } | null>(null);
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -77,36 +91,31 @@ export default function AuthPage() {
 
           // Show message if we successfully got the translation
           if (messageData && messageData.title && messageData.text) {
-            await Swal.fire({
+            setAuthDialogData({
               title: messageData.title,
               text: messageData.text,
               icon: icon,
-              confirmButtonText: "OK",
-              confirmButtonColor: "#6366f1",
-              allowOutsideClick: false,
-              allowEscapeKey: false,
             });
+            setShowAuthDialog(true);
           }
         } catch (error) {
           // If translation fails, show generic message
           console.warn("Failed to get translation for reason code:", reasonCode, error);
           try {
-            await Swal.fire({
+            setAuthDialogData({
               title: t("sessionExpired.title"),
               text: t("sessionExpired.text"),
               icon: "warning",
-              confirmButtonText: "OK",
-              confirmButtonColor: "#6366f1",
             });
+            setShowAuthDialog(true);
           } catch (fallbackError) {
             // Last resort: show English message
-            await Swal.fire({
+            setAuthDialogData({
               title: "Session Expired",
               text: "Your session has expired. Please sign in again.",
               icon: "warning",
-              confirmButtonText: "OK",
-              confirmButtonColor: "#6366f1",
             });
+            setShowAuthDialog(true);
           }
         }
       }
@@ -157,6 +166,41 @@ export default function AuthPage() {
         <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl"></div>
         <div className="absolute right-1/4 bottom-1/4 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl"></div>
       </div>
+
+      {/* Auth Message Dialog */}
+      <AlertDialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${authDialogData?.icon === 'error' ? 'bg-red-100' :
+                authDialogData?.icon === 'warning' ? 'bg-orange-100' : 'bg-blue-100'
+                }`}>
+                {authDialogData?.icon === 'error' ? (
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                ) : authDialogData?.icon === 'warning' ? (
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                ) : (
+                  <Info className="w-5 h-5 text-blue-600" />
+                )}
+              </div>
+              <AlertDialogTitle className="text-left">
+                {authDialogData?.title}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-left pt-2">
+              {authDialogData?.text}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => setShowAuthDialog(false)}
+              className="bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-600 text-white"
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

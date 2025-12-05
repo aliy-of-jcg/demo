@@ -749,7 +749,7 @@ window.CosmosTracker.trackConversion({
 - **next-intl 4.5** - 국제화(i18n) 및 다국어 지원
 - **next-swagger-doc 0.4** - Swagger UI가 있는 API 문서
 - **swagger-ui-react 5.29** - 대화형 API 문서 인터페이스
-- **SweetAlert2 11.26** - 아름답고 반응형 알림 및 모달
+- **Radix UI Alert Dialog** - 아름답고 접근성이 뛰어난 모달 다이얼로그
 - **class-variance-authority 0.7** - 컴포넌트 변형용 CVA
 - **clsx 2.1** - 조건부 className 유틸리티
 - **tailwind-merge 2.4** - 충돌 없이 Tailwind 클래스 병합

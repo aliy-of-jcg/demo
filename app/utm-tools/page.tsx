@@ -1,18 +1,27 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Copy, ExternalLink, Edit, Trash2, Plus, TrendingUp, Loader2 } from 'lucide-react';
+import { Search, Copy, ExternalLink, Edit, Trash2, Plus, TrendingUp, Loader2, AlertTriangle, CheckCircle, Ban } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
-import Swal from 'sweetalert2';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface UTMCode {
   id: number;
@@ -77,6 +86,10 @@ export default function UTMListPage() {
     total_clicks: 0
   });
   const [utmCodes, setUtmCodes] = useState<UTMCode[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteDialogData, setDeleteDialogData] = useState<{ id: number, name: string } | null>(null);
+  const [showToggleDialog, setShowToggleDialog] = useState(false);
+  const [toggleDialogData, setToggleDialogData] = useState<{ id: number, currentStatus: string, name: string } | null>(null);
 
   // Mark as initialized after first render
   useEffect(() => {
@@ -199,23 +212,19 @@ export default function UTMListPage() {
   };
 
   const handleDelete = async (id: number, name: string) => {
-    const result = await Swal.fire({
-      title: t('delete.title'),
-      text: t('delete.text', { name }),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: t('delete.confirm'),
-      cancelButtonText: t('delete.cancel')
-    });
+    setDeleteDialogData({ id, name });
+    setShowDeleteDialog(true);
+  };
 
-    if (!result.isConfirmed) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteDialogData) return;
+
+    setShowDeleteDialog(false);
 
     toast.promise(
       (async () => {
         // Hard delete - actually remove from database
-        const response = await fetchWithAuth(`/api/utm-codes/${id}`, {
+        const response = await fetchWithAuth(`/api/utm-codes/${deleteDialogData.id}`, {
           method: 'DELETE'
         });
 
@@ -226,6 +235,7 @@ export default function UTMListPage() {
         }
 
         await fetchUTMCodes();
+        setDeleteDialogData(null);
         return data;
       })(),
       {
@@ -237,24 +247,17 @@ export default function UTMListPage() {
   };
 
   const handleToggleStatus = async (id: number, currentStatus: string, name: string) => {
+    setToggleDialogData({ id, currentStatus, name });
+    setShowToggleDialog(true);
+  };
+
+  const handleToggleConfirm = async () => {
+    if (!toggleDialogData) return;
+
+    const { id, currentStatus, name } = toggleDialogData;
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    const action = newStatus === 'active' ? 'activate' : 'deactivate';
 
-    const result = await Swal.fire({
-      title: newStatus === 'active' ? t('toggle.activateTitle') : t('toggle.deactivateTitle'),
-      html: `
-        <p>${newStatus === 'active' ? t('toggle.activateText', { name }) : t('toggle.deactivateText', { name })}</p>
-        ${newStatus === 'inactive' ? `<p class="text-sm text-orange-600 mt-2">${t('toggle.inactiveWarning')}</p>` : `<p class="text-sm text-green-600 mt-2">${t('toggle.activeInfo')}</p>`}
-      `,
-      icon: newStatus === 'inactive' ? 'warning' : 'info',
-      showCancelButton: true,
-      confirmButtonColor: newStatus === 'inactive' ? '#f59e0b' : '#10b981',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: newStatus === 'active' ? t('toggle.confirmActivate') : t('toggle.confirmDeactivate'),
-      cancelButtonText: t('toggle.cancel')
-    });
-
-    if (!result.isConfirmed) return;
+    setShowToggleDialog(false);
 
     toast.promise(
       (async () => {
@@ -271,6 +274,7 @@ export default function UTMListPage() {
         }
 
         await fetchUTMCodes();
+        setToggleDialogData(null);
         return data;
       })(),
       {
@@ -731,6 +735,76 @@ export default function UTMListPage() {
       <div className="mt-8">
         <PageFooter />
       </div>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <AlertDialogTitle className="text-left">
+                {t('delete.title')}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-left pt-2">
+              {deleteDialogData && t('delete.text', { name: deleteDialogData.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('delete.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+            >
+              {t('delete.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Toggle Status Dialog */}
+      <AlertDialog open={showToggleDialog} onOpenChange={setShowToggleDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${toggleDialogData?.currentStatus === 'active' ? 'bg-orange-100' : 'bg-green-100'}`}>
+                {toggleDialogData?.currentStatus === 'active' ? (
+                  <Ban className="w-5 h-5 text-orange-600" />
+                ) : (
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                )}
+              </div>
+              <AlertDialogTitle className="text-left">
+                {toggleDialogData?.currentStatus === 'active' ? t('toggle.deactivateTitle') : t('toggle.activateTitle')}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-left pt-2">
+              {toggleDialogData && (
+                <div className="space-y-2">
+                  <p>{toggleDialogData.currentStatus === 'active'
+                    ? t('toggle.deactivateText', { name: toggleDialogData.name })
+                    : t('toggle.activateText', { name: toggleDialogData.name })}
+                  </p>
+                  <p className={`text-sm ${toggleDialogData.currentStatus === 'active' ? 'text-orange-600' : 'text-green-600'}`}>
+                    {toggleDialogData.currentStatus === 'active' ? t('toggle.inactiveWarning') : t('toggle.activeInfo')}
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('toggle.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleConfirm}
+              className={`${toggleDialogData?.currentStatus === 'active' ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-600' : 'bg-green-600 hover:bg-green-700 focus:ring-green-600'} text-white`}
+            >
+              {toggleDialogData?.currentStatus === 'active' ? t('toggle.confirmDeactivate') : t('toggle.confirmActivate')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

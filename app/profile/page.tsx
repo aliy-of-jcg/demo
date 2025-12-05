@@ -7,7 +7,17 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { PageFooter } from '@/components/page-footer';
 import { useRouter } from 'next/navigation';
-import Swal from 'sweetalert2';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 // Diff function to detect changes
 function diff(prev: Record<string, any>, next: Record<string, any>) {
@@ -24,6 +34,7 @@ export default function ProfilePage() {
     const [isLoadingPassword, setIsLoadingPassword] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     // Map API error messages to translation keys
     const getErrorMessage = (apiMessage: string): string => {
@@ -229,26 +240,12 @@ export default function ProfilePage() {
         }
     };
 
-    // Handle account deletion
-    const handleDeleteAccount = async (e: React.FormEvent) => {
-        e.preventDefault();
 
-        // Show confirmation dialog
-        const result = await Swal.fire({
-            title: t('swal.deleteTitle'),
-            text: t('swal.deleteText'),
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: t('swal.deleteConfirm'),
-            cancelButtonText: t('swal.deleteCancel'),
-        });
-
-        if (!result.isConfirmed) return;
-
+    // Handle account deletion execution
+    const handleDeleteAccount = async () => {
         if (!deletePassword) {
             toast.error(t('validation.currentPasswordRequired'));
+            setShowDeleteDialog(false);
             return;
         }
 
@@ -281,6 +278,9 @@ export default function ProfilePage() {
             // Show success message
             toast.success(t('success.accountDeleted'));
 
+            // Close dialog
+            setShowDeleteDialog(false);
+
             // Redirect to auth page after a short delay
             setTimeout(() => {
                 router.push('/auth');
@@ -289,6 +289,7 @@ export default function ProfilePage() {
             console.error('Account deletion error:', error);
             const errorMessage = getErrorMessage(error.message || '');
             toast.error(errorMessage || t('errors.deleteFailed'));
+            setShowDeleteDialog(false);
         } finally {
             setIsDeletingAccount(false);
         }
@@ -472,7 +473,7 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-sm text-gray-600 mb-6">{t('sections.deleteAccountWarning')}</p>
 
-                <form onSubmit={handleDeleteAccount} className="space-y-4">
+                <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             {t('fields.currentPassword')} <span className="text-red-500">*</span>
@@ -488,15 +489,62 @@ export default function ProfilePage() {
                         <p className="text-xs text-gray-500 mt-1">{t('hints.confirmIdentity')}</p>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={isDeletingAccount || !deletePassword.trim()}
-                        className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        {isDeletingAccount ? t('buttons.deleting') : t('buttons.deleteAccount')}
-                    </button>
-                </form>
+                    <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {
+                        if (open) {
+                            // Validate password before opening dialog
+                            if (!deletePassword.trim()) {
+                                toast.error(t('validation.currentPasswordRequired'));
+                                return;
+                            }
+                        }
+                        setShowDeleteDialog(open);
+                    }}>
+                        <AlertDialogTrigger asChild>
+                            <button
+                                type="button"
+                                disabled={isDeletingAccount || !deletePassword.trim()}
+                                className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                {t('buttons.deleteAccount')}
+                            </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-red-100 rounded-full">
+                                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                                    </div>
+                                    <AlertDialogTitle className="text-left">
+                                        {t('swal.deleteTitle')}
+                                    </AlertDialogTitle>
+                                </div>
+                                <AlertDialogDescription className="text-left pt-2">
+                                    {t('swal.deleteText')}
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isDeletingAccount}>
+                                    {t('swal.deleteCancel')}
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={handleDeleteAccount}
+                                    disabled={isDeletingAccount}
+                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
+                                >
+                                    {isDeletingAccount ? (
+                                        <span className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            {t('buttons.deleting')}
+                                        </span>
+                                    ) : (
+                                        t('swal.deleteConfirm')
+                                    )}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
             </div>
 
             <PageFooter />

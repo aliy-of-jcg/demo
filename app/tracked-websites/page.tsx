@@ -1,16 +1,25 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar, Globe, Activity, Users, Eye, TrendingUp, Ban, CheckCircle, Info } from 'lucide-react';
+import { Calendar, Globe, Activity, Users, Eye, TrendingUp, Ban, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
-import Swal from 'sweetalert2';
 import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface WebsiteData {
   domain: string;
@@ -85,24 +94,20 @@ function TrackedWebsitesPageContent() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'disabled'>('all');
   const [togglingDomain, setTogglingDomain] = useState<string | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [showToggleDialog, setShowToggleDialog] = useState(false);
+  const [toggleDialogData, setToggleDialogData] = useState<{ domain: string, currentStatus: boolean } | null>(null);
 
   // Toggle website status
   const handleToggleStatus = async (domain: string, currentStatus: boolean) => {
-    const result = await Swal.fire({
-      title: currentStatus ? t('toggle.title') : t('toggle.titleEnable'),
-      text: currentStatus
-        ? t('toggle.textDisable', { domain })
-        : t('toggle.textEnable', { domain }),
-      icon: currentStatus ? 'warning' : 'question',
-      showCancelButton: true,
-      confirmButtonColor: currentStatus ? '#ef4444' : '#10b981',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: currentStatus ? t('toggle.confirm') : t('toggle.confirmEnable'),
-      cancelButtonText: t('toggle.cancel')
-    });
+    setToggleDialogData({ domain, currentStatus });
+    setShowToggleDialog(true);
+  };
 
-    if (!result.isConfirmed) return;
+  const handleToggleConfirm = async () => {
+    if (!toggleDialogData) return;
 
+    const { domain, currentStatus } = toggleDialogData;
+    setShowToggleDialog(false);
     setTogglingDomain(domain);
 
     const promise = (async () => {
@@ -673,6 +678,43 @@ function TrackedWebsitesPageContent() {
       <div className="mt-8">
         <PageFooter />
       </div>
+
+      {/* Toggle Status Dialog */}
+      <AlertDialog open={showToggleDialog} onOpenChange={setShowToggleDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${toggleDialogData?.currentStatus ? 'bg-red-100' : 'bg-green-100'}`}>
+                {toggleDialogData?.currentStatus ? (
+                  <Ban className="w-5 h-5 text-red-600" />
+                ) : (
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                )}
+              </div>
+              <AlertDialogTitle className="text-left">
+                {toggleDialogData?.currentStatus ? t('toggle.title') : t('toggle.titleEnable')}
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-left pt-2">
+              {toggleDialogData?.currentStatus
+                ? t('toggle.textDisable', { domain: toggleDialogData?.domain || '' })
+                : t('toggle.textEnable', { domain: toggleDialogData?.domain || '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!togglingDomain}>
+              {t('toggle.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleConfirm}
+              disabled={!!togglingDomain}
+              className={`${toggleDialogData?.currentStatus ? 'bg-red-600 hover:bg-red-700 focus:ring-red-600' : 'bg-green-600 hover:bg-green-700 focus:ring-green-600'} text-white`}
+            >
+              {toggleDialogData?.currentStatus ? t('toggle.confirm') : t('toggle.confirmEnable')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Loader2, Menu } from "lucide-react";
-import Swal from 'sweetalert2';
+import { showAuthDialog } from "@/lib/utils/auth-dialog";
 import type { UserStatus } from "@/lib/types";
 import { SystemSettingsProvider } from "@/lib/contexts/SystemSettingsContext";
 
@@ -31,17 +31,7 @@ async function showAuthPopupAndRedirect(messageType: string, redirectUrl: string
     }
 
     const message = AUTH_MESSAGES[messageType] || AUTH_MESSAGES.session_expired;
-    await Swal.fire({
-      title: message.title,
-      text: message.text,
-      icon: message.icon,
-      confirmButtonText: '확인',
-      confirmButtonColor: '#6366f1',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      showCloseButton: true,
-      didClose: () => { isShowingPopup = false; },
-    });
+    await showAuthDialog(message.title, message.text, message.icon);
 
     window.location.replace(redirectUrl);
   } catch (error) {
