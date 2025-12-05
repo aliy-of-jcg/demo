@@ -55,9 +55,10 @@ interface Session {
 
 export default function SessionJourneysPage() {
   const t = useTranslations('sessionJourneys');
-  const { getInitialDateRange, isLoading: settingsLoading, getDefaultTimezone } = useSystemSettings();
+  const { getInitialDateRange, isLoading: settingsLoading, getDefaultTimezone, getAllowTracking } = useSystemSettings();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const trackingEnabled = getAllowTracking();
 
   // Initialize date range from system defaults (GA behavior)
   // On page reload, defaults are applied automatically
@@ -289,6 +290,23 @@ export default function SessionJourneysPage() {
             {t('subtitle')}
           </p>
         </div>
+
+        {/* Tracking Disabled Banner */}
+        {!trackingEnabled && (
+          <div className="bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 border-r-4 border-r-amber-400 rounded-lg p-5 mb-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-amber-800 mb-1.5 leading-relaxed">
+                  {t('trackingDisabled.title')}
+                </h3>
+                <p className="text-sm text-amber-700 leading-relaxed">
+                  {t('trackingDisabled.description')}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 mb-4 sm:mb-6">

@@ -35,9 +35,9 @@ export default function ApiDocsPage() {
             Complete API reference for the CosMos AI Analytics & Tracking System
           </p>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <SwaggerUI 
+          <SwaggerUI
             spec={apiSpec}
             docExpansion="list"
             defaultModelsExpandDepth={1}
@@ -52,6 +52,4 @@ export default function ApiDocsPage() {
     </div>
   );
 }
-
-
 

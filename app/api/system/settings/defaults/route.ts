@@ -25,6 +25,7 @@ export const GET = requireAuth(async (req: NextRequest, context: AuthContext) =>
             default_timezone: settings.default_timezone,
             default_campaign_status: settings.default_campaign_status,
             default_user_role: settings.default_user_role,
+            allow_tracking: settings.allow_tracking,
         };
 
         return NextResponse.json({
@@ -43,6 +44,7 @@ export const GET = requireAuth(async (req: NextRequest, context: AuthContext) =>
                     default_timezone: 'Asia/Seoul',
                     default_campaign_status: 'waiting',
                     default_user_role: 'regular',
+                    allow_tracking: true,
                 }
             },
             { status: 500 }

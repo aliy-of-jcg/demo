@@ -37,11 +37,15 @@ A comprehensive marketing analytics and campaign management platform built with 
   - User status management (active, pending, stopped, blocked, hidden)
 - 👥 **User Management** - Support for Owner, Admin, Observer, and Regular user types
 - ⚙️ **System Management** - Owner-only system administration menu with user management capabilities
+  - System settings management (default date range, timezone, session timeout, etc.)
+  - Feature flag controls (allow new signups, enable tracking, etc.)
+  - Cached settings management (24-hour TTL)
 - 🛡️ **Permission Protection System** - Frontend and backend permission middleware
   - `usePermission()` and `useRole()` React hooks
   - `<ProtectedComponent>` and `<ProtectedRoute>` components
   - `withAuth()` middleware for API routes
 - 📧 **Email Integration** - Automated notifications and password reset with Nodemailer
+- 👤 **User Profile Management** - Profile information updates, password changes, account deletion
 - 🔄 **Session Management** - Visitor tracking with cookie-based sessions
 - 📍 **IP Geolocation** - Automatic country/city detection
 - 🎨 **Modern UI** - Beautiful, responsive interface with shadcn/ui and Tailwind CSS
@@ -188,6 +192,9 @@ demo/
 │   │   ├── track-internal/# Internal testing endpoint
 │   │   ├── tracked-websites/ # Tracked websites management API
 │   │   ├── users/         # User management API (Owner only)
+│   │   ├── profile/       # User profile management API
+│   │   ├── system/        # System settings API
+│   │   │   └── settings/  # System settings management
 │   │   ├── health/        # Health check endpoint
 │   │   └── utm-codes/     # UTM code utilities
 │   ├── auth/              # Authentication pages (login/signup)
@@ -241,6 +248,7 @@ demo/
 │   ├── db-init.ts        # Database initialization
 │   ├── api-spec.ts       # Swagger API specification
 │   ├── pdf-export.ts     # PDF export utilities (html2canvas + jsPDF)
+│   ├── system-settings.ts # System settings management utility
 │   ├── auth/             # Authentication & permission middleware
 │   │   ├── api-middleware.ts # API route auth/permission middleware
 │   │   ├── route-guard.ts    # Route guard utilities
@@ -318,6 +326,8 @@ CosMos AI uses a dual-database architecture optimized for both real-time analyti
 - `/api/utm-codes/*` - UTM code utilities
 - `/api/tracked-websites/*` - Tracked websites management
 - `/api/users/*` - User management (Owner only)
+- `/api/profile` - User profile management (authenticated users)
+- `/api/system/settings/*` - System settings management (Owner only)
 - `/api/health` - System health check
 - `/t/[code]` - Short URL tracking redirection
 
@@ -658,6 +668,23 @@ Access various analytics modules:
 - Delete users (soft delete)
 - User statistics dashboard (Total, Active, Pending, Blocked)
 - Last login tracking and account creation dates
+- System Settings Management
+  - Default date range settings
+  - Default timezone settings (KST support)
+  - Default campaign status settings
+  - Default user role settings
+  - Session timeout settings (in minutes)
+  - Allow/block new signups toggle
+  - Enable/disable tracking toggle
+  - Cached settings management (24-hour TTL)
+
+**User Profile Management**
+- View and update profile information
+- Change email address (duplicate checking)
+- Change contact number (duplicate checking)
+- Change company name
+- Change password (current password verification required)
+- Delete account (soft delete, password verification required)
 
 **PDF Export**
 - Export any analytics dashboard to PDF

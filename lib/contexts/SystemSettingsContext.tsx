@@ -13,6 +13,7 @@ interface SystemSettingsContextType {
     getDefaultTimezone: () => string;
     getDefaultCampaignStatus: () => 'active' | 'waiting' | 'paused' | 'ended';
     getDefaultUserRole: () => 'admin' | 'observer' | 'regular';
+    getAllowTracking: () => boolean;
     // Calculate initial date range (end = today, start = today - default_date_range days)
     getInitialDateRange: () => { start: string; end: string };
 }
@@ -63,6 +64,7 @@ export function SystemSettingsProvider({ children }: SystemSettingsProviderProps
                     default_timezone: 'Asia/Seoul',
                     default_campaign_status: 'waiting',
                     default_user_role: 'regular',
+                    allow_tracking: true,
                 });
             } finally {
                 setIsLoading(false);
@@ -96,6 +98,10 @@ export function SystemSettingsProvider({ children }: SystemSettingsProviderProps
         return (settings?.default_user_role as any) ?? 'regular';
     };
 
+    const getAllowTracking = (): boolean => {
+        return settings?.allow_tracking ?? true;
+    };
+
     const getInitialDateRange = (): { start: string; end: string } => {
         const dateRange = getDefaultDateRange();
         const end = new Date();
@@ -116,6 +122,7 @@ export function SystemSettingsProvider({ children }: SystemSettingsProviderProps
         getDefaultTimezone,
         getDefaultCampaignStatus,
         getDefaultUserRole,
+        getAllowTracking,
         getInitialDateRange,
     };
 

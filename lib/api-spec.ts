@@ -2,8 +2,8 @@ export const apiSpec = {
   openapi: "3.0.0",
   info: {
     title: "CosMos AI Analytics & Tracking API",
-    version: "2.2.0",
-    description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, campaign management, and user administration capabilities. Updated with 38+ active endpoints including user management.",
+    version: "2.3.0",
+    description: "Comprehensive marketing analytics and tracking API for monitoring campaign performance across multiple channels. Includes real-time tracking, detailed analytics, campaign management, user administration, system settings, and profile management capabilities. Updated with 42+ active endpoints.",
     contact: {
       name: "CosMos AI Support",
       email: "support@cosmosai.com",
@@ -50,7 +50,11 @@ export const apiSpec = {
     },
     {
       name: "System",
-      description: "Health checks and system monitoring (1 endpoint)",
+      description: "System settings, health checks, and monitoring (4 endpoints)",
+    },
+    {
+      name: "Profile",
+      description: "User profile management (3 endpoints)",
     },
     {
       name: "User Management",
@@ -1577,6 +1581,177 @@ export const apiSpec = {
       },
     },
 
+    "/api/system/settings": {
+      get: {
+        tags: ["System"],
+        summary: "Get all system settings",
+        description: "Retrieve all system settings (Owner only). Requires system:read permission.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        responses: {
+          200: {
+            description: "System settings retrieved successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    settings: {
+                      type: "object",
+                      properties: {
+                        default_date_range: { type: "number", example: 7 },
+                        default_timezone: { type: "string", example: "Asia/Seoul" },
+                        default_campaign_status: { type: "string", enum: ["active", "waiting", "paused", "ended"], example: "waiting" },
+                        default_user_role: { type: "string", enum: ["admin", "observer", "regular"], example: "regular" },
+                        session_timeout_minutes: { type: "number", example: 120 },
+                        allow_new_signups: { type: "boolean", example: true },
+                        allow_tracking: { type: "boolean", example: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
+          },
+          403: {
+            description: "Forbidden - Owner privileges required (system:read permission)",
+          },
+        },
+      },
+      put: {
+        tags: ["System"],
+        summary: "Update system settings",
+        description: "Update system settings (Owner only). Requires system:update permission.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["settings"],
+                properties: {
+                  settings: {
+                    type: "object",
+                    properties: {
+                      default_date_range: { type: "number", example: 7 },
+                      default_timezone: { type: "string", example: "Asia/Seoul" },
+                      default_campaign_status: { type: "string", enum: ["active", "waiting", "paused", "ended"] },
+                      default_user_role: { type: "string", enum: ["admin", "observer", "regular"] },
+                      session_timeout_minutes: { type: "number", example: 120 },
+                      allow_new_signups: { type: "boolean", example: true },
+                      allow_tracking: { type: "boolean", example: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Settings updated successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Settings updated successfully" },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: "Invalid settings data or invalid setting keys",
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
+          },
+          403: {
+            description: "Forbidden - Owner privileges required (system:update permission)",
+          },
+        },
+      },
+    },
+
+    "/api/system/settings/defaults": {
+      get: {
+        tags: ["System"],
+        summary: "Get public system defaults",
+        description: "Get non-sensitive system defaults (date range, timezone, etc.) for authenticated users. Full settings require system:read permission.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        responses: {
+          200: {
+            description: "Public defaults retrieved successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    settings: {
+                      type: "object",
+                      properties: {
+                        default_date_range: { type: "number", example: 7 },
+                        default_timezone: { type: "string", example: "Asia/Seoul" },
+                        default_campaign_status: { type: "string", example: "waiting" },
+                        default_user_role: { type: "string", example: "regular" },
+                        allow_tracking: { type: "boolean", example: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
+          },
+        },
+      },
+    },
+
+    "/api/system/settings/session-timeout": {
+      get: {
+        tags: ["System"],
+        summary: "Get session timeout",
+        description: "Get session timeout in minutes for tracking script. Public endpoint (no auth required) used by cosmos-track.js.",
+        responses: {
+          200: {
+            description: "Session timeout retrieved",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    timeout_minutes: { type: "number", example: 120 },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
     // ==================== USER MANAGEMENT ====================
     "/api/users": {
       get: {
@@ -1729,6 +1904,167 @@ export const apiSpec = {
           },
           403: {
             description: "Forbidden - Owner privileges required or cannot delete owner accounts",
+          },
+          404: {
+            description: "User not found",
+          },
+        },
+      },
+    },
+
+    // ==================== PROFILE ====================
+    "/api/profile": {
+      get: {
+        tags: ["Profile"],
+        summary: "Get current user's profile",
+        description: "Retrieve current authenticated user's profile information",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        responses: {
+          200: {
+            description: "Profile retrieved successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    user: {
+                      type: "object",
+                      properties: {
+                        id: { type: "number", example: 1 },
+                        uuid: { type: "string", example: "uuid-user-123" },
+                        email: { type: "string", example: "user@example.com" },
+                        company_name: { type: "string", example: "Example Corp" },
+                        contact_number: { type: "string", example: "+821012345678" },
+                        user_type: { type: "string", enum: ["owner", "admin", "observer", "regular"], example: "regular" },
+                        status: { type: "string", enum: ["active", "pending", "stopped", "blocked"], example: "active" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
+          },
+          404: {
+            description: "User not found",
+          },
+        },
+      },
+      patch: {
+        tags: ["Profile"],
+        summary: "Update current user's profile",
+        description: "Update profile information or change password. Requires current password verification for password changes.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["currentPassword"],
+                properties: {
+                  email: { type: "string", format: "email", example: "newemail@example.com" },
+                  contact_number: { type: "string", example: "+821012345678" },
+                  company_name: { type: "string", example: "New Company Name" },
+                  currentPassword: { type: "string", format: "password", example: "currentPassword123" },
+                  newPassword: { type: "string", format: "password", example: "newPassword123" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Profile updated successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Profile updated successfully" },
+                    user: {
+                      type: "object",
+                      properties: {
+                        id: { type: "number" },
+                        uuid: { type: "string" },
+                        email: { type: "string" },
+                        company_name: { type: "string" },
+                        contact_number: { type: "string" },
+                        user_type: { type: "string" },
+                        status: { type: "string" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: "Invalid input, duplicate email/phone, or incorrect password",
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
+          },
+          404: {
+            description: "User not found",
+          },
+        },
+      },
+      delete: {
+        tags: ["Profile"],
+        summary: "Delete current user's account",
+        description: "Soft delete current user's account. Requires current password verification.",
+        security: [
+          {
+            bearerAuth: [],
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["currentPassword"],
+                properties: {
+                  currentPassword: { type: "string", format: "password", example: "currentPassword123" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Account deleted successfully",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    success: { type: "boolean", example: true },
+                    message: { type: "string", example: "Account deleted successfully" },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: "Current password is required or incorrect",
+          },
+          401: {
+            description: "Unauthorized - Missing or invalid token",
           },
           404: {
             description: "User not found",

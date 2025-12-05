@@ -58,10 +58,11 @@ interface ApiResponse {
 function TrackedWebsitesPageContent() {
   const t = useTranslations('trackedWebsites');
   const { hasPermission } = usePermission();
-  const { getInitialDateRange, isLoading: settingsLoading } = useSystemSettings();
+  const { getInitialDateRange, isLoading: settingsLoading, getAllowTracking } = useSystemSettings();
 
   // Check if user can manage tracked websites (settings:update permission)
   const canManageWebsites = hasPermission('settings:update');
+  const trackingEnabled = getAllowTracking();
 
   // Initialize date range from system defaults (GA behavior)
   // On page reload, defaults are applied automatically
@@ -246,6 +247,23 @@ function TrackedWebsitesPageContent() {
           </p>
         </div>
       </div>
+
+      {/* Tracking Disabled Banner */}
+      {!trackingEnabled && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 border-r-4 border-r-amber-400 rounded-lg p-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-amber-800 mb-1.5 leading-relaxed">
+                {t('trackingDisabled.title')}
+              </h3>
+              <p className="text-sm text-amber-700 leading-relaxed">
+                {t('trackingDisabled.description')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">

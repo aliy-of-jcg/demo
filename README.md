@@ -37,11 +37,15 @@ Next.js 14로 구축된 포괄적인 마케팅 분석 및 캠페인 관리 플�
   - 사용자 상태 관리 (active, pending, stopped, blocked, hidden)
 - 👥 **사용자 관리** - Owner, Admin, Observer, Regular 사용자 유형 지원
 - ⚙️ **시스템 관리** - Owner 전용 시스템 관리 메뉴 및 사용자 관리 기능
+  - 시스템 설정 관리 (기본 날짜 범위, 시간대, 세션 타임아웃 등)
+  - 기능 플래그 제어 (신규 가입 허용, 추적 활성화 등)
+  - 캐시된 설정 관리 (24시간 TTL)
 - 🛡️ **권한 보호 시스템** - 프론트엔드 및 백엔드 권한 미들웨어
   - `usePermission()` 및 `useRole()` React 훅
   - `<ProtectedComponent>` 및 `<ProtectedRoute>` 컴포넌트
   - API 라우트용 `withAuth()` 미들웨어
 - 📧 **이메일 통합** - Nodemailer를 사용한 자동 알림 및 비밀번호 재설정
+- 👤 **사용자 프로필 관리** - 프로필 정보 업데이트, 비밀번호 변경, 계정 삭제
 - 🔄 **세션 관리** - 쿠키 기반 세션을 사용한 방문자 추적
 - 📍 **IP 지리적 위치** - 자동 국가/도시 감지
 - 🎨 **모던 UI** - shadcn/ui 및 Tailwind CSS를 사용한 아름답고 반응형 인터페이스
@@ -188,6 +192,9 @@ demo/
 │   │   ├── track-internal/# 내부 테스트 엔드포인트
 │   │   ├── tracked-websites/ # 추적 웹사이트 관리 API
 │   │   ├── users/         # 사용자 관리 API (Owner 전용)
+│   │   ├── profile/       # 사용자 프로필 관리 API
+│   │   ├── system/        # 시스템 설정 API
+│   │   │   └── settings/  # 시스템 설정 관리
 │   │   ├── health/        # 헬스 체크 엔드포인트
 │   │   └── utm-codes/     # UTM 코드 유틸리티
 │   ├── auth/              # 인증 페이지 (로그인/회원가입)
@@ -241,6 +248,7 @@ demo/
 │   ├── db-init.ts        # 데이터베이스 초기화
 │   ├── api-spec.ts       # Swagger API 사양
 │   ├── pdf-export.ts     # PDF 내보내기 유틸리티 (html2canvas + jsPDF)
+│   ├── system-settings.ts # 시스템 설정 관리 유틸리티
 │   ├── auth/             # 인증 및 권한 미들웨어
 │   │   ├── api-middleware.ts # API 라우트 인증/권한 미들웨어
 │   │   ├── route-guard.ts    # 라우트 가드 유틸리티
@@ -318,6 +326,8 @@ CosMos AI는 실시간 분석과 안정적인 애플리케이션 데이터 관�
 - `/api/utm-codes/*` - UTM 코드 유틸리티
 - `/api/tracked-websites/*` - 추적 웹사이트 관리
 - `/api/users/*` - 사용자 관리 (Owner 전용)
+- `/api/profile` - 사용자 프로필 관리 (인증된 사용자)
+- `/api/system/settings/*` - 시스템 설정 관리 (Owner 전용)
 - `/api/health` - 시스템 헬스 체크
 - `/t/[code]` - 짧은 URL 추적 리디렉션
 
@@ -657,6 +667,23 @@ window.CosmosTracker.trackConversion({
 - 사용자 삭제 (소프트 삭제)
 - 사용자 통계 대시보드 (전체, 활성, 대기 중, 차단됨)
 - 마지막 로그인 추적 및 계정 생성 날짜
+- 시스템 설정 관리
+  - 기본 날짜 범위 설정
+  - 기본 시간대 설정 (KST 지원)
+  - 기본 캠페인 상태 설정
+  - 기본 사용자 역할 설정
+  - 세션 타임아웃 설정 (분 단위)
+  - 신규 가입 허용/차단 토글
+  - 추적 활성화/비활성화 토글
+  - 캐시된 설정 관리 (24시간 TTL)
+
+**사용자 프로필 관리**
+- 프로필 정보 보기 및 업데이트
+- 이메일 주소 변경 (중복 확인)
+- 연락처 번호 변경 (중복 확인)
+- 회사명 변경
+- 비밀번호 변경 (현재 비밀번호 확인 필요)
+- 계정 삭제 (소프트 삭제, 비밀번호 확인 필요)
 
 **PDF 내보내기**
 - 모든 분석 대시보드를 PDF로 내보내기
