@@ -1113,11 +1113,7 @@
     "empty": {
       "noSessions": "No sessions found for the selected date range."
     },
-    "loading": "Loading...",
-    "trackingDisabled": {
-      "title": "Tracking is Currently Disabled",
-      "description": "Analytics tracking has been disabled system-wide. No new session data is being collected. Enable tracking in System Settings to resume data collection."
-    }
+    "loading": "Loading..."
   },
   "trackedWebsites": {
     "title": "Tracked Websites",
@@ -1192,11 +1188,12 @@
     "export": {
       "filename": "tracked-websites-{start}-to-{end}.pdf",
       "title": "Tracked Websites - {start} to {end}"
-    },
-    "trackingDisabled": {
-      "title": "Tracking is Currently Disabled",
-      "description": "Analytics tracking has been disabled system-wide. No new data is being collected from any website. Enable tracking in System Settings to resume data collection."
     }
+  },
+  "trackingBadge": {
+    "label": "Tracking off",
+    "tooltipAdmin": "Tracking is off. Enable in System Settings to resume data collection.",
+    "tooltipUser": "Tracking is off. Analytics data collection is paused."
   },
   "utmTools": {
     "list": {

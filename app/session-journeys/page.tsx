@@ -19,6 +19,8 @@ import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 import { formatTimezoneForDisplay } from '@/lib/utils/timezones';
+import { usePermission } from '@/lib/hooks/usePermission';
+import { TrackingStatusBadge } from '@/components/tracking-status-badge';
 
 interface Page {
   page_url: string;
@@ -55,10 +57,9 @@ interface Session {
 
 export default function SessionJourneysPage() {
   const t = useTranslations('sessionJourneys');
-  const { getInitialDateRange, isLoading: settingsLoading, getDefaultTimezone, getAllowTracking } = useSystemSettings();
+  const { getInitialDateRange, isLoading: settingsLoading, getDefaultTimezone } = useSystemSettings();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
-  const trackingEnabled = getAllowTracking();
 
   // Initialize date range from system defaults (GA behavior)
   // On page reload, defaults are applied automatically
@@ -276,37 +277,23 @@ export default function SessionJourneysPage() {
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Route className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-600" />
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">{t('title')}</h1>
-            </div>
-            <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium rounded-full self-start sm:self-auto">
-              {!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()) : 'Loading...'}
-            </span>
-          </div>
-          <p className="text-sm sm:text-base text-gray-600">
-            {t('subtitle')}
-          </p>
-        </div>
-
-        {/* Tracking Disabled Banner */}
-        {!trackingEnabled && (
-          <div className="bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 border-r-4 border-r-amber-400 rounded-lg p-5 mb-6">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-amber-800 mb-1.5 leading-relaxed">
-                  {t('trackingDisabled.title')}
-                </h3>
-                <p className="text-sm text-amber-700 leading-relaxed">
-                  {t('trackingDisabled.description')}
-                </p>
+        <div className="mb-4 sm:mb-6 lg:mb-8 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Route className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-blue-600" />
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">{t('title')}</h1>
               </div>
+              <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-700 text-xs sm:text-sm font-medium rounded-full self-start sm:self-auto">
+                {!settingsLoading ? formatTimezoneForDisplay(getDefaultTimezone()) : 'Loading...'}
+              </span>
             </div>
+            <p className="text-sm sm:text-base text-gray-600">
+              {t('subtitle')}
+            </p>
           </div>
-        )}
+          <TrackingStatusBadge />
+        </div>
 
         {/* Filters */}
         <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 mb-4 sm:mb-6">

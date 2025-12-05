@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Save, Settings, Loader2, RefreshCw, AlertCircle, HelpCircle } from "lucide-react";
+import { Save, Settings, Loader2, AlertCircle, HelpCircle } from "lucide-react";
 import { SystemSettingsMap } from "@/lib/system-settings";
 import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -177,15 +177,6 @@ function SystemSettingsPageContent() {
                             <Settings className="w-8 h-8 text-blue-600 mr-3" />
                             <h1 className="text-3xl font-bold text-gray-900">{t("title")}</h1>
                         </div>
-                        <button
-                            onClick={fetchSettings}
-                            disabled={loading}
-                            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Refresh settings"
-                        >
-                            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                            Refresh
-                        </button>
                     </div>
                     <p className="text-gray-600">{t("subtitle")}</p>
                 </div>

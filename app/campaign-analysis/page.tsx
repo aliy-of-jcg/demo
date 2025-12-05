@@ -8,6 +8,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
+import { TrackingStatusBadge } from '@/components/tracking-status-badge';
 
 interface CampaignData {
   id: number;
@@ -244,12 +245,15 @@ export default function CampaignAnalysisPage() {
           <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
 
-        <ExportToPDFButton
-          element="[data-export-content]"
-          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
-          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
-          size="sm"
-        />
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          <TrackingStatusBadge />
+          <ExportToPDFButton
+            element="[data-export-content]"
+            filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+            title={t('export.title', { start: dateRange.start, end: dateRange.end })}
+            size="sm"
+          />
+        </div>
       </div>
 
       {/* Date Range Picker - Top (matching Performance Dashboard layout) */}

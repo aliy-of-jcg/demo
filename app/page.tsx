@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { PageFooter } from "@/components/page-footer";
 import { fetchWithAuth } from "@/lib/utils/fetch-with-auth";
+import { TrackingStatusBadge } from "@/components/tracking-status-badge";
 
 // Home page now relies on the root layout's cookie-based locale handling.
 export const dynamic = 'force-dynamic';
@@ -190,17 +191,20 @@ export default function LandingPage() {
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
         <div className="relative px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 pt-16 lg:pt-8">
-          <div className="max-w-7xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-100 rounded-full text-blue-700 text-xs sm:text-sm font-medium mb-4 sm:mb-6">
-              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className="whitespace-nowrap">{t('hero.badge')}</span>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6 flex-wrap">
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-100 rounded-full text-blue-700 text-xs sm:text-sm font-medium">
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">{t('hero.badge')}</span>
+              </div>
+              <TrackingStatusBadge />
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 px-2 break-words">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-4 sm:mb-6 px-2 break-words text-center">
               {t('hero.title')} <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{t('hero.brandName')}</span>
             </h1>
 
-            <p className="text-base sm:text-lg lg:text-xl text-gray-600 mb-8 sm:mb-12 max-w-3xl mx-auto px-4">
+            <p className="text-base sm:text-lg lg:text-xl text-gray-600 mb-8 sm:mb-12 max-w-3xl mx-auto px-4 text-center">
               {t('hero.description')}
             </p>
 

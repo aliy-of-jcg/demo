@@ -8,6 +8,7 @@ import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { TrackingStatusBadge } from '@/components/tracking-status-badge';
 
 interface PerformanceData {
   metrics: {
@@ -170,12 +171,15 @@ export default function PerformanceAnalysisPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('title')}</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
-        <ExportToPDFButton
-          element="[data-export-content]"
-          filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
-          title={t('export.title', { start: dateRange.start, end: dateRange.end })}
-          size="sm"
-        />
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          <TrackingStatusBadge />
+          <ExportToPDFButton
+            element="[data-export-content]"
+            filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+            title={t('export.title', { start: dateRange.start, end: dateRange.end })}
+            size="sm"
+          />
+        </div>
       </div>
 
       {/* Date Range Picker */}

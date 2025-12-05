@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 import { formatTimezoneForDisplay } from '@/lib/utils/timezones';
+import { TrackingStatusBadge } from '@/components/tracking-status-badge';
 
 interface HourlyData {
   hour: number;
@@ -153,7 +154,8 @@ export default function TimeAnalysisPage() {
           </div>
           <p className="text-sm sm:text-base text-gray-600 mt-1">{t('subtitle')}</p>
         </div>
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          <TrackingStatusBadge />
           <ExportToPDFButton
             element="[data-export-content]"
             filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
