@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { nanoid } from 'nanoid';
 import { getPool } from '@/lib/mysql';
+import { getSettingsWithDefaults } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,6 +127,15 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if tracking is enabled system-wide
+    const settings = await getSettingsWithDefaults();
+    if (!settings.allow_tracking) {
+      return NextResponse.json(
+        { success: false, message: 'Tracking is disabled' },
+        { status: 403 }
+      );
+    }
+
     const data = await request.json();
 
     const {

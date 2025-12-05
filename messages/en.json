@@ -1478,6 +1478,12 @@
       "invalidToken": "Invalid or expired token",
       "authRequired": "Authentication required",
       "internalError": "Internal server error"
+    },
+    "swal": {
+      "deleteTitle": "Delete Account?",
+      "deleteText": "Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.",
+      "deleteConfirm": "Yes, delete it!",
+      "deleteCancel": "Cancel"
     }
   },
   "userManagement": {
@@ -1622,7 +1628,19 @@
         "description": "Enable or disable new user registration",
         "enabled": "Enabled",
         "disabled": "Disabled"
+      },
+      "allow_tracking": {
+        "label": "Allow Tracking",
+        "description": "Enable or disable all analytics tracking. When disabled, all tracking events will be rejected.",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
       }
+    },
+    "swal": {
+      "saveTitle": "Save System Settings?",
+      "saveText": "Are you sure you want to save these system settings? Changes will take effect after page reload.",
+      "saveConfirm": "Yes, save it!",
+      "saveCancel": "Cancel"
     }
   }
 }

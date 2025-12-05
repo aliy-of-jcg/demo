@@ -59,6 +59,7 @@ export const PUT = requirePermission('system:update', async (req: NextRequest, c
             'default_user_role',
             'session_timeout_minutes',
             'allow_new_signups',
+            'allow_tracking',
         ];
 
         const invalidKeys = Object.keys(settings).filter(

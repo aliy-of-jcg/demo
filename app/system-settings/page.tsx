@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { getAllTimezones } from "@/lib/utils/timezones";
 import { toast } from "sonner";
+import Swal from "sweetalert2";
 
 function SystemSettingsPageContent() {
     const t = useTranslations("systemSettings");
@@ -30,6 +31,7 @@ function SystemSettingsPageContent() {
         default_user_role: "regular",
         session_timeout_minutes: 2,
         allow_new_signups: true,
+        allow_tracking: true,
     });
 
     const [settings, setSettings] = useState<Partial<SystemSettingsMap>>({
@@ -39,6 +41,7 @@ function SystemSettingsPageContent() {
         default_user_role: "regular",
         session_timeout_minutes: 2,
         allow_new_signups: true,
+        allow_tracking: true,
     });
 
     useEffect(() => {
@@ -71,6 +74,7 @@ function SystemSettingsPageContent() {
                     default_user_role: 'regular',
                     session_timeout_minutes: 2,
                     allow_new_signups: true,
+                    allow_tracking: true,
                     ...cleanSettings, // Override with fetched values (without legacy fields)
                 };
                 setSettings(fetchedSettings);
@@ -87,6 +91,20 @@ function SystemSettingsPageContent() {
     };
 
     const handleSave = async () => {
+        // Show confirmation dialog
+        const result = await Swal.fire({
+            title: t("swal.saveTitle"),
+            text: t("swal.saveText"),
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#2563eb",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: t("swal.saveConfirm"),
+            cancelButtonText: t("swal.saveCancel"),
+        });
+
+        if (!result.isConfirmed) return;
+
         try {
             setSaving(true);
 
@@ -363,6 +381,37 @@ function SystemSettingsPageContent() {
                                 >
                                     <span
                                         className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${settings.allow_new_signups ? "translate-x-5" : "translate-x-0"
+                                            }`}
+                                    />
+                                </button>
+                            </div>
+
+                            {/* Allow Tracking */}
+                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        {t("fields.allow_tracking.label")}
+                                    </label>
+                                    <p className="text-sm text-gray-500">
+                                        {t("fields.allow_tracking.description")}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setSettings({
+                                            ...settings,
+                                            allow_tracking: !settings.allow_tracking,
+                                        })
+                                    }
+                                    disabled={isReadOnly}
+                                    className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isReadOnly
+                                        ? 'bg-gray-300 cursor-not-allowed opacity-60'
+                                        : 'cursor-pointer'
+                                        } ${settings.allow_tracking ? "bg-blue-600" : "bg-gray-300"}`}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${settings.allow_tracking ? "translate-x-5" : "translate-x-0"
                                             }`}
                                     />
                                 </button>

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { PageFooter } from '@/components/page-footer';
 import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
 
 // Diff function to detect changes
 function diff(prev: Record<string, any>, next: Record<string, any>) {
@@ -231,6 +232,20 @@ export default function ProfilePage() {
     // Handle account deletion
     const handleDeleteAccount = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Show confirmation dialog
+        const result = await Swal.fire({
+            title: t('swal.deleteTitle'),
+            text: t('swal.deleteText'),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: t('swal.deleteConfirm'),
+            cancelButtonText: t('swal.deleteCancel'),
+        });
+
+        if (!result.isConfirmed) return;
 
         if (!deletePassword) {
             toast.error(t('validation.currentPasswordRequired'));

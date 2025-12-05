@@ -25,6 +25,7 @@ export interface SystemSettingsMap {
     default_user_role: 'admin' | 'observer' | 'regular';
     session_timeout_minutes: number;
     allow_new_signups: boolean;
+    allow_tracking: boolean;
 }
 
 // Cache for settings to avoid repeated DB queries
@@ -191,6 +192,7 @@ export async function getSettingsWithDefaults(): Promise<SystemSettingsMap> {
         default_user_role: (settings.default_user_role as any) ?? 'regular',
         session_timeout_minutes: settings.session_timeout_minutes ?? 2,
         allow_new_signups: settings.allow_new_signups ?? true,
+        allow_tracking: settings.allow_tracking ?? true,
     };
 }
 
