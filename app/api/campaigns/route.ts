@@ -285,12 +285,11 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
                 }
               });
             } else {
-              // Create an inline table for campaign->code pairs
-              const values = campaignCodePairs
-                .map(({ campaign_id, code }) => `(${campaign_id}, '${code.replace(/'/g, "\\'")}')`)
-                .join(',');
+              // Build inline tables using SELECT ... UNION ALL to satisfy ClickHouse syntax
+              const campaignCodesInline = campaignCodePairs
+                .map(({ campaign_id, code }) => `SELECT ${campaign_id} AS campaign_id, '${code.replace(/'/g, "\\'")}' AS tracking_code`)
+                .join(' UNION ALL ');
 
-              // For legacy utm_campaign-only visitors (when tracking_code missing), build another inline table
               const campaignUtmPairs: Array<{ campaign_id: number; utm_campaign: string }> = [];
               Object.entries(utmCampaignsByCampaign).forEach(([cid, utmNames]) => {
                 const cidNum = parseInt(cid, 10);
@@ -301,15 +300,21 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
                 });
               });
 
-              const utmValues = campaignUtmPairs.length
-                ? campaignUtmPairs.map(({ campaign_id, utm_campaign }) => `(${campaign_id}, '${utm_campaign.replace(/'/g, "\\'")}')`).join(',')
+              const campaignUtmsInline = campaignUtmPairs.length
+                ? campaignUtmPairs
+                  .map(({ campaign_id, utm_campaign }) => `SELECT ${campaign_id} AS campaign_id, '${utm_campaign.replace(/'/g, "\\'")}' AS utm_campaign`)
+                  .join(' UNION ALL ')
                 : '';
 
               // Main query: distinct users per campaign from (campaign_id match) OR (tracking_code join) OR (legacy utm_campaign match when tracking_code empty)
               const visitorsQuery = `
                 WITH
-                  (${values}) AS campaign_codes (campaign_id, tracking_code)
-                  ${utmValues ? `, (${utmValues}) AS campaign_utms (campaign_id, utm_campaign)` : ''}
+                  campaign_codes AS (
+                    ${campaignCodesInline}
+                  )
+                  ${campaignUtmsInline ? `, campaign_utms AS (
+                    ${campaignUtmsInline}
+                  )` : ''}
                 SELECT
                   campaign_id,
                   countDistinct(user_id) AS unique_visitors
@@ -327,7 +332,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
                   WHERE v.tracking_code != ''
                     AND v.tracking_code IS NOT NULL
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                  ${utmValues ? `
+                  ${campaignUtmsInline ? `
                   UNION ALL
 
                   SELECT v.user_id, cu.campaign_id

@@ -102,7 +102,7 @@ export default function ReturningAnalysisPage() {
   // Fetch data
   useEffect(() => {
     // Wait for system settings to load so we fetch once with the correct defaults
-    if (settingsLoading) {
+    if (settingsLoading || !dateRange) {
       return;
     }
 
@@ -143,12 +143,14 @@ export default function ReturningAnalysisPage() {
         </div>
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
           <TrackingStatusBadge />
-          <ExportToPDFButton
-            element="[data-export-content]"
-            filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
-            title={t('export.title', { start: dateRange.start, end: dateRange.end })}
-            size="sm"
-          />
+          {dateRange && (
+            <ExportToPDFButton
+              element="[data-export-content]"
+              filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+              title={t('export.title', { start: dateRange.start, end: dateRange.end })}
+              size="sm"
+            />
+          )}
         </div>
       </div>
 
@@ -160,15 +162,23 @@ export default function ReturningAnalysisPage() {
             <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
             <input
               type="date"
-              value={dateRange.start}
-              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+              value={dateRange?.start || ''}
+              onChange={(e) => {
+                if (dateRange) {
+                  setDateRange({ ...dateRange, start: e.target.value });
+                }
+              }}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
             <input
               type="date"
-              value={dateRange.end}
-              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+              value={dateRange?.end || ''}
+              onChange={(e) => {
+                if (dateRange) {
+                  setDateRange({ ...dateRange, end: e.target.value });
+                }
+              }}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
           </div>

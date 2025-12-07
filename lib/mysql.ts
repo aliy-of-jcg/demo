@@ -246,13 +246,13 @@ export async function initMySQLSchema(): Promise<void> {
     // Insert default system settings if they don't exist
     const insertDefaultSettings = `
       INSERT INTO system_settings (setting_key, setting_value, value_type, category, description, is_editable) VALUES
-      ('default_date_range', '7', 'number', 'defaults', 'Default date range for analytics in days', TRUE),
-      ('default_timezone', 'Asia/Seoul', 'string', 'defaults', 'Default timezone for the system', TRUE),
-      ('default_campaign_status', 'waiting', 'string', 'defaults', 'Default status for new campaigns', TRUE),
-      ('default_user_role', 'regular', 'string', 'defaults', 'Default role for new user signups', TRUE),
-      ('session_timeout_minutes', '2', 'number', 'defaults', 'Session timeout in minutes', TRUE),
-      ('allow_new_signups', '1', 'boolean', 'features', 'Allow new user registrations', TRUE)
-      ('allow_tracking', '1', 'boolean', 'features', 'Allow analytics tracking', TRUE),
+      ('default_date_range', '7', 'number', 'defaults', 'Default date range for analytics in days', 1),
+      ('default_timezone', 'Asia/Seoul', 'string', 'defaults', 'Default timezone for the system', 1),
+      ('default_campaign_status', 'waiting', 'string', 'defaults', 'Default status for new campaigns', 1),
+      ('default_user_role', 'regular', 'string', 'defaults', 'Default role for new user signups', 1),
+      ('session_timeout_minutes', '2', 'number', 'defaults', 'Session timeout in minutes', 1),
+      ('allow_new_signups', '1', 'boolean', 'features', 'Allow new user registrations', 1),
+      ('allow_tracking', '1', 'boolean', 'features', 'Allow analytics tracking', 1)
       ON DUPLICATE KEY UPDATE setting_key=setting_key;
     `;
     await query(insertDefaultSettings);
