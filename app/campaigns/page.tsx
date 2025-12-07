@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { MEDIA_OPTIONS, getMediaLabel } from '@/lib/constants/mediaOptions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -431,11 +432,11 @@ export default function CampaignsPage() {
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">{t('filters.all')}</option>
-              <option value="naver">Naver</option>
-              <option value="kakao">Kakao</option>
-              <option value="google">Google</option>
-              <option value="youtube">YouTube</option>
-              <option value="saramin">Saramin</option>
+              {MEDIA_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {getMediaLabel(opt)}
+                </option>
+              ))}
             </select>
           </div>
 

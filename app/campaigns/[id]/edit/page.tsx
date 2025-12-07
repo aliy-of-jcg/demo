@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { MEDIA_OPTIONS, getMediaLabel } from '@/lib/constants/mediaOptions';
 
 interface Course {
   id: number;
@@ -388,11 +389,11 @@ export default function EditCampaignPage() {
                       }`}
                   >
                     <option value="select">Select media</option>
-                    <option value="naver">Naver</option>
-                    <option value="kakao">Kakao</option>
-                    <option value="google">Google</option>
-                    <option value="youtube">YouTube</option>
-                    <option value="saramin">Saramin</option>
+                    {MEDIA_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {getMediaLabel(opt)}
+                      </option>
+                    ))}
                   </select>
                   {errors.source && <p className="text-red-500 text-sm mt-1">{errors.source}</p>}
                 </div>
