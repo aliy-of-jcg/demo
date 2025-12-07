@@ -2,14 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission } from '@/lib/auth/api-middleware';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 import type { AuthContext } from '@/lib/auth/types';
 
 export const GET = requirePermission('campaigns:read', async (request: NextRequest, context: AuthContext) => {
+  const cacheTtlMs = 60_000; // 60s
   const searchParams = request.nextUrl.searchParams;
   const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '10');
+  const limitParam = parseInt(searchParams.get('limit') || '10');
+  // Cap limit to avoid heavy queries; allow smaller pages
+  const limit = Math.min(Math.max(limitParam, 1), 100);
 
   console.log(`📋 Campaigns API - Page: ${page}, Limit: ${limit}, Search: ${searchParams.get('search') || 'none'}`);
+
+  // Cache key includes filters/pagination/sort
+  const cacheKey = `campaigns:${page}:${limit}:${searchParams.get('search') || ''}:${searchParams.get('source') || ''}:${searchParams.get('medium') || ''}:${searchParams.get('status') || ''}:${searchParams.get('course_id') || ''}:${searchParams.get('start_date') || ''}:${searchParams.get('end_date') || ''}:${searchParams.get('sort_by') || ''}:${searchParams.get('sort_order') || ''}`;
+
+  const cached = getCache<any>(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
+  }
 
   try {
     const search = searchParams.get('search') || '';
@@ -226,73 +238,122 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
           trackingCodeClicks.set(result.tracking_code, parseInt(result.total_clicks));
         });
 
-        // Query 2: Get UNIQUE VISITORS from visit_logs per campaign (using campaign_id)
-        // This matches the detail page approach and properly captures legacy data
-        // Use OR tracking_code fallback to capture visitors without campaign_id set
+        // Query 2: Get UNIQUE VISITORS per campaign (deduped across all UTMs per campaign)
         if (campaignIds.length > 0) {
           try {
-            // Query each campaign with tracking codes and utm_campaign fallback (matches detail page)
-            for (const campaignId of campaignIds) {
-              const trackingCodesForCampaign = trackingCodesMapForAnalytics.get(campaignId) || [];
-              const utmCampaignsForCampaign = Array.from(utmCampaignsMapForAnalytics.get(campaignId) || []) as string[];
+            const campaignIdList = campaignIds.join(',');
 
-              let visitorsQuery: string;
+            // Build a mapping of campaign_id -> tracking_codes (for legacy fallback)
+            const trackingCodesByCampaign: Record<number, string[]> = {};
+            trackingCodesMapForAnalytics.forEach((codes, cid) => {
+              trackingCodesByCampaign[cid] = (codes || []).map((c: string) => c?.trim()).filter(Boolean);
+            });
 
-              if (trackingCodesForCampaign.length === 0 && utmCampaignsForCampaign.length > 0) {
-                // Fallback: only legacy data available (use campaign_id OR utm_campaign)
-                const utmCampaignsList = utmCampaignsForCampaign.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
-                visitorsQuery = `
-                  SELECT countDistinct(user_id) as unique_visitors
+            // Optional: build utm_campaigns by campaign for legacy names
+            const utmCampaignsByCampaign: Record<number, string[]> = {};
+            utmCampaignsMapForAnalytics.forEach((names, cid) => {
+              utmCampaignsByCampaign[cid] = Array.from(names || []);
+            });
+
+            // Prepare a flat list of (campaign_id, tracking_code) pairs for JOIN
+            const campaignCodePairs: Array<{ campaign_id: number; code: string }> = [];
+            Object.entries(trackingCodesByCampaign).forEach(([cid, codes]) => {
+              const cidNum = parseInt(cid, 10);
+              codes.forEach((code) => {
+                if (code) {
+                  campaignCodePairs.push({ campaign_id: cidNum, code });
+                }
+              });
+            });
+
+            // If no codes, fall back to campaign_id only query
+            if (campaignCodePairs.length === 0) {
+              const visitorsByCampaignId = await clickhouse.query({
+                query: `
+                  SELECT campaign_id, countDistinct(user_id) as unique_visitors
                   FROM analytics.visit_logs
-                  WHERE (campaign_id = ${campaignId} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
+                  WHERE campaign_id IN (${campaignIdList})
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                `;
-              } else if (trackingCodesForCampaign.length > 0 && utmCampaignsForCampaign.length > 0) {
-                // Both tracking codes and legacy data (use campaign_id OR tracking_code OR utm_campaign)
-                const trackingCodesListEscaped = trackingCodesForCampaign
-                  .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
-                  .join(',');
-                const utmCampaignsList = utmCampaignsForCampaign.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
-                visitorsQuery = `
-                  SELECT countDistinct(user_id) as unique_visitors
+                  GROUP BY campaign_id
+                `,
+                format: 'JSONEachRow'
+              });
+              const visitorsByCampaignData = await visitorsByCampaignId.json() as any[];
+              visitorsByCampaignData.forEach((row: any) => {
+                if (row.campaign_id) {
+                  campaignVisitorsMap.set(parseInt(row.campaign_id), parseInt(row.unique_visitors || '0'));
+                }
+              });
+            } else {
+              // Create an inline table for campaign->code pairs
+              const values = campaignCodePairs
+                .map(({ campaign_id, code }) => `(${campaign_id}, '${code.replace(/'/g, "\\'")}')`)
+                .join(',');
+
+              // For legacy utm_campaign-only visitors (when tracking_code missing), build another inline table
+              const campaignUtmPairs: Array<{ campaign_id: number; utm_campaign: string }> = [];
+              Object.entries(utmCampaignsByCampaign).forEach(([cid, utmNames]) => {
+                const cidNum = parseInt(cid, 10);
+                utmNames.forEach((name) => {
+                  if (name) {
+                    campaignUtmPairs.push({ campaign_id: cidNum, utm_campaign: name });
+                  }
+                });
+              });
+
+              const utmValues = campaignUtmPairs.length
+                ? campaignUtmPairs.map(({ campaign_id, utm_campaign }) => `(${campaign_id}, '${utm_campaign.replace(/'/g, "\\'")}')`).join(',')
+                : '';
+
+              // Main query: distinct users per campaign from (campaign_id match) OR (tracking_code join) OR (legacy utm_campaign match when tracking_code empty)
+              const visitorsQuery = `
+                WITH
+                  (${values}) AS campaign_codes (campaign_id, tracking_code)
+                  ${utmValues ? `, (${utmValues}) AS campaign_utms (campaign_id, utm_campaign)` : ''}
+                SELECT
+                  campaign_id,
+                  countDistinct(user_id) AS unique_visitors
+                FROM (
+                  SELECT user_id, campaign_id
                   FROM analytics.visit_logs
-                  WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
+                  WHERE campaign_id IN (${campaignIdList})
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                `;
-              } else if (trackingCodesForCampaign.length > 0) {
-                // Only tracking codes (use campaign_id OR tracking_code)
-                const trackingCodesListEscaped = trackingCodesForCampaign
-                  .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
-                  .join(',');
-                visitorsQuery = `
-                  SELECT countDistinct(user_id) as unique_visitors
-                  FROM analytics.visit_logs
-                  WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}))
+
+                  UNION ALL
+
+                  SELECT v.user_id, cc.campaign_id
+                  FROM analytics.visit_logs v
+                  INNER JOIN campaign_codes cc ON v.tracking_code = cc.tracking_code
+                  WHERE v.tracking_code != ''
+                    AND v.tracking_code IS NOT NULL
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                `;
-              } else {
-                // No tracking codes, use campaign_id only
-                visitorsQuery = `
-                  SELECT countDistinct(user_id) as unique_visitors
-                  FROM analytics.visit_logs
-                  WHERE campaign_id = ${campaignId}
+                  ${utmValues ? `
+                  UNION ALL
+
+                  SELECT v.user_id, cu.campaign_id
+                  FROM analytics.visit_logs v
+                  INNER JOIN campaign_utms cu ON v.utm_campaign = cu.utm_campaign
+                  WHERE (v.tracking_code = '' OR v.tracking_code IS NULL)
+                    AND v.utm_campaign != ''
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                `;
-              }
+                  ` : ''}
+                )
+                GROUP BY campaign_id
+              `;
 
               const visitorsResult = await clickhouse.query({
                 query: visitorsQuery,
                 format: 'JSONEachRow'
               });
-
               const visitorsData = await visitorsResult.json() as any[];
-              if (visitorsData.length > 0) {
-                const visitors = parseInt(visitorsData[0].unique_visitors || '0');
-                campaignVisitorsMap.set(campaignId, visitors);
-              }
+              visitorsData.forEach((row: any) => {
+                if (row.campaign_id) {
+                  campaignVisitorsMap.set(parseInt(row.campaign_id), parseInt(row.unique_visitors || '0'));
+                }
+              });
             }
           } catch (error) {
-            console.error('Error fetching visitors for paginated campaigns:', error);
+            console.error('Error fetching deduped visitors by campaign:', error);
           }
         }
       } catch (error) {
@@ -624,72 +685,30 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
             }
           });
 
-          // Query visitors for each campaign with tracking_code and utm_campaign fallback (like detail page)
-          for (const campaignId of allMatchingCampaignIds) {
-            try {
-              const trackingCodes = trackingCodesByCampaign.get(campaignId) || [];
-              const utmCampaigns = Array.from(utmCampaignsByCampaign.get(campaignId) || []) as string[];
-
-              let visitorsQuery: string;
-
-              if (trackingCodes.length === 0 && utmCampaigns.length > 0) {
-                // Fallback: only legacy data available (use campaign_id OR utm_campaign)
-                const utmCampaignsList = utmCampaigns.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
-                visitorsQuery = `
-                  SELECT countDistinct(user_id) as unique_visitors
-                  FROM analytics.visit_logs
-                  WHERE (campaign_id = ${campaignId} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
-                    AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                `;
-              } else if (trackingCodes.length > 0 && utmCampaigns.length > 0) {
-                // Both tracking codes and legacy data (use campaign_id OR tracking_code OR utm_campaign)
-                const trackingCodesListEscaped = trackingCodes
-                  .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
-                  .join(',');
-                const utmCampaignsList = utmCampaigns.map((c: string) => `'${c.replace(/'/g, "\\'")}'`).join(',');
-                visitorsQuery = `
-                  SELECT countDistinct(user_id) as unique_visitors
-                  FROM analytics.visit_logs
-                  WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
-                    AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                `;
-              } else if (trackingCodes.length > 0) {
-                // Only tracking codes (use campaign_id OR tracking_code)
-                const trackingCodesListEscaped = trackingCodes
-                  .map((code: string) => `'${code.replace(/'/g, "\\'")}'`)
-                  .join(',');
-                visitorsQuery = `
-                  SELECT countDistinct(user_id) as unique_visitors
-                  FROM analytics.visit_logs
-                  WHERE (campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesListEscaped}))
-                    AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                `;
-              } else {
-                // No tracking codes, use campaign_id only
-                visitorsQuery = `
-                  SELECT countDistinct(user_id) as unique_visitors
-                  FROM analytics.visit_logs
-                  WHERE campaign_id = ${campaignId}
-                    AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-                `;
-              }
-
-              const visitorsResult = await clickhouse.query({
-                query: visitorsQuery,
-                format: 'JSONEachRow'
-              });
-
-              const visitorsData = await visitorsResult.json() as any[];
-              if (visitorsData.length > 0) {
-                const visitors = parseInt(visitorsData[0].unique_visitors || '0');
-                // Update the map if not already set (from paginated query)
-                if (!campaignVisitorsMap.has(campaignId)) {
-                  campaignVisitorsMap.set(campaignId, visitors);
+          // Bulk visitors for all matching campaigns grouped by campaign_id (no per-campaign loop)
+          try {
+            const allCampaignIdList = allMatchingCampaignIds.join(',');
+            const visitorsAllCampaigns = await clickhouse.query({
+              query: `
+                SELECT campaign_id, countDistinct(user_id) as unique_visitors
+                FROM analytics.visit_logs
+                WHERE campaign_id IN (${allCampaignIdList})
+                  AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                GROUP BY campaign_id
+              `,
+              format: 'JSONEachRow'
+            });
+            const visitorsAllCampaignsData = await visitorsAllCampaigns.json() as any[];
+            visitorsAllCampaignsData.forEach((row: any) => {
+              if (row.campaign_id) {
+                const visitors = parseInt(row.unique_visitors || '0');
+                if (!campaignVisitorsMap.has(parseInt(row.campaign_id))) {
+                  campaignVisitorsMap.set(parseInt(row.campaign_id), visitors);
                 }
               }
-            } catch (error) {
-              console.error(`Error fetching visitors for campaign ${campaignId}:`, error);
-            }
+            });
+          } catch (error) {
+            console.error('Error fetching visitors for all matching campaigns:', error);
           }
         } catch (error) {
           console.error('Error fetching bulk visitors for all campaigns:', error);
@@ -786,7 +805,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
         console.warn('Failed to fetch all-channel visitors:', error);
       }
 
-      return NextResponse.json({
+      const responsePayload = {
         success: true,
         campaigns: campaignsWithPlatforms,
         pagination: {
@@ -807,7 +826,12 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
             ? parseFloat(((total_visitors / total_clicks) * 100).toFixed(1))
             : 0
         }
-      });
+      };
+
+      // Cache the full response
+      setCache(cacheKey, responsePayload, cacheTtlMs);
+
+      return NextResponse.json(responsePayload);
     } catch (dbError: any) {
       // Check if table doesn't exist
       if (dbError.code === 'ER_NO_SUCH_TABLE' &&

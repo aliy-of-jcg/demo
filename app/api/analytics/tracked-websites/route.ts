@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission } from '@/lib/auth/api-middleware';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 import type { AuthContext } from '@/lib/auth/types';
 
 export const dynamic = 'force-dynamic';
@@ -20,18 +21,25 @@ interface WebsiteData {
 }
 
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
+  const cacheTtlMs = 60_000; // 60s
   try {
     const searchParams = request.nextUrl.searchParams;
 
-    // Get date range from query parameters (default: last 90 days)
+    // Get date range from query parameters (default: last 30 days for performance)
     const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
     const startDate = searchParams.get('start') || (() => {
       const date = new Date();
-      date.setDate(date.getDate() - 90);
+      date.setDate(date.getDate() - 30);
       return date.toISOString().split('T')[0];
     })();
 
     console.log(`📊 Tracked Websites Analysis - Date Range: ${startDate} to ${endDate}`);
+
+    const cacheKey = `tracked-websites:${startDate}:${endDate}`;
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Query to extract domains from page_url and aggregate metrics
     // Normalize domains: remove www. prefix, convert to lowercase, ignore protocol/port
@@ -71,6 +79,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         '0.0.0.0'
       )
       ORDER BY total_sessions DESC
+      LIMIT 200
     `;
 
     const result = await clickhouse.query({
@@ -157,12 +166,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     console.log(`✅ Found ${enrichedWebsites.length} tracked websites (${summary.active_websites} active, ${summary.disabled_websites} disabled)`);
 
-    return NextResponse.json({
+    const responsePayload = {
       success: true,
       dateRange: { start: startDate, end: endDate },
       websites: enrichedWebsites,
       summary: summary
-    });
+    };
+
+    setCache(cacheKey, responsePayload, cacheTtlMs);
+
+    return NextResponse.json(responsePayload);
 
   } catch (error) {
     console.error('❌ Tracked Websites Analysis API Error:', error);
