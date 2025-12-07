@@ -298,7 +298,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
         </ProtectedComponent>
 
         {/* Help & Guides Dropdown (Korean docs) */}
-        {/* <div className="space-y-1">
+        <div className="space-y-1">
           <button
             onClick={() => setIsDocsOpen(!isDocsOpen)}
             className={cn(
@@ -315,9 +315,9 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
             ) : (
               <ChevronDown className="w-4 h-4" />
             )}
-          </button> */}
+          </button>
 
-        {/* {isDocsOpen && (
+          {isDocsOpen && (
             <div className="ml-2 sm:ml-4 space-y-1">
               {docsItems.map((item) => {
                 const isActive = pathname === item.href;
@@ -339,7 +339,7 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
               })}
             </div>
           )}
-        </div> */}
+        </div>
 
       </nav>
       {/* Language Switcher */}

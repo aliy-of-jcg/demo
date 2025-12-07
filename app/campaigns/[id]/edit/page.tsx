@@ -37,6 +37,26 @@ export default function EditCampaignPage() {
   const [loading, setLoading] = useState(false);
   const [fetchingCampaign, setFetchingCampaign] = useState(true);
   const [initialData, setInitialData] = useState<typeof formData | null>(null);
+  const [initialNormalized, setInitialNormalized] = useState<Record<string, string> | null>(null);
+
+  const normalizeForm = (data: typeof formData) => {
+    const toDate = (val: string) => (val ? new Date(val).toISOString().slice(0, 10) : '');
+    const toBudget = (val: string) => {
+      const num = Number(val);
+      return Number.isFinite(num) ? Math.round(num).toString() : '';
+    };
+    return {
+      name: data.name.trim(),
+      course_id: data.course_id,
+      source: data.source,
+      medium: data.medium,
+      status: data.status,
+      start_date: toDate(data.start_date),
+      end_date: toDate(data.end_date),
+      budget: toBudget(data.budget),
+      description: data.description?.trim() || ''
+    };
+  };
 
   // Refs for scrolling to error fields
   const fieldRefs = {
@@ -123,6 +143,7 @@ export default function EditCampaignPage() {
         };
         setFormData(mapped);
         setInitialData(mapped);
+        setInitialNormalized(normalizeForm(mapped));
       } else {
         toast.error('Campaign not found');
         router.push('/campaigns');
@@ -198,8 +219,10 @@ export default function EditCampaignPage() {
       return;
     }
 
-    // Prevent no-op submissions
-    if (initialData && JSON.stringify(formData) === JSON.stringify(initialData)) {
+    const currentNormalized = normalizeForm(formData);
+
+    // Prevent no-op submissions (ignore derived daily_budget)
+    if (initialNormalized && JSON.stringify(currentNormalized) === JSON.stringify(initialNormalized)) {
       toast.info('No changes to save');
       return;
     }
@@ -532,7 +555,12 @@ export default function EditCampaignPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || (initialData ? JSON.stringify(formData) === JSON.stringify(initialData) : false)}
+                  disabled={
+                    loading ||
+                    (initialNormalized
+                      ? JSON.stringify(normalizeForm(formData)) === JSON.stringify(initialNormalized)
+                      : false)
+                  }
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Updating...' : 'Update'}
