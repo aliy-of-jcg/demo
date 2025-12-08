@@ -9,13 +9,19 @@ export const apiSpec = {
       email: "support@cosmosai.com",
     },
   },
+  // Default security: bearer auth required unless overridden per-operation
+  security: [
+    {
+      bearerAuth: [],
+    },
+  ],
   servers: [
     {
       url: "http://localhost:3000",
       description: "Development server (Docker/Local)",
     },
     {
-      url: "http://aptdecor.uz",
+      url: "https://dev.cosmosai.co.kr/",
       description: "Production server",
     },
   ],
@@ -65,6 +71,7 @@ export const apiSpec = {
     // ==================== AUTHENTICATION ====================
     "/api/auth/login": {
       post: {
+        security: [],
         tags: ["Authentication"],
         summary: "User login",
         description: "Authenticate user and receive JWT token",
@@ -112,6 +119,7 @@ export const apiSpec = {
 
     "/api/auth/signup": {
       post: {
+        security: [],
         tags: ["Authentication"],
         summary: "User registration",
         description: "Create a new user account",
@@ -183,6 +191,7 @@ export const apiSpec = {
 
     "/api/auth/forgot-password": {
       post: {
+        security: [],
         tags: ["Authentication"],
         summary: "Request password reset",
         description: "Send password reset email to user",
@@ -210,6 +219,7 @@ export const apiSpec = {
 
     "/api/auth/reset-password": {
       post: {
+        security: [],
         tags: ["Authentication"],
         summary: "Reset password",
         description: "Reset user password with token from email",
@@ -239,6 +249,7 @@ export const apiSpec = {
 
     "/api/auth/reset-password/validate": {
       post: {
+        security: [],
         tags: ["Authentication"],
         summary: "Validate password reset token",
         description: "Check if password reset token is valid",
@@ -1332,6 +1343,7 @@ export const apiSpec = {
     // ==================== TRACKING ====================
     "/api/track": {
       post: {
+        security: [],
         tags: ["Tracking"],
         summary: "Track external pageview (Production)",
         description: "Receives pageview events from external landing pages with UTM campaign linking to MySQL",
@@ -1366,6 +1378,7 @@ export const apiSpec = {
 
     "/api/track-internal": {
       post: {
+        security: [],
         tags: ["Tracking"],
         summary: "Track internal test events (Localhost only)",
         description: "Internal tracking endpoint for testing on localhost/CosMos dashboard only",
@@ -1396,6 +1409,7 @@ export const apiSpec = {
 
     "/api/log": {
       post: {
+        security: [],
         tags: ["Tracking"],
         summary: "Log client-side tracking event",
         description: "Receives pageview events from cosmos-track.js client-side script with UTM parameters, device info, and page flow data",
@@ -1483,6 +1497,7 @@ export const apiSpec = {
 
     "/api/tracking/debug": {
       get: {
+        security: [],
         tags: ["Tracking"],
         summary: "Get recent tracking events",
         description: "Retrieve recent tracking events for debugging purposes (last 24 hours)",
@@ -1518,6 +1533,7 @@ export const apiSpec = {
 
     "/t/{code}": {
       get: {
+        security: [],
         tags: ["Tracking"],
         summary: "Track click and redirect (Production)",
         description: "Records click event with server-side visit logging and redirects to target URL. Uses path parameter for tracking code.",
@@ -1545,6 +1561,7 @@ export const apiSpec = {
     // ==================== SYSTEM ====================
     "/api/health": {
       get: {
+        security: [],
         tags: ["System"],
         summary: "Health check",
         description: "Check API health status and uptime",
@@ -1730,6 +1747,7 @@ export const apiSpec = {
 
     "/api/system/settings/session-timeout": {
       get: {
+        security: [],
         tags: ["System"],
         summary: "Get session timeout",
         description: "Get session timeout in minutes for tracking script. Public endpoint (no auth required) used by cosmos-track.js.",

@@ -5,6 +5,26 @@ import { FileText, ChevronDown, ChevronUp } from "lucide-react";
 
 const sections = [
     {
+        category: "캠페인 관리",
+        items: [
+            {
+                title: "캠페인 목록",
+                desc: "캠페인 현황을 조회하고 상태(활성/일시중지/종료)와 성과를 확인합니다.",
+                tips: ["캠페인별 소스/미디엄/예산을 빠르게 점검합니다."],
+            },
+            {
+                title: "캠페인 생성",
+                desc: "새 캠페인을 생성하고 기본 상태·기간·예산·코스 연결을 설정합니다.",
+                tips: ["기본 캠페인 상태는 시스템 설정의 기본값을 따릅니다."],
+            },
+            {
+                title: "코스 관리",
+                desc: "캠페인에 연결할 코스를 생성·관리합니다.",
+                tips: ["캠페인 생성 시 코스 매핑으로 보고 체계를 정리합니다."],
+            },
+        ],
+    },
+    {
         category: "로그 분석",
         items: [
             {
@@ -93,26 +113,6 @@ const sections = [
                     "Session insights (total sessions/pageviews/avg depth) plus bar charts for landing/exit pages keep the overview tight.",
                     "PDF export and tracking-status badge match the rest of analytics; sort exit-heavy pages to prioritize fixes.",
                 ],
-            },
-        ],
-    },
-    {
-        category: "캠페인 관리",
-        items: [
-            {
-                title: "캠페인 목록",
-                desc: "캠페인 현황을 조회하고 상태(활성/일시중지/종료)와 성과를 확인합니다.",
-                tips: ["캠페인별 소스/미디엄/예산을 빠르게 점검합니다."],
-            },
-            {
-                title: "캠페인 생성",
-                desc: "새 캠페인을 생성하고 기본 상태·기간·예산·코스 연결을 설정합니다.",
-                tips: ["기본 캠페인 상태는 시스템 설정의 기본값을 따릅니다."],
-            },
-            {
-                title: "코스 관리",
-                desc: "캠페인에 연결할 코스를 생성·관리합니다.",
-                tips: ["캠페인 생성 시 코스 매핑으로 보고 체계를 정리합니다."],
             },
         ],
     },
