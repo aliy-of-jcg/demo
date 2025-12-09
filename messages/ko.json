@@ -669,7 +669,8 @@
     "dateRange": {
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
-      "last3Months": "최근 3개월"
+      "last3Months": "최근 3개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "metrics": {
       "totalVisitors": "총 방문자",
@@ -731,7 +732,8 @@
     "dateRange": {
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
-      "last3Months": "최근 3개월"
+      "last3Months": "최근 3개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "chart": {
       "title": "채널 성과 비교",
@@ -797,7 +799,8 @@
       "allPlatforms": "모든 플랫폼",
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
-      "last3Months": "최근 3개월"
+      "last3Months": "최근 3개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "metrics": {
       "visitors": "방문자",
@@ -855,7 +858,8 @@
     "dateRange": {
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
-      "last3Months": "최근 3개월"
+      "last3Months": "최근 3개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "summary": {
       "desktopUsers": "데스크톱 사용자",
@@ -908,7 +912,8 @@
     "dateRange": {
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
-      "last3Months": "최근 3개월"
+      "last3Months": "최근 3개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "insights": {
       "peakHours": "피크 시간",
@@ -964,7 +969,8 @@
     "dateRange": {
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
-      "last3Months": "최근 3개월"
+      "last3Months": "최근 3개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "insights": {
       "newVisitors": "신규 방문자",
@@ -1022,7 +1028,8 @@
     "dateRange": {
       "last7Days": "최근 7일",
       "last30Days": "최근 30일",
-      "last3Months": "최근 3개월"
+      "last3Months": "최근 3개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "summary": {
       "totalSessions": "총 세션",
@@ -1087,7 +1094,11 @@
       "startDate": "시작 날짜",
       "endDate": "종료 날짜",
       "refresh": "새로고침",
-      "loading": "로딩 중..."
+      "loading": "로딩 중...",
+      "last7Days": "최근 7일",
+      "last30Days": "최근 30일",
+      "last3Months": "최근 3개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "stats": {
       "totalSessions": "총 세션",
@@ -1119,9 +1130,11 @@
     "title": "추적 웹사이트",
     "subtitle": "CosMos AI 추적 스크립트를 사용하는 웹사이트",
     "dateRange": {
+      "last7Days": "최근 7일",
       "last30Days": "최근 30일",
       "last3Months": "최근 3개월",
-      "last6Months": "최근 6개월"
+      "last6Months": "최근 6개월",
+      "limitedToMaxDays": "성능을 위해 조회 기간은 최대 {days}일로 제한됩니다."
     },
     "summary": {
       "totalWebsites": "총 웹사이트",

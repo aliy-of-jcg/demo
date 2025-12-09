@@ -4,6 +4,7 @@ import { getPool } from '@/lib/mysql';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import { getCache, setCache } from '@/lib/cache/simpleCache';
 import type { AuthContext } from '@/lib/auth/types';
+import { getSettingsWithDefaults } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,14 +25,35 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
   const cacheTtlMs = 60_000; // 60s
   try {
     const searchParams = request.nextUrl.searchParams;
+    const MAX_RANGE_DAYS = 90;
 
-    // Get date range from query parameters (default: last 30 days for performance)
-    const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
-    const startDate = searchParams.get('start') || (() => {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      return date.toISOString().split('T')[0];
-    })();
+    // Get system defaults so we respect global date range config
+    const settings = await getSettingsWithDefaults();
+
+    // Get raw date range from query parameters
+    let endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
+    let startDate = searchParams.get('start');
+
+    // If no explicit start provided, fall back to system default_date_range
+    if (!startDate) {
+      const days = settings.default_date_range ?? 7;
+      const end = new Date(endDate);
+      const start = new Date(end);
+      start.setDate(start.getDate() - days);
+      startDate = start.toISOString().split('T')[0];
+    }
+
+    // Enforce maximum date window (protect ClickHouse)
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      startDate = clampedStart.toISOString().split('T')[0];
+    }
 
     console.log(`📊 Tracked Websites Analysis - Date Range: ${startDate} to ${endDate}`);
 

@@ -9,6 +9,7 @@ import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tool
 import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 import { TrackingStatusBadge } from '@/components/tracking-status-badge';
+import { toast } from 'sonner';
 
 interface PerformanceData {
   metrics: {
@@ -34,13 +35,14 @@ interface PerformanceData {
 export default function PerformanceAnalysisPage() {
   const t = useTranslations('performance');
   const { getInitialDateRange, isLoading: settingsLoading } = useSystemSettings();
+  const MAX_RANGE_DAYS = 90;
 
   // Initialize after system settings load to avoid double-fetch
   const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
 
-  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  // Update date range when system settings load (GA behavior: apply defaults on first page load)
   useEffect(() => {
-    if (!settingsLoading) {
+    if (!settingsLoading && !dateRange) {
       try {
         const initialRange = getInitialDateRange();
         setDateRange(initialRange);
@@ -48,11 +50,47 @@ export default function PerformanceAnalysisPage() {
         // If settings fail, keep dateRange null and skip fetch
       }
     }
-  }, [settingsLoading, getInitialDateRange]);
+  }, [settingsLoading, getInitialDateRange, dateRange]);
 
   const [data, setData] = useState<PerformanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Helper to enforce max range and provide user feedback
+  const clampDateRange = (startStr: string, endStr: string) => {
+    let start = new Date(startStr);
+    let end = new Date(endStr);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return { start: startStr, end: endStr, clamped: false };
+    }
+
+    // Ensure start <= end
+    if (start > end) {
+      const tmp = start;
+      start = end;
+      end = tmp;
+    }
+
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(end);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      return {
+        start: clampedStart.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0],
+        clamped: true,
+      };
+    }
+
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+      clamped: false,
+    };
+  };
 
   // Quick date range selection
   const setQuickRange = (days: number) => {
@@ -60,9 +98,17 @@ export default function PerformanceAnalysisPage() {
     const start = new Date();
     start.setDate(start.getDate() - days);
 
+    const rawStart = start.toISOString().split('T')[0];
+    const rawEnd = end.toISOString().split('T')[0];
+    const { start: finalStart, end: finalEnd, clamped } = clampDateRange(rawStart, rawEnd);
+
+    if (clamped) {
+      toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+    }
+
     setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      start: finalStart,
+      end: finalEnd,
     });
   };
 
@@ -185,7 +231,20 @@ export default function PerformanceAnalysisPage() {
               value={dateRange?.start || ''}
               onChange={(e) => {
                 if (dateRange) {
-                  setDateRange({ ...dateRange, start: e.target.value });
+                  const newStart = e.target.value;
+
+                  // If end is not set yet, just update start
+                  if (!dateRange.end) {
+                    setDateRange({ ...dateRange, start: newStart });
+                    return;
+                  }
+
+                  // Both dates present: enforce max range
+                  const { start, end, clamped } = clampDateRange(newStart, dateRange.end);
+                  if (clamped) {
+                    toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                  }
+                  setDateRange({ start, end });
                 }
               }}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -196,7 +255,19 @@ export default function PerformanceAnalysisPage() {
               value={dateRange?.end || ''}
               onChange={(e) => {
                 if (dateRange) {
-                  setDateRange({ ...dateRange, end: e.target.value });
+                  const newEnd = e.target.value;
+
+                  // If start is not set yet, just update end
+                  if (!dateRange.start) {
+                    setDateRange({ ...dateRange, end: newEnd });
+                    return;
+                  }
+
+                  const { start, end, clamped } = clampDateRange(dateRange.start, newEnd);
+                  if (clamped) {
+                    toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                  }
+                  setDateRange({ start, end });
                 }
               }}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -205,6 +276,9 @@ export default function PerformanceAnalysisPage() {
 
           {/* Right: Quick Range Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] sm:text-xs text-gray-500 mr-1">
+              ※ 최대 {MAX_RANGE_DAYS}일 범위까지만 조회할 수 있습니다.
+            </span>
             <button
               onClick={() => setQuickRange(7)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"

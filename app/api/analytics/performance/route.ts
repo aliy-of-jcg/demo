@@ -3,21 +3,42 @@ import clickhouse from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
-import { getDefaultTimezone } from '@/lib/system-settings';
+import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
+    const MAX_RANGE_DAYS = 90;
 
-    // Get date range from query parameters (default: last 30 days)
-    const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
-    const startDate = searchParams.get('start') || (() => {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      return date.toISOString().split('T')[0];
-    })();
+    // Get system defaults (GA-style global config)
+    const settings = await getSettingsWithDefaults();
+
+    // Get raw date range from query parameters
+    let endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
+    let startDate = searchParams.get('start');
+
+    // If no explicit start provided, use system default_date_range
+    if (!startDate) {
+      const days = settings.default_date_range ?? 7;
+      const end = new Date(endDate);
+      const start = new Date(end);
+      start.setDate(start.getDate() - days);
+      startDate = start.toISOString().split('T')[0];
+    }
+
+    // Enforce maximum date window (server-side safety net)
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      startDate = clampedStart.toISOString().split('T')[0];
+    }
 
     // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();

@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 import { TrackingStatusBadge } from '@/components/tracking-status-badge';
+import { toast } from 'sonner';
 
 interface NewVsReturningData {
   new: {
@@ -57,6 +58,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 export default function ReturningAnalysisPage() {
   const t = useTranslations('returningAnalysis');
   const { getInitialDateRange, isLoading: settingsLoading } = useSystemSettings();
+  const MAX_RANGE_DAYS = 90;
 
   // Initialize date range from system defaults (GA behavior)
   // On page reload, defaults are applied automatically
@@ -71,9 +73,9 @@ export default function ReturningAnalysisPage() {
     };
   });
 
-  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  // Update date range when system settings load (GA behavior: apply defaults on first page load)
   useEffect(() => {
-    if (!settingsLoading) {
+    if (!settingsLoading && !dateRange) {
       try {
         const initialRange = getInitialDateRange();
         setDateRange(initialRange);
@@ -81,11 +83,45 @@ export default function ReturningAnalysisPage() {
         // Fallback handled by useState initializer
       }
     }
-  }, [settingsLoading, getInitialDateRange]);
+  }, [settingsLoading, getInitialDateRange, dateRange]);
 
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const clampDateRange = (startStr: string, endStr: string) => {
+    let start = new Date(startStr);
+    let end = new Date(endStr);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return { start: startStr, end: endStr, clamped: false };
+    }
+
+    if (start > end) {
+      const tmp = start;
+      start = end;
+      end = tmp;
+    }
+
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(end);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      return {
+        start: clampedStart.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0],
+        clamped: true,
+      };
+    }
+
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+      clamped: false,
+    };
+  };
 
   // Quick date range selection
   const setQuickRange = (days: number) => {
@@ -93,9 +129,17 @@ export default function ReturningAnalysisPage() {
     const start = new Date();
     start.setDate(start.getDate() - days);
 
+    const rawStart = start.toISOString().split('T')[0];
+    const rawEnd = end.toISOString().split('T')[0];
+    const { start: finalStart, end: finalEnd, clamped } = clampDateRange(rawStart, rawEnd);
+
+    if (clamped) {
+      toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+    }
+
     setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      start: finalStart,
+      end: finalEnd
     });
   };
 
@@ -165,7 +209,18 @@ export default function ReturningAnalysisPage() {
               value={dateRange?.start || ''}
               onChange={(e) => {
                 if (dateRange) {
-                  setDateRange({ ...dateRange, start: e.target.value });
+                  const newStart = e.target.value;
+
+                  if (!dateRange.end) {
+                    setDateRange({ ...dateRange, start: newStart });
+                    return;
+                  }
+
+                  const { start, end, clamped } = clampDateRange(newStart, dateRange.end);
+                  if (clamped) {
+                    toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                  }
+                  setDateRange({ start, end });
                 }
               }}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
@@ -176,7 +231,18 @@ export default function ReturningAnalysisPage() {
               value={dateRange?.end || ''}
               onChange={(e) => {
                 if (dateRange) {
-                  setDateRange({ ...dateRange, end: e.target.value });
+                  const newEnd = e.target.value;
+
+                  if (!dateRange.start) {
+                    setDateRange({ ...dateRange, end: newEnd });
+                    return;
+                  }
+
+                  const { start, end, clamped } = clampDateRange(dateRange.start, newEnd);
+                  if (clamped) {
+                    toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                  }
+                  setDateRange({ start, end });
                 }
               }}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"

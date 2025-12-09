@@ -21,6 +21,7 @@ import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 import { formatTimezoneForDisplay } from '@/lib/utils/timezones';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { TrackingStatusBadge } from '@/components/tracking-status-badge';
+import { toast } from 'sonner';
 
 interface Page {
   page_url: string;
@@ -59,23 +60,17 @@ export default function SessionJourneysPage() {
   const t = useTranslations('sessionJourneys');
   const { getInitialDateRange, isLoading: settingsLoading, getDefaultTimezone } = useSystemSettings();
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Initialize date range from system defaults (GA behavior)
   // On page reload, defaults are applied automatically
-  const [startDate, setStartDate] = useState(() => {
-    // Fallback to 30 days initially (will be updated when settings load)
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const MAX_RANGE_DAYS = 90;
 
-  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  // Update date range when system settings load (GA behavior: apply defaults on first page load)
   useEffect(() => {
-    if (!settingsLoading) {
+    if (!settingsLoading && !startDate && !endDate) {
       try {
         const initialRange = getInitialDateRange();
         setStartDate(initialRange.start);
@@ -84,14 +79,74 @@ export default function SessionJourneysPage() {
         // Fallback handled by useState initializer
       }
     }
-  }, [settingsLoading, getInitialDateRange]);
+  }, [settingsLoading, getInitialDateRange, startDate, endDate]);
+
+  const clampDateRange = (startStr: string, endStr: string) => {
+    let start = new Date(startStr);
+    let end = new Date(endStr);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return { start: startStr, end: endStr, clamped: false };
+    }
+
+    if (start > end) {
+      const tmp = start;
+      start = end;
+      end = tmp;
+    }
+
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(end);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      return {
+        start: clampedStart.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0],
+        clamped: true,
+      };
+    }
+
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+      clamped: false,
+    };
+  };
+
+  const setQuickRange = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+
+    const rawStart = start.toISOString().split('T')[0];
+    const rawEnd = end.toISOString().split('T')[0];
+    const { start: finalStart, end: finalEnd, clamped } = clampDateRange(rawStart, rawEnd);
+
+    if (clamped) {
+      toast.info(t('filters.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+    }
+
+    setStartDate(finalStart);
+    setEndDate(finalEnd);
+  };
 
   const fetchSessions = async () => {
+    if (!startDate || !endDate) return;
+
+    const { start, end, clamped } = clampDateRange(startDate, endDate);
+    if (clamped) {
+      toast.info(t('filters.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+      setStartDate(start);
+      setEndDate(end);
+    }
+
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        start_date: startDate,
-        end_date: endDate,
+        start_date: start,
+        end_date: end,
         limit: '50'
       });
 
@@ -109,8 +164,10 @@ export default function SessionJourneysPage() {
   };
 
   useEffect(() => {
+    if (settingsLoading) return;
+    if (!startDate || !endDate) return;
     fetchSessions();
-  }, []);
+  }, [settingsLoading, startDate, endDate]);
 
   const formatDuration = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`;
@@ -277,7 +334,7 @@ export default function SessionJourneysPage() {
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
               <div className="flex items-center gap-2 sm:gap-3">
@@ -292,42 +349,61 @@ export default function SessionJourneysPage() {
               {t('subtitle')}
             </p>
           </div>
-          <TrackingStatusBadge />
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 sm:gap-4">
-            <div className="flex-1 w-full sm:min-w-[200px]">
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                {t('filters.startDate')}
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div className="flex-1 w-full sm:min-w-[200px]">
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                {t('filters.endDate')}
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+          <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+            <TrackingStatusBadge />
             <button
               onClick={fetchSessions}
               disabled={loading}
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+              className="px-4 sm:px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs sm:text-sm"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               {loading ? t('filters.loading') : t('filters.refresh')}
             </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 mb-4 sm:mb-6">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
+            {/* Left: Date Range Picker */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+              />
+              <span className="text-gray-500">~</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+              />
+            </div>
+
+            {/* Right: Quick Range Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setQuickRange(7)}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                {t('filters.last7Days')}
+              </button>
+              <button
+                onClick={() => setQuickRange(30)}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                {t('filters.last30Days')}
+              </button>
+              <button
+                onClick={() => setQuickRange(90)}
+                className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                {t('filters.last3Months')}
+              </button>
+            </div>
           </div>
         </div>
 

@@ -60,6 +60,7 @@ function TrackedWebsitesPageContent() {
   const t = useTranslations('trackedWebsites');
   const { hasPermission } = usePermission();
   const { getInitialDateRange, isLoading: settingsLoading, getAllowTracking } = useSystemSettings();
+  const MAX_RANGE_DAYS = 90;
 
   // Check if user can manage tracked websites (settings:update permission)
   const canManageWebsites = hasPermission('settings:update');
@@ -69,9 +70,9 @@ function TrackedWebsitesPageContent() {
   // Initialize date range only after system settings load to avoid double-fetch
   const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
 
-  // Update date range when system settings load (GA behavior: apply defaults on page load)
+  // Update date range when system settings load (GA behavior: apply defaults on first page load)
   useEffect(() => {
-    if (!settingsLoading) {
+    if (!settingsLoading && !dateRange) {
       try {
         const initialRange = getInitialDateRange();
         setDateRange(initialRange);
@@ -79,7 +80,7 @@ function TrackedWebsitesPageContent() {
         // If settings fail, keep dateRange null and fetchData will stay idle
       }
     }
-  }, [settingsLoading, getInitialDateRange]);
+  }, [settingsLoading, getInitialDateRange, dateRange]);
 
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,6 +90,42 @@ function TrackedWebsitesPageContent() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showToggleDialog, setShowToggleDialog] = useState(false);
   const [toggleDialogData, setToggleDialogData] = useState<{ domain: string, currentStatus: boolean } | null>(null);
+
+  // Helper to enforce max range and provide user feedback
+  const clampDateRange = (startStr: string, endStr: string) => {
+    let start = new Date(startStr);
+    let end = new Date(endStr);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return { start: startStr, end: endStr, clamped: false };
+    }
+
+    // Ensure start <= end
+    if (start > end) {
+      const tmp = start;
+      start = end;
+      end = tmp;
+    }
+
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(end);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      return {
+        start: clampedStart.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0],
+        clamped: true,
+      };
+    }
+
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+      clamped: false,
+    };
+  };
 
   // Toggle website status
   const handleToggleStatus = async (domain: string, currentStatus: boolean) => {
@@ -146,9 +183,17 @@ function TrackedWebsitesPageContent() {
     const start = new Date();
     start.setDate(start.getDate() - days);
 
+    const rawStart = start.toISOString().split('T')[0];
+    const rawEnd = end.toISOString().split('T')[0];
+    const { start: finalStart, end: finalEnd, clamped } = clampDateRange(rawStart, rawEnd);
+
+    if (clamped) {
+      toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+    }
+
     setDateRange({
-      start: start.toISOString().split('T')[0],
-      end: end.toISOString().split('T')[0]
+      start: finalStart,
+      end: finalEnd
     });
   };
 
@@ -267,20 +312,58 @@ function TrackedWebsitesPageContent() {
             <input
               type="date"
               value={dateRange?.start ?? ''}
-              onChange={(e) => setDateRange({ ...(dateRange || { end: '' }), start: e.target.value })}
+              onChange={(e) => {
+                if (dateRange) {
+                  const newStart = e.target.value;
+
+                  // If end missing, just update start
+                  if (!dateRange.end) {
+                    setDateRange({ ...dateRange, start: newStart });
+                    return;
+                  }
+
+                  const { start, end, clamped } = clampDateRange(newStart, dateRange.end);
+                  if (clamped) {
+                    toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                  }
+                  setDateRange({ start, end });
+                }
+              }}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
             <span className="text-gray-500">~</span>
             <input
               type="date"
               value={dateRange?.end ?? ''}
-              onChange={(e) => setDateRange({ ...(dateRange || { start: '' }), end: e.target.value })}
+              onChange={(e) => {
+                if (dateRange) {
+                  const newEnd = e.target.value;
+
+                  // If start missing, just update end
+                  if (!dateRange.start) {
+                    setDateRange({ ...dateRange, end: newEnd });
+                    return;
+                  }
+
+                  const { start, end, clamped } = clampDateRange(dateRange.start, newEnd);
+                  if (clamped) {
+                    toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                  }
+                  setDateRange({ start, end });
+                }
+              }}
               className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
             />
           </div>
 
           {/* Right: Quick Range Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setQuickRange(7)}
+              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+            >
+              {t('dateRange.last7Days')}
+            </button>
             <button
               onClick={() => setQuickRange(30)}
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
@@ -292,12 +375,6 @@ function TrackedWebsitesPageContent() {
               className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
             >
               {t('dateRange.last3Months')}
-            </button>
-            <button
-              onClick={() => setQuickRange(180)}
-              className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-            >
-              {t('dateRange.last6Months')}
             </button>
           </div>
         </div>
