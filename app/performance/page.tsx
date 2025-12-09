@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
-import { Calendar, Users, TrendingUp, DollarSign, Target } from 'lucide-react';
+import { Users, TrendingUp, DollarSign, Target } from 'lucide-react';
+import { DateRangePicker } from '@/components/date-range-picker';
 import { PageFooter } from '@/components/page-footer';
 import { ExportToPDFButton } from '@/components/export-to-pdf-button';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -224,60 +225,47 @@ export default function PerformanceAnalysisPage() {
       <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
           {/* Left: Date Range Picker */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-            <input
-              type="date"
-              value={dateRange?.start || ''}
-              onChange={(e) => {
-                if (dateRange) {
-                  const newStart = e.target.value;
-
-                  // If end is not set yet, just update start
+          {dateRange && (
+            <DateRangePicker
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              onStartDateChange={(date) => {
+                if (dateRange && date !== null) {
                   if (!dateRange.end) {
-                    setDateRange({ ...dateRange, start: newStart });
+                    setDateRange({ ...dateRange, start: date });
                     return;
                   }
-
-                  // Both dates present: enforce max range
-                  const { start, end, clamped } = clampDateRange(newStart, dateRange.end);
+                  const { start, end, clamped } = clampDateRange(date, dateRange.end);
                   if (clamped) {
                     toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
                   }
                   setDateRange({ start, end });
                 }
               }}
-              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
-            />
-            <span className="text-gray-500">~</span>
-            <input
-              type="date"
-              value={dateRange?.end || ''}
-              onChange={(e) => {
-                if (dateRange) {
-                  const newEnd = e.target.value;
-
-                  // If start is not set yet, just update end
+              onEndDateChange={(date) => {
+                if (dateRange && date !== null) {
                   if (!dateRange.start) {
-                    setDateRange({ ...dateRange, end: newEnd });
+                    setDateRange({ ...dateRange, end: date });
                     return;
                   }
-
-                  const { start, end, clamped } = clampDateRange(dateRange.start, newEnd);
+                  const { start, end, clamped } = clampDateRange(dateRange.start, date);
                   if (clamped) {
                     toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
                   }
                   setDateRange({ start, end });
                 }
               }}
-              className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+              maxRangeDays={MAX_RANGE_DAYS}
+              onRangeClamped={() => {
+                toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+              }}
             />
-          </div>
+          )}
 
           {/* Right: Quick Range Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] sm:text-xs text-gray-500 mr-1">
-              ※ 최대 {MAX_RANGE_DAYS}일 범위까지만 조회할 수 있습니다.
+              {t('dateRange.maxRangeInfo', { days: MAX_RANGE_DAYS })}
             </span>
             <button
               onClick={() => setQuickRange(7)}

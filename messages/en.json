@@ -670,7 +670,8 @@
       "last7Days": "Last 7 days",
       "last30Days": "Last 30 days",
       "last3Months": "Last 3 months",
-      "limitedToMaxDays": "Date range is limited to the last {days} days for performance."
+      "limitedToMaxDays": "Date range is limited to the last {days} days for performance.",
+      "maxRangeInfo": "※ You can only search within a maximum range of {days} days."
     },
     "metrics": {
       "totalVisitors": "Total Visitors",

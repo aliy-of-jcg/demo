@@ -262,7 +262,7 @@ demo/
 │   │   ├── useRole.ts    # 역할 확인 훅
 │   │   └── useDebounce.ts # 디바운스 훅
 │   └── utils/            # 추가 유틸리티
-│       └── fetch-with-auth.ts # 인증이 포함된 fetch 래퍼
+│       └── -auth.ts # 인증이 포함된 fetch 래퍼
 ├── scripts/              # 데이터베이스 관리 스크립트
 │   ├── init-clickhouse.js # ClickHouse 스키마 초기화
 │   ├── init-mysql.js     # MySQL 스키마 초기화

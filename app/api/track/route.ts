@@ -54,58 +54,29 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
           console.log(`🔄 Cache invalidated for ${domain}: DB updated at ${new Date(dbUpdatedAt).toISOString()}, cache from ${new Date(cached.updated_at).toISOString()}`);
           domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
 
-          // Update last_seen only if enabled
-          if (isEnabled) {
-            await pool.execute(
-              'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
-              [domain]
-            );
-          }
-
           return isEnabled;
         }
 
         // Cache is still valid (DB hasn't been updated since cache refresh)
         // Return cached value if it's still fresh
         if ((now - cached.last_refresh) < CACHE_TTL) {
-          // Update last_seen only if enabled (and cache is still fresh)
-          if (cached.is_enabled) {
-            await pool.execute(
-              'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
-              [domain]
-            );
-          }
           return cached.is_enabled;
         }
 
         // Cache is stale, refresh it
         domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
 
-        if (isEnabled) {
-          await pool.execute(
-            'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
-            [domain]
-          );
-        }
-
         return isEnabled;
       } else {
         // No cache entry, create one
         domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-
-        if (isEnabled) {
-          await pool.execute(
-            'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
-            [domain]
-          );
-        }
 
         return isEnabled;
       }
     } else {
       // Domain doesn't exist, auto-register as enabled
       await pool.execute(
-        'INSERT INTO tracked_websites (domain, is_enabled, first_seen, last_seen) VALUES (?, TRUE, NOW(), NOW())',
+        'INSERT INTO tracked_websites (domain, is_enabled, first_seen) VALUES (?, TRUE, NOW())',
         [domain]
       );
 

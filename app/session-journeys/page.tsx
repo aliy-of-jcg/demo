@@ -8,7 +8,6 @@ import {
   Monitor,
   MapPin,
   RefreshCw,
-  Calendar,
   Users,
   Route,
   LogIn,
@@ -21,6 +20,7 @@ import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
 import { formatTimezoneForDisplay } from '@/lib/utils/timezones';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { TrackingStatusBadge } from '@/components/tracking-status-badge';
+import { DateRangePicker } from '@/components/date-range-picker';
 import { toast } from 'sonner';
 
 interface Page {
@@ -366,22 +366,40 @@ export default function SessionJourneysPage() {
         <div className="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 mb-4 sm:mb-6">
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
             {/* Left: Date Range Picker */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0" />
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
+            {startDate && endDate && (
+              <DateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                onStartDateChange={(date) => {
+                  if (date) {
+                    const { start, end, clamped } = clampDateRange(date, endDate);
+                    if (clamped) {
+                      toast.info(t('filters.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                    }
+                    setStartDate(start);
+                    setEndDate(end);
+                  } else {
+                    setStartDate('');
+                  }
+                }}
+                onEndDateChange={(date) => {
+                  if (date) {
+                    const { start, end, clamped } = clampDateRange(startDate, date);
+                    if (clamped) {
+                      toast.info(t('filters.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                    }
+                    setStartDate(start);
+                    setEndDate(end);
+                  } else {
+                    setEndDate('');
+                  }
+                }}
+                maxRangeDays={MAX_RANGE_DAYS}
+                onRangeClamped={() => {
+                  toast.info(t('filters.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                }}
               />
-              <span className="text-gray-500">~</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-lg text-xs sm:text-sm flex-1 min-w-[120px]"
-              />
-            </div>
+            )}
 
             {/* Right: Quick Range Buttons */}
             <div className="flex items-center gap-2 flex-wrap">
