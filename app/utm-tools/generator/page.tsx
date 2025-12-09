@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Copy, Check, RefreshCw, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -588,7 +588,16 @@ function UTMGeneratorPageContent() {
 export default function UTMGeneratorPage() {
   return (
     <ProtectedRoute permission="utm_codes:create" showAccessDeniedMessage>
-      <UTMGeneratorPageContent />
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }>
+        <UTMGeneratorPageContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

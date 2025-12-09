@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import { requirePermission } from '@/lib/auth/api-middleware';
 import type { AuthContext } from '@/lib/auth/types';
+import { clearCacheByPrefix } from '@/lib/cache/simpleCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,9 @@ export const PATCH = requirePermission('settings:update', async (request: NextRe
         { status: 404 }
       );
     }
+
+    // Invalidate tracked websites analytics cache so UI sees the latest status immediately
+    clearCacheByPrefix('tracked-websites:');
 
     console.log(`✅ Domain ${domain} ${is_enabled ? 'enabled' : 'disabled'}`);
 

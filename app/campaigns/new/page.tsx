@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { PageFooter } from '@/components/page-footer';
@@ -773,7 +773,16 @@ function NewCampaignPageContent() {
 export default function NewCampaignPage() {
   return (
     <ProtectedRoute permission="campaigns:create" showAccessDeniedMessage>
-      <NewCampaignPageContent />
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }>
+        <NewCampaignPageContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }

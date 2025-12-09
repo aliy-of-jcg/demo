@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { Search, Edit, Trash2, BarChart3, TrendingUp, Users, BookOpen, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageFooter } from '@/components/page-footer';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -48,7 +48,7 @@ const statusColors: Record<string, string> = {
   hidden: 'bg-gray-300 text-gray-500'
 };
 
-export default function CoursesPage() {
+function CoursesPageContent() {
   const t = useTranslations('courses');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -886,6 +886,21 @@ export default function CoursesPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CoursesPageContent />
+    </Suspense>
   );
 }
 

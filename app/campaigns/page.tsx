@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye, Info, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { Search, ChevronDown, ChevronUp, MoreVertical, Edit, Copy, Trash2, BarChart3, TrendingUp, Users, DollarSign, Check, ExternalLink, Eye, Info, AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
@@ -71,7 +71,7 @@ const statusColors: Record<string, string> = {
   hidden: 'bg-gray-300 text-gray-500'
 };
 
-export default function CampaignsPage() {
+function CampaignsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -1060,6 +1060,21 @@ export default function CampaignsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function CampaignsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <CampaignsPageContent />
+    </Suspense>
   );
 }
 

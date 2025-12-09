@@ -25,4 +25,13 @@ export function clearCache(key: string) {
     cache.delete(key);
 }
 
+// Clear all cache entries that start with a given prefix
+export function clearCacheByPrefix(prefix: string) {
+    // Use Array.from to avoid downlevel iteration issues
+    const keysToDelete = Array.from(cache.keys()).filter((key) =>
+        key.startsWith(prefix)
+    );
+    keysToDelete.forEach((key) => cache.delete(key));
+}
+
 

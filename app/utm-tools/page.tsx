@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { Search, Copy, ExternalLink, Edit, Trash2, Plus, TrendingUp, Loader2, AlertTriangle, CheckCircle, Ban } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -49,7 +49,7 @@ interface Summary {
   total_clicks: number;
 }
 
-export default function UTMListPage() {
+function UTMListPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -806,6 +806,21 @@ export default function UTMListPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function UTMListPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <UTMListPageContent />
+    </Suspense>
   );
 }
 
