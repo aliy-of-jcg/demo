@@ -658,7 +658,7 @@
       "text": "Are you sure you want to delete this course?",
       "confirm": "Yes, delete it!",
       "cancel": "Cancel",
-      "hasCampaigns": "Cannot delete course with {count} active {plural}. Please delete or reassign the {plural} first.",
+      "hasCampaigns": "Cannot delete course with {count} active {plural}. Please delete the {plural} first.",
       "hasCampaignsSingular": "campaign",
       "hasCampaignsPlural": "campaigns"
     }
