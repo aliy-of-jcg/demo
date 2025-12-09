@@ -14,6 +14,8 @@ export const GET = requirePermission('users:read', async (req: NextRequest, cont
     try {
         const { user } = context;
 
+        console.log(`👥 Users API - GET - User Type: ${user.user_type}`);
+
         // Fetch users based on permission level
         let usersQuery: string;
         let queryParams: any[] = [];

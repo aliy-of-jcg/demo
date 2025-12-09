@@ -49,6 +49,8 @@ export const GET = requirePermission('courses:read', async (request: NextRequest
     const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status') || '';
 
+    console.log(`📚 Courses API - Page: ${page}, Limit: ${limit}, Search: ${search || 'none'}, Status: ${status || 'all'}`);
+
     const pool = getPool();
 
     // Build WHERE conditions for filtering

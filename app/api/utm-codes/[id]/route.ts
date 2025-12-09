@@ -10,6 +10,9 @@ export async function GET(
   try {
     const params = await context.params;
     const id = params.id;
+
+    console.log(`🏷️ UTM Code Detail API - ID: ${id}`);
+
     const pool = getPool();
 
     // Get the UTM code

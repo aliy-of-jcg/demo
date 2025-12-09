@@ -14,6 +14,8 @@ export const GET = requirePermission('system:read', async (req: NextRequest, con
     try {
         const { user } = context;
 
+        console.log(`⚙️ System Settings API - GET`);
+
         // Get all settings (force fresh fetch by clearing cache first)
         clearSettingsCache();
         const settings = await getAllSettings();
@@ -43,6 +45,8 @@ export const PUT = requirePermission('system:update', async (req: NextRequest, c
         // Get settings from request body
         const body = await req.json();
         const { settings } = body as { settings: Partial<SystemSettingsMap> };
+
+        console.log(`⚙️ System Settings API - PUT - Updating: ${Object.keys(settings).join(', ')}`);
 
         if (!settings || typeof settings !== 'object') {
             return NextResponse.json(
