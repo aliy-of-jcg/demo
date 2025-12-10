@@ -48,7 +48,7 @@ function UserManagementPageContent() {
     const [filterType, setFilterType] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [menuOpen, setMenuOpen] = useState<{ userId: number; type: 'userType' | 'userStatus' } | null>(null);
-    const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
+    const [menuPosition, setMenuPosition] = useState<{ top: number; right?: number; left?: number } | null>(null);
     const typeMenuRef = useRef<HTMLDivElement>(null);
     const statusMenuRef = useRef<HTMLDivElement>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -372,8 +372,8 @@ function UserManagementPageContent() {
                                 </Select>
                             </div>
 
-                            {/* Table */}
-                            <div className="overflow-x-auto">
+                            {/* Table (desktop) */}
+                            <div className="overflow-x-auto hidden lg:block">
                                 <table className="w-full">
                                     <thead className="border-b">
                                         <tr className="text-left text-sm font-medium text-gray-500">
@@ -600,6 +600,231 @@ function UserManagementPageContent() {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+
+                            {/* Cards (mobile/tablet) */}
+                            <div className="lg:hidden space-y-4">
+                                {filteredUsers.length === 0 ? (
+                                    <div className="py-8 text-center text-gray-500 border border-dashed border-gray-200 rounded-lg bg-gray-50">
+                                        {t("table.noUsers")}
+                                    </div>
+                                ) : (
+                                    filteredUsers.map((user) => (
+                                        <div key={user.id} className="border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm bg-white hover:shadow-md transition-shadow">
+                                            {/* First line: Email (full width) */}
+                                            <div className="mb-3">
+                                                <div className="font-semibold text-base text-gray-900 break-words">{user.email}</div>
+                                            </div>
+
+                                            {/* Second line: Status button (left) and User type (right) */}
+                                            <div className="flex items-center justify-between gap-3 mb-3">
+                                                <div className="relative flex-shrink-0" ref={menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' ? statusMenuRef : null}>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            if (!canUpdateUsers) return;
+                                                            e.stopPropagation();
+                                                            const button = e.currentTarget as HTMLElement;
+                                                            const rect = button.getBoundingClientRect();
+                                                            setMenuPosition({
+                                                                top: rect.bottom + 4,
+                                                                left: rect.left // Position menu to open rightwards from button's left edge
+                                                            });
+                                                            setMenuOpen(menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' ? null : { userId: user.id, type: 'userStatus' });
+                                                        }}
+                                                        disabled={!canUpdateUsers}
+                                                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium transition-all ${canUpdateUsers ? 'cursor-pointer hover:opacity-80 hover:scale-105' : 'cursor-default opacity-60'} ${getStatusBadge(user.status)}`}
+                                                        title={canUpdateUsers ? t("table.changeStatus") : ""}
+                                                    >
+                                                        {t(`status.${user.status}`)}
+                                                    </button>
+                                                    {canUpdateUsers && menuOpen?.userId === user.id && menuOpen?.type === 'userStatus' && menuPosition && (
+                                                        <>
+                                                            <div
+                                                                className="fixed inset-0 z-40"
+                                                                onClick={() => setMenuOpen(null)}
+                                                            />
+                                                            <div
+                                                                className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60] dark:bg-gray-800 dark:ring-gray-700"
+                                                                style={{
+                                                                    top: `${menuPosition.top}px`,
+                                                                    left: `${menuPosition.left}px`
+                                                                }}
+                                                            >
+                                                                <div className="py-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        onMouseDown={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMenuOpen(null);
+                                                                            if (user.status !== 'pending') {
+                                                                                updateUser(user.id, { status: 'pending' }, t("actions.changeStatus.updating"));
+                                                                            }
+                                                                        }}
+                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                    >
+                                                                        {t("status.pending")}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onMouseDown={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMenuOpen(null);
+                                                                            if (user.status !== 'active') {
+                                                                                updateUser(user.id, { status: 'active' }, t("actions.changeStatus.updating"));
+                                                                            }
+                                                                        }}
+                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                    >
+                                                                        {t("status.active")}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onMouseDown={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMenuOpen(null);
+                                                                            if (user.status !== 'stopped') {
+                                                                                updateUser(user.id, { status: 'stopped' }, t("actions.changeStatus.updating"));
+                                                                            }
+                                                                        }}
+                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                    >
+                                                                        {t("status.stopped")}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onMouseDown={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMenuOpen(null);
+                                                                            if (user.status !== 'blocked') {
+                                                                                updateUser(user.id, { status: 'blocked' }, t("actions.changeStatus.updating"));
+                                                                            }
+                                                                        }}
+                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left dark:text-red-400 dark:hover:bg-red-900/20"
+                                                                    >
+                                                                        {t("status.blocked")}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <div className="relative flex-shrink-0" ref={menuOpen?.userId === user.id && menuOpen?.type === 'userType' ? typeMenuRef : null}>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            if (!canUpdateUsers) return;
+                                                            e.stopPropagation();
+                                                            const button = e.currentTarget as HTMLElement;
+                                                            const rect = button.getBoundingClientRect();
+                                                            setMenuPosition({
+                                                                top: rect.bottom + 4,
+                                                                right: window.innerWidth - rect.right
+                                                            });
+                                                            setMenuOpen(menuOpen?.userId === user.id && menuOpen?.type === 'userType' ? null : { userId: user.id, type: 'userType' });
+                                                        }}
+                                                        disabled={!canUpdateUsers}
+                                                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all ${canUpdateUsers ? 'cursor-pointer hover:opacity-80 hover:scale-105' : 'cursor-default opacity-60'} ${getUserTypeBadge(user.user_type)}`}
+                                                        title={canUpdateUsers ? t("table.changeType") : ""}
+                                                    >
+                                                        {getUserTypeIcon(user.user_type)}
+                                                        {t(`userTypes.${user.user_type}`)}
+                                                    </button>
+                                                    {canUpdateUsers && menuOpen?.userId === user.id && menuOpen?.type === 'userType' && menuPosition && (
+                                                        <>
+                                                            <div
+                                                                className="fixed inset-0 z-40"
+                                                                onClick={() => setMenuOpen(null)}
+                                                            />
+                                                            <div
+                                                                className="fixed w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60] dark:bg-gray-800 dark:ring-gray-700"
+                                                                style={{
+                                                                    top: `${menuPosition.top}px`,
+                                                                    right: `${menuPosition.right}px`
+                                                                }}
+                                                            >
+                                                                <div className="py-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        onMouseDown={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMenuOpen(null);
+                                                                            if (user.user_type !== 'admin') {
+                                                                                updateUser(user.id, { user_type: 'admin' }, t("actions.changeType.updating"));
+                                                                            }
+                                                                        }}
+                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                    >
+                                                                        <Shield className="w-4 h-4 text-indigo-600" />
+                                                                        {t("userTypes.admin")}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onMouseDown={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMenuOpen(null);
+                                                                            if (user.user_type !== 'observer') {
+                                                                                updateUser(user.id, { user_type: 'observer' }, t("actions.changeType.updating"));
+                                                                            }
+                                                                        }}
+                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                    >
+                                                                        <Eye className="w-4 h-4 text-purple-600" />
+                                                                        {t("userTypes.observer")}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onMouseDown={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setMenuOpen(null);
+                                                                            if (user.user_type !== 'regular') {
+                                                                                updateUser(user.id, { user_type: 'regular' }, t("actions.changeType.updating"));
+                                                                            }
+                                                                        }}
+                                                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left dark:text-gray-300 dark:hover:bg-gray-700"
+                                                                    >
+                                                                        <UserIcon className="w-4 h-4 text-green-600" />
+                                                                        {t("userTypes.regular")}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Third line: Last login (left) and Created at (right) */}
+                                            <div className="flex items-center justify-between gap-3 py-3 border-t border-gray-100">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{t("table.lastLogin")}</div>
+                                                    <div className="text-sm font-medium text-gray-900">
+                                                        {user.last_login_at ? (
+                                                            formatDistanceToNow(new Date(user.last_login_at), { addSuffix: true })
+                                                        ) : (
+                                                            <span className="text-gray-500">{t("table.never")}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 min-w-0 text-right">
+                                                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{t("table.createdAt")}</div>
+                                                    <div className="text-sm font-medium text-gray-900">{formatCreatedDate(user.created_at)}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Footer: Company name (left) and Delete user (right) */}
+                                            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+                                                <div className="text-sm text-gray-600 break-words flex-1 min-w-0">{user.company_name}</div>
+                                                {canDeleteUsers && (
+                                                    <button
+                                                        onClick={() => handleDeleteUser(user)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors flex-shrink-0"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        {t("actions.deleteUser")}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>

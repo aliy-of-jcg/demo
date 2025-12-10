@@ -1590,7 +1590,9 @@
         "deleting": "Deleting user...",
         "success": "User deleted successfully!",
         "error": "Failed to delete user"
-      }
+      },
+      "viewProfile": "View Profile",
+      "deleteUser": "Delete User"
     },
     "errors": {
       "loadFailed": "Failed to load users",

@@ -1590,7 +1590,9 @@
         "deleting": "사용자 삭제 중...",
         "success": "사용자가 성공적으로 삭제되었습니다!",
         "error": "사용자 삭제 실패"
-      }
+      },
+      "viewProfile": "프로필 보기",
+      "deleteUser": "사용자 삭제"
     },
     "errors": {
       "loadFailed": "사용자 로드 실패",
