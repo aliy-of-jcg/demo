@@ -7,7 +7,6 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     instrumentationHook: true,
-    serverActions: false,
   },
 };
 
