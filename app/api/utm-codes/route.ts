@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
-import { requirePermission } from '@/lib/auth/api-middleware';
-import type { AuthContext } from '@/lib/auth/types';
+import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { RowDataPacket } from 'mysql2';
 
 // Helper function to normalize domain (extract domain from URL)

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllSettings, updateSettings, SystemSettingsMap, clearSettingsCache } from '@/lib/system-settings';
-import { requirePermission } from '@/lib/auth/api-middleware';
-import type { AuthContext } from '@/lib/auth/types';
+import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 
 export const dynamic = 'force-dynamic';
 

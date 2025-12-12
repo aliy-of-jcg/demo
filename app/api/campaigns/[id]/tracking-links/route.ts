@@ -3,6 +3,7 @@ import { getPool } from '@/lib/mysql';
 import { nanoid } from 'nanoid';
 import clickhouse from '@/lib/clickhouse';
 import { RowDataPacket } from 'mysql2';
+import { requirePermissionWithParams, type AuthContext } from '@/lib/auth/api-middleware';
 
 // Helper function to normalize domain (extract domain from URL)
 function normalizeDomain(url: string): string {
@@ -19,12 +20,13 @@ function normalizeDomain(url: string): string {
   }
 }
 
-export async function GET(
+export const GET = requirePermissionWithParams('utm_codes:read', async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context: AuthContext,
+  routeParams: { params: Record<string, string> }
+) => {
   try {
-    const campaignId = params.id;
+    const campaignId = routeParams.params.id;
     console.log(`🔗 Campaign Tracking Links API - Campaign ID: ${campaignId}`);
     const pool = getPool();
 
@@ -143,14 +145,15 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(
+export const POST = requirePermissionWithParams('utm_codes:create', async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context: AuthContext,
+  routeParams: { params: Record<string, string> }
+) => {
   try {
-    const campaignId = params.id;
+    const campaignId = routeParams.params.id;
     const body = await request.json();
     const {
       name,
@@ -319,5 +322,5 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});
 

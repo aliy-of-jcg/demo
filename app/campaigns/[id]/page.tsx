@@ -11,6 +11,7 @@ import { useTranslations } from 'next-intl';
 import { usePermission } from '@/lib/hooks/usePermission';
 import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
+import { formatDateDDMMYY } from '@/lib/utils/date-formatter';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,6 +85,7 @@ export default function CampaignDetailsPage() {
 
   // Check permissions
   const canUpdateCampaign = hasPermission('campaigns:update');
+  const canCreateUtm = hasPermission('utm_codes:create');
   const canUpdateUtm = hasPermission('utm_codes:update');
   const canDeleteUtm = hasPermission('utm_codes:delete');
 
@@ -168,6 +170,12 @@ export default function CampaignDetailsPage() {
 
   const handleAddTrackingLink = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check permission before proceeding
+    if (!canCreateUtm) {
+      toast.error(t('detail.toast.noPermission') || 'You do not have permission to create tracking links');
+      return;
+    }
 
     if (!formData.name || !formData.utm_source || !formData.utm_medium || !formData.utm_campaign || !formData.landing_url) {
       toast.error(t('detail.toast.fillRequired'));
@@ -361,7 +369,7 @@ export default function CampaignDetailsPage() {
           <h3 className="text-sm font-medium text-gray-600">{t('detail.campaignPeriod')}</h3>
           <p className="text-2xl font-bold text-gray-900 mt-1">{campaignDays} {t('detail.days')}</p>
           <p className="text-xs text-gray-500 mt-1">
-            {new Date(campaign.start_date).toLocaleDateString()} - {new Date(campaign.end_date).toLocaleDateString()}
+            {formatDateDDMMYY(campaign.start_date)} - {formatDateDDMMYY(campaign.end_date)}
           </p>
         </div>
 
@@ -453,7 +461,7 @@ export default function CampaignDetailsPage() {
             <div>
               <p className="text-sm font-medium text-gray-600">{t('detail.createdAt')}</p>
               <p className="text-base text-gray-900 mt-1">
-                {new Date(campaign.created_at).toLocaleDateString()} {new Date(campaign.created_at).toLocaleTimeString()}
+                {formatDateDDMMYY(campaign.created_at)} {new Date(campaign.created_at).toLocaleTimeString()}
               </p>
             </div>
           </div>
@@ -533,29 +541,31 @@ export default function CampaignDetailsPage() {
             <h2 className="text-xl font-semibold text-gray-900">{t('detail.trackingLinks')}</h2>
             <p className="text-sm text-gray-600 mt-1">{t('detail.manageLinks')}</p>
           </div>
-          <button
-            onClick={() => {
-              // Auto-fill with campaign's source, medium, and landing URL
-              const firstLink = trackingLinks[0];
-              setFormData({
-                name: '',
-                utm_source: campaign?.source || '',
-                utm_medium: campaign?.medium || '',
-                utm_campaign: campaign?.name || '',
-                utm_term: '',
-                utm_content: '',
-                landing_url: firstLink?.landing_url || '',
-                budget: '',
-                auto_pause_on_budget: false,
-                auto_update_campaign_budget: true
-              });
-              setShowAddLinkModal(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('detail.addTrackingLink')}</span>
-          </button>
+          <ProtectedComponent permission="utm_codes:create" hideOnUnauthorized>
+            <button
+              onClick={() => {
+                // Auto-fill with campaign's source, medium, and landing URL
+                const firstLink = trackingLinks[0];
+                setFormData({
+                  name: '',
+                  utm_source: campaign?.source || '',
+                  utm_medium: campaign?.medium || '',
+                  utm_campaign: campaign?.name || '',
+                  utm_term: '',
+                  utm_content: '',
+                  landing_url: firstLink?.landing_url || '',
+                  budget: '',
+                  auto_pause_on_budget: false,
+                  auto_update_campaign_budget: true
+                });
+                setShowAddLinkModal(true);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('detail.addTrackingLink')}</span>
+            </button>
+          </ProtectedComponent>
         </div>
 
         <div className="overflow-x-auto">

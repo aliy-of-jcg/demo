@@ -13,6 +13,9 @@ import type { UserType } from '@/lib/types';
 import type { FullPermission } from '@/lib/permissions/types';
 import { query } from '@/lib/mysql';
 
+// Re-export types for convenience
+export type { AuthContext, AuthenticatedUser, AuthMiddlewareOptions, ApiRouteHandler } from './types';
+
 /**
  * Extract authentication token from request
  */

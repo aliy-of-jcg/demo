@@ -174,7 +174,6 @@ demo/
 │   │   │   ├── session-journeys/     # 완전한 사용자 세션 여정
 │   │   │   ├── time-analysis/        # 시간 기반 패턴 (KST)
 │   │   │   ├── tracked-websites/    # 추적 웹사이트 분석
-│   │   │   └── debug-sessions/      # 디버그 세션 분석
 │   │   ├── auth/          # 인증
 │   │   │   ├── signup/               # 사용자 등록
 │   │   │   ├── login/                # 사용자 로그인
@@ -207,7 +206,6 @@ demo/
 │   ├── session-journeys/   # 완전한 사용자 세션 여정 시각화
 │   ├── time-analysis/     # 시간 기반 분석 (KST)
 │   ├── tracked-websites/  # 추적 웹사이트 관리 및 통계
-│   ├── debug-sessions/    # 세션 디버깅 도구
 │   ├── user-management/   # 사용자 관리 페이지 (Owner 전용)
 │   ├── utm-tools/         # UTM 도구
 │   │   ├── page.tsx       # UTM 링크 목록

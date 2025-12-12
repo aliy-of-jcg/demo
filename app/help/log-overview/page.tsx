@@ -102,7 +102,7 @@ const sections = [
                     "Summary cards: mobile/tablet/desktop share (with counts) plus weighted average conversion rate across devices.",
                     "Visuals: device and browser pies, OS bar chart, and matching tables for visitors and conversion rates.",
                     "Resolution table lists top screen sizes with visitors/pageviews/share to spot layout breakpoints to prioritize.",
-                    "Date presets, PDF export, and tracking-status badge mirror other analytics views; pair with Debug Sessions to verify fixes.",
+                    "Date presets, PDF export, and tracking-status badge mirror other analytics views.",
                 ],
             },
             {

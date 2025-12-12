@@ -24,7 +24,6 @@ A comprehensive marketing analytics and campaign management platform built with 
 - 📄 **PDF Export** - Export analytics dashboards and reports to PDF format
 - 🌐 **Internationalization (i18n)** - Multi-language support using next-intl
 - 🔗 **Short URL Tracking** - Tracking link redirection via `/t/[code]` route
-- 🐛 **Debug Tools** - Session debugging and tracking validation pages
 - 💚 **Health Check API** - System status monitoring endpoint
 
 ### Technical Features
@@ -174,7 +173,6 @@ demo/
 │   │   │   ├── session-journeys/     # Complete user session journeys
 │   │   │   ├── time-analysis/        # Time-based patterns (KST)
 │   │   │   ├── tracked-websites/    # Tracked websites analysis
-│   │   │   └── debug-sessions/      # Debug sessions analysis
 │   │   ├── auth/          # Authentication
 │   │   │   ├── signup/               # User registration
 │   │   │   ├── login/                # User login
@@ -207,7 +205,6 @@ demo/
 │   ├── session-journeys/   # Complete user session journey visualization
 │   ├── time-analysis/     # Time-based analytics (KST)
 │   ├── tracked-websites/  # Tracked websites management and statistics
-│   ├── debug-sessions/    # Session debugging tools
 │   ├── user-management/   # User management page (Owner only)
 │   ├── utm-tools/         # UTM tools
 │   │   ├── page.tsx       # UTM link list

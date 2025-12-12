@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
-import { requirePermission } from '@/lib/auth/api-middleware';
+import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getCache, setCache } from '@/lib/cache/simpleCache';
-import type { AuthContext } from '@/lib/auth/types';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';

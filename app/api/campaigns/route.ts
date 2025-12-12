@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
-import { requirePermission } from '@/lib/auth/api-middleware';
+import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getCache, setCache } from '@/lib/cache/simpleCache';
-import type { AuthContext } from '@/lib/auth/types';
+
 
 export const GET = requirePermission('campaigns:read', async (request: NextRequest, context: AuthContext) => {
   const cacheTtlMs = 60_000; // 60s

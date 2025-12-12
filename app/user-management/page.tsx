@@ -259,11 +259,11 @@ function UserManagementPageContent() {
             if (kstYear === yesterdayYear && kstMonth === yesterdayMonth && kstDay === yesterdayDay) {
                 return "yesterday";
             } else {
-                // Format as YY/MM/DD in KST
-                const year = kstYear.toString().slice(-2);
-                const month = String(kstMonth + 1).padStart(2, '0');
+                // Format as DD/MM/YY in KST
                 const day = String(kstDay).padStart(2, '0');
-                return `${year}/${month}/${day}`;
+                const month = String(kstMonth + 1).padStart(2, '0');
+                const year = kstYear.toString().slice(-2);
+                return `${day}/${month}/${year}`;
             }
         }
     };

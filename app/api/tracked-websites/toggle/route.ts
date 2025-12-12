@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import { requirePermission } from '@/lib/auth/api-middleware';
-import type { AuthContext } from '@/lib/auth/types';
+import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { clearCacheByPrefix } from '@/lib/cache/simpleCache';
 
 export const dynamic = 'force-dynamic';

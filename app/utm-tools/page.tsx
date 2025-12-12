@@ -201,11 +201,10 @@ function UTMListPageContent() {
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      });
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear().toString().slice(-2);
+      return `${day}/${month}/${year}`;
     } catch {
       return dateString;
     }

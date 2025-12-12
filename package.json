@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "analyze": "cross-env ANALYZE=true next build",
     "start": "next start",
     "lint": "next lint",
     "clickhouse:init": "node scripts/init-clickhouse.js",
@@ -54,6 +55,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.0.10",
     "@types/bcryptjs": "^2.4.6",
     "@types/geoip-lite": "^1.4.4",
     "@types/jsonwebtoken": "^9.0.10",
@@ -65,6 +67,8 @@
     "@types/swagger-ui-react": "^5.18.0",
     "@types/ua-parser-js": "^0.7.39",
     "autoprefixer": "^10.4.19",
+    "baseline-browser-mapping": "^2.9.6",
+    "cross-env": "^10.1.0",
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
     "postcss": "^8",

@@ -1258,88 +1258,6 @@ export const apiSpec = {
       },
     },
 
-    "/api/analytics/debug-sessions": {
-      get: {
-        tags: ["Analytics"],
-        summary: "Debug Sessions",
-        description: "Session journeys filtered by specific debug domains for testing and validation purposes",
-        parameters: [
-          {
-            name: "start_date",
-            in: "query",
-            schema: { type: "string", format: "date" },
-            description: "Start date for session filtering",
-          },
-          {
-            name: "end_date",
-            in: "query",
-            schema: { type: "string", format: "date" },
-            description: "End date for session filtering",
-          },
-          {
-            name: "limit",
-            in: "query",
-            schema: { type: "integer", default: 50 },
-            description: "Maximum number of sessions to return (default: 50)",
-          },
-        ],
-        responses: {
-          200: {
-            description: "Debug session journeys for specific domains",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    success: { type: "boolean", example: true },
-                    sessions: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          session_id: { type: "string" },
-                          user_id: { type: "string" },
-                          session_start: { type: "string", format: "date-time" },
-                          session_end: { type: "string", format: "date-time" },
-                          total_pages: { type: "number" },
-                          duration: { type: "number" },
-                          landing_page: { type: "string" },
-                          exit_page: { type: "string" },
-                          utm_source: { type: "string" },
-                          utm_medium: { type: "string" },
-                          utm_campaign: { type: "string" },
-                          device_type: { type: "string" },
-                          browser: { type: "string" },
-                          os: { type: "string" },
-                          tracked_domain: { type: "string", example: "aptdecor.uz" },
-                          pages: {
-                            type: "array",
-                            items: {
-                              type: "object",
-                              properties: {
-                                page_url: { type: "string" },
-                                page_title: { type: "string" },
-                                page_sequence: { type: "number" },
-                                timestamp: { type: "string", format: "date-time" },
-                                time_on_page: { type: "number" },
-                                event_type: { type: "string" },
-                                is_landing_page: { type: "number" },
-                                is_exit_page: { type: "number" },
-                              },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-
     // ==================== TRACKING ====================
     "/api/track": {
       post: {
@@ -1490,42 +1408,6 @@ export const apiSpec = {
         responses: {
           200: {
             description: "Tracking link generated successfully",
-          },
-        },
-      },
-    },
-
-    "/api/tracking/debug": {
-      get: {
-        security: [],
-        tags: ["Tracking"],
-        summary: "Get recent tracking events",
-        description: "Retrieve recent tracking events for debugging purposes (last 24 hours)",
-        responses: {
-          200: {
-            description: "Recent tracking events",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    success: { type: "boolean" },
-                    events: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          timestamp: { type: "string" },
-                          user_id: { type: "string" },
-                          page_url: { type: "string" },
-                          event_type: { type: "string" },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
           },
         },
       },

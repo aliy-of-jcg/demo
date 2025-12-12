@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import { requirePermissionWithParams } from '@/lib/auth/api-middleware';
-import type { AuthContext } from '@/lib/auth/types';
+import { requirePermissionWithParams, type AuthContext } from '@/lib/auth/api-middleware';
 
 export async function GET(
   request: NextRequest,

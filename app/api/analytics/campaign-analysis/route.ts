@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { RowDataPacket } from 'mysql2';
-import { requirePermission } from '@/lib/auth/api-middleware';
-import type { AuthContext } from '@/lib/auth/types';
+import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';

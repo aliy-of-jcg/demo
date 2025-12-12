@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
+import { requirePermissionWithParams, type AuthContext } from '@/lib/auth/api-middleware';
 
-export async function GET(
+export const GET = requirePermissionWithParams('campaigns:read', async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context: AuthContext,
+  routeParams: { params: Record<string, string> }
+) => {
   try {
-    const id = params.id;
+    const id = routeParams.params.id;
     console.log(`📋 Campaign Detail API - Campaign ID: ${id}`);
     const pool = getPool();
 
@@ -326,14 +328,15 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
-export async function PUT(
+export const PUT = requirePermissionWithParams('campaigns:update', async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context: AuthContext,
+  routeParams: { params: Record<string, string> }
+) => {
   try {
-    const id = params.id;
+    const id = routeParams.params.id;
     const body = await request.json();
     const {
       name,
@@ -399,14 +402,15 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(
+export const DELETE = requirePermissionWithParams('campaigns:delete', async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context: AuthContext,
+  routeParams: { params: Record<string, string> }
+) => {
   try {
-    const id = params.id;
+    const id = routeParams.params.id;
     const pool = getPool();
 
     // Soft delete - set status to 'hidden' instead of deleting
@@ -426,5 +430,5 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});
 

@@ -276,13 +276,6 @@ All authentication endpoints include comprehensive error handling and security m
   - Returns short URL and full URL with UTM params
 - **Console Log:** `🔗 Tracking Generate API - Campaign: ${campaignName}, Source: ${utmSource}, Medium: ${utmMedium}`
 
-#### GET `/api/tracking/debug`
-- **Purpose:** Get recent tracking events for debugging
-- **Features:**
-  - Last 24 hours of events
-  - Limit 50 most recent
-  - Useful for verifying tracking setup
-
 ---
 
 ### 7. System APIs (2 endpoints)
