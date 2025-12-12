@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse from '@/lib/clickhouse';
-import { nanoid } from 'nanoid';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
 
 /**

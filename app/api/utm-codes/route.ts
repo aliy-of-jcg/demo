@@ -3,6 +3,7 @@ import { getPool } from '@/lib/mysql';
 import clickhouse from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { RowDataPacket } from 'mysql2';
+import { generateTrackingCode } from '@/lib/utils/tracking-code-generator';
 
 // Helper function to normalize domain (extract domain from URL)
 function normalizeDomain(url: string): string {
@@ -275,10 +276,8 @@ export const POST = requirePermission('utm_codes:create', async (request: NextRe
 
     const utm_campaign = (campaignRows as any[])[0].name;
 
-    // Generate a unique tracking code  (shorter format)
-    const timestamp = Date.now().toString().slice(-8); // Last 8 digits of timestamp
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase(); // 4 characters
-    const tracking_code = `${timestamp}${random}`; // e.g., 12345243431 (12 characters)
+    // Generate tracking code using unified generator
+    const tracking_code = generateTrackingCode();
 
     // Build full URl with UTM parameters
     let fullUrlWithUtm = landing_url;

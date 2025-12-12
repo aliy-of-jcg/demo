@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import { nanoid } from 'nanoid';
 import clickhouse from '@/lib/clickhouse';
 import { RowDataPacket } from 'mysql2';
 import { requirePermissionWithParams, type AuthContext } from '@/lib/auth/api-middleware';
+import { generateTrackingCode } from '@/lib/utils/tracking-code-generator';
 
 // Helper function to normalize domain (extract domain from URL)
 function normalizeDomain(url: string): string {
@@ -262,9 +262,8 @@ export const POST = requirePermissionWithParams('utm_codes:create', async (
       );
     }
 
-    // Generate tracking code
-    const trackingCode = nanoid(10);
-    const id = nanoid();
+    // Generate tracking code using unified generator
+    const trackingCode = generateTrackingCode();
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const trackingUrl = `${appUrl}/t/${trackingCode}`;

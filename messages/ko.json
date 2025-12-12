@@ -376,12 +376,6 @@
       "modal": {
         "addTitle": "새 추적 링크 추가",
         "description": "다른 소스, 미디어 또는 랜딩 URL로 새 추적 링크를 만듭니다. 중복 링크는 허용되지 않습니다.",
-        "linkName": "링크 이름",
-        "landingUrl": "랜딩 URL",
-        "media": "미디어",
-        "adType": "광고 유형",
-        "autoFilled": "캠페인에서 자동으로 채워짐. 필요시 덮어쓸 수 있습니다.",
-        "utmCampaign": "UTM 캠페인",
         "utmTerm": "UTM 용어 (선택사항)",
         "utmContent": "UTM 콘텐츠 (선택사항)",
         "budgetSettings": "예산 설정 (선택사항)",

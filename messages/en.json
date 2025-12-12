@@ -376,12 +376,6 @@
       "modal": {
         "addTitle": "Add New Tracking Link",
         "description": "Create a new tracking link with different source, medium, or landing URL. Duplicate links are not allowed.",
-        "linkName": "Link Name",
-        "landingUrl": "Landing URL",
-        "media": "Media",
-        "adType": "Ad Type",
-        "autoFilled": "Auto-filled from campaign. You can override if needed.",
-        "utmCampaign": "UTM Campaign",
         "utmTerm": "UTM Term (Optional)",
         "utmContent": "UTM Content (Optional)",
         "budgetSettings": "Budget Settings (Optional)",

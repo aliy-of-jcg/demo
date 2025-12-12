@@ -78,6 +78,7 @@ const statusColors: Record<string, string> = {
 
 export default function CampaignDetailsPage() {
   const t = useTranslations('campaigns');
+  const tUtm = useTranslations('utmTools.generator'); // For source/medium options to match UTM generator
   const params = useParams();
   const router = useRouter();
   const campaignId = params.id as string;
@@ -115,6 +116,16 @@ export default function CampaignDetailsPage() {
     fetchCampaignDetails();
     fetchTrackingLinks();
   }, [campaignId]);
+
+  // Auto-fill UTM name from campaign name when campaign is loaded (like UTM generator)
+  useEffect(() => {
+    if (campaign?.name) {
+      setFormData(prev => ({
+        ...prev,
+        name: campaign.name
+      }));
+    }
+  }, [campaign?.name]);
 
   const fetchCampaignDetails = async () => {
     try {
@@ -177,7 +188,12 @@ export default function CampaignDetailsPage() {
       return;
     }
 
-    if (!formData.name || !formData.utm_source || !formData.utm_medium || !formData.utm_campaign || !formData.landing_url) {
+    // Validate required fields (name and utm_campaign are auto-filled from campaign)
+    if (!campaign?.name) {
+      toast.error(t('detail.toast.campaignNotFound') || 'Campaign not found');
+      return;
+    }
+    if (!formData.utm_source || !formData.utm_medium || !formData.landing_url) {
       toast.error(t('detail.toast.fillRequired'));
       return;
     }
@@ -547,10 +563,10 @@ export default function CampaignDetailsPage() {
                 // Auto-fill with campaign's source, medium, and landing URL
                 const firstLink = trackingLinks[0];
                 setFormData({
-                  name: '',
+                  name: campaign?.name || '', // Auto-filled from campaign (not editable)
                   utm_source: campaign?.source || '',
                   utm_medium: campaign?.medium || '',
-                  utm_campaign: campaign?.name || '',
+                  utm_campaign: campaign?.name || '', // Auto-filled from campaign (not editable)
                   utm_term: '',
                   utm_content: '',
                   landing_url: firstLink?.landing_url || '',
@@ -749,107 +765,106 @@ export default function CampaignDetailsPage() {
             <form onSubmit={handleAddTrackingLink} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('detail.modal.linkName')} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Google Search - Mobile Campaign"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('detail.modal.landingUrl')} <span className="text-red-500">*</span>
+                  {tUtm('form.targetLandingUrl')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="url"
                   value={formData.landing_url}
                   onChange={(e) => setFormData({ ...formData, landing_url: e.target.value })}
-                  placeholder="https://example.com/landing-page"
+                  placeholder={tUtm('form.landingUrlPlaceholder')}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {tUtm('form.landingUrlHint')}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('detail.modal.media')} <span className="text-red-500">*</span>
+                    {tUtm('form.utmSource')} <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.utm_source}
                     onChange={(e) => setFormData({ ...formData, utm_source: e.target.value })}
-                    placeholder="e.g., google, facebook, naver"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
-                  />
+                  >
+                    <option value="">{tUtm('form.selectSource')}</option>
+                    <option value="google">{tUtm('sourceOptions.google')}</option>
+                    <option value="naver">{tUtm('sourceOptions.naver')}</option>
+                    <option value="kakao">{tUtm('sourceOptions.kakao')}</option>
+                    <option value="youtube">{tUtm('sourceOptions.youtube')}</option>
+                    <option value="facebook">{tUtm('sourceOptions.facebook')}</option>
+                    <option value="instagram">{tUtm('sourceOptions.instagram')}</option>
+                    <option value="saramin">{tUtm('sourceOptions.saramin')}</option>
+                    <option value="email">{tUtm('sourceOptions.email')}</option>
+                    <option value="other">{tUtm('sourceOptions.other')}</option>
+                  </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    {t('detail.modal.autoFilled')}
+                    {tUtm('form.sourceHint')}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('detail.modal.adType')} <span className="text-red-500">*</span>
+                    {tUtm('form.utmMedium')} <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.utm_medium}
                     onChange={(e) => setFormData({ ...formData, utm_medium: e.target.value })}
-                    placeholder="e.g., search, banner, sns"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
-                  />
+                  >
+                    <option value="">{tUtm('form.selectMedium')}</option>
+                    <option value="search">{tUtm('mediumOptions.search')}</option>
+                    <option value="display">{tUtm('mediumOptions.display')}</option>
+                    <option value="video">{tUtm('mediumOptions.video')}</option>
+                    <option value="social">{tUtm('mediumOptions.social')}</option>
+                    <option value="email">{tUtm('mediumOptions.email')}</option>
+                    <option value="banner">{tUtm('mediumOptions.banner')}</option>
+                    <option value="sns">{tUtm('mediumOptions.sns')}</option>
+                    <option value="referral">{tUtm('mediumOptions.referral')}</option>
+                    <option value="organic">{tUtm('mediumOptions.organic')}</option>
+                  </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    {t('detail.modal.autoFilled')}
+                    {tUtm('form.mediumHint')}
                   </p>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t('detail.modal.utmCampaign')} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.utm_campaign}
-                  onChange={(e) => setFormData({ ...formData, utm_campaign: e.target.value })}
-                  placeholder="e.g., spring_sale_2025"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('detail.modal.utmTerm')}
+                    {tUtm('form.utmTerm')}
                   </label>
                   <input
                     type="text"
                     value={formData.utm_term}
                     onChange={(e) => setFormData({ ...formData, utm_term: e.target.value })}
-                    placeholder="e.g., running+shoes"
+                    placeholder={tUtm('form.termPlaceholder')}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {tUtm('form.termHint')}
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('detail.modal.utmContent')}
+                    {tUtm('form.utmContent')}
                   </label>
                   <input
                     type="text"
                     value={formData.utm_content}
                     onChange={(e) => setFormData({ ...formData, utm_content: e.target.value })}
-                    placeholder="e.g., logolink, textlink"
+                    placeholder={tUtm('form.contentPlaceholder')}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {tUtm('form.contentHint')}
+                  </p>
                 </div>
               </div>
 
