@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { nanoid } from 'nanoid';
 import { getPool } from '@/lib/mysql';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
 
     // Insert into ClickHouse visit_logs table
     try {
-      await clickhouse.insert({
+      await insertWithMemoryLimit({
         table: 'analytics.visit_logs',
         values: [{
           timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),

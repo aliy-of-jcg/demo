@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { RowDataPacket } from 'mysql2';
 import { generateTrackingCode } from '@/lib/utils/tracking-code-generator';
@@ -118,17 +118,26 @@ export const GET = requirePermission('utm_codes:read', async (request: NextReque
       try {
         const escapedCodes = allTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
 
+        // Use materialized view for clicks (last 90 days for performance)
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 90);
+        const startDateStr = startDate.toISOString().split('T')[0];
+        
+        // Query buffer table directly for real-time data (includes both pending and flushed data)
+        // Buffer tables automatically include data from both buffer and destination table
         const clickQuery = `
           SELECT 
             tracking_code,
             COUNT(*) as total_clicks
-          FROM analytics.tracking_events
+          FROM analytics.tracking_events_buffer
           WHERE tracking_code IN (${escapedCodes})
+            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDateStr}')
+            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')
           GROUP BY tracking_code
         `;
 
-        const clickData = await clickhouse.query({
-          query: clickQuery,
+        const clickData = await queryWithMemoryLimit(clickQuery, {
           format: 'JSONEachRow'
         });
 

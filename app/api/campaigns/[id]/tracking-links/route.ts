@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { RowDataPacket } from 'mysql2';
 import { requirePermissionWithParams, type AuthContext } from '@/lib/auth/api-middleware';
 import { generateTrackingCode } from '@/lib/utils/tracking-code-generator';
@@ -61,17 +61,23 @@ export const GET = requirePermissionWithParams('utm_codes:read', async (
     if (trackingCodes.length > 0) {
       try {
         const escapedCodes = trackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-        const analyticsQuery = await clickhouse.query({
-          query: `
+        // Use materialized view for clicks (last 90 days for performance)
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 90);
+        const startDateStr = startDate.toISOString().split('T')[0];
+        
+        // Query buffer table directly for real-time data (includes both pending and flushed data)
+        const analyticsQuery = await queryWithMemoryLimit(`
             SELECT 
               tracking_code,
               COUNT(*) as total_clicks
-            FROM analytics.tracking_events
+            FROM analytics.tracking_events_buffer
             WHERE tracking_code IN (${escapedCodes})
+              AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDateStr}')
+              AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')
             GROUP BY tracking_code
-          `,
-          format: 'JSONEachRow'
-        });
+          `, { format: 'JSONEachRow' });
 
         const analyticsData = await analyticsQuery.json() as any[];
         analyticsData.forEach((result: any) => {

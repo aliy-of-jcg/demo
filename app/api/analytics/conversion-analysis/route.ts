@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 
@@ -11,8 +11,29 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const timezone = await getDefaultTimezone();
 
     const { searchParams } = new URL(request.url);
-    const startDate = searchParams.get('startDate') || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
+    const MAX_RANGE_DAYS = 90;
+    
+    let endDate = searchParams.get('endDate') || new Date().toISOString().split('T')[0];
+    let startDate = searchParams.get('startDate');
+
+    if (!startDate) {
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      startDate = date.toISOString().split('T')[0];
+    }
+
+    // Enforce maximum date window (server-side safety net)
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      startDate = clampedStart.toISOString().split('T')[0];
+    }
+
     const campaignId = searchParams.get('campaignId');
 
     // Build WHERE clause
@@ -33,15 +54,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         SUM(conversion_value) as total_value,
         AVG(conversion_value) as avg_value,
         countDistinct(user_id) as unique_users
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND conversion_type != ''
       GROUP BY conversion_type
       ORDER BY count DESC
     `;
 
-    const summaryResult = await clickhouse.query({
-      query: conversionSummaryQuery,
+    const summaryResult = await queryWithMemoryLimit(conversionSummaryQuery, {
       format: 'JSONEachRow'
     });
 
@@ -54,15 +74,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         conversion_type,
         COUNT(*) as count,
         SUM(conversion_value) as total_value
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND conversion_type != ''
       GROUP BY date, conversion_type
       ORDER BY date ASC, conversion_type
     `;
 
-    const trendResult = await clickhouse.query({
-      query: conversionTrendQuery,
+    const trendResult = await queryWithMemoryLimit(conversionTrendQuery, {
       format: 'JSONEachRow'
     });
 
@@ -76,7 +95,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         conversion_type,
         COUNT(*) as count,
         SUM(conversion_value) as total_value
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND conversion_type != ''
         AND utm_source != ''
@@ -85,8 +104,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       LIMIT 20
     `;
 
-    const sourceResult = await clickhouse.query({
-      query: conversionBySourceQuery,
+    const sourceResult = await queryWithMemoryLimit(conversionBySourceQuery, {
       format: 'JSONEachRow'
     });
 
@@ -101,17 +119,23 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion' AND conversion_type = 'purchase') as purchase_conversions,
         countIf(event_type = 'conversion' AND conversion_type = 'trial_start') as trial_conversions,
         SUM(CASE WHEN event_type = 'conversion' THEN conversion_value ELSE 0 END) as total_revenue
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       ${campaignId && campaignId !== 'all' ? `AND campaign_id = ${campaignId}` : ''}
     `;
 
-    const funnelResult = await clickhouse.query({
-      query: funnelQuery,
+    const funnelResult = await queryWithMemoryLimit(funnelQuery, {
       format: 'JSONEachRow'
     });
 
-    const funnelData = await funnelResult.json();
+    const funnelData = await funnelResult.json() as Array<{
+      total_visitors: number;
+      total_conversions: number;
+      signup_conversions: number;
+      purchase_conversions: number;
+      trial_conversions: number;
+      total_revenue: number;
+    }>;
 
     return NextResponse.json({
       success: true,

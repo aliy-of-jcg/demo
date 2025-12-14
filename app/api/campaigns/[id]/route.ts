@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermissionWithParams, type AuthContext } from '@/lib/auth/api-middleware';
 
 export const GET = requirePermissionWithParams('campaigns:read', async (
@@ -56,15 +56,23 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
         queryParams[`code${i}`] = code;
       });
 
-      const clicksQuery = await clickhouse.query({
-        query: `
+      // Use materialized view for clicks (last 90 days for performance)
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 90);
+      const startDateStr = startDate.toISOString().split('T')[0];
+      
+      // Query buffer table directly for real-time data
+      const clicksQuery = await queryWithMemoryLimit(`
           SELECT 
             tracking_code,
             COUNT(*) as total_clicks
-          FROM analytics.tracking_events
+          FROM analytics.tracking_events_buffer
           WHERE tracking_code IN (${placeholders})
+            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDateStr}')
+            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')
           GROUP BY tracking_code
-        `,
+        `, {
         query_params: queryParams,
         format: 'JSONEachRow'
       });
@@ -88,7 +96,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
             SELECT 
               tracking_code,
               COUNT(*) as total_clicks
-            FROM analytics.tracking_events
+            FROM analytics.tracking_events_buffer
             WHERE utm_campaign IN (${utmCampaignsList})
               AND tracking_code != ''
               AND tracking_code IS NOT NULL
@@ -126,7 +134,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
       visitorsQuery = `
         SELECT 
           countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE (campaign_id = ${id} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
           AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
@@ -138,7 +146,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
       visitorsQuery = `
         SELECT 
           countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
           AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
@@ -149,7 +157,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
       visitorsQuery = `
         SELECT 
           countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}))
           AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
@@ -158,7 +166,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
       visitorsQuery = `
         SELECT 
           countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE campaign_id = ${id}
           AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
@@ -211,7 +219,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
         const clickhouseTrackingCodesQuery = await clickhouse.query({
           query: `
             SELECT DISTINCT tracking_code
-            FROM analytics.visit_logs
+            FROM analytics.visit_logs_buffer
             WHERE campaign_id = ${id}
               AND tracking_code != ''
               AND tracking_code IS NOT NULL
@@ -237,7 +245,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
           const clickhouseClicksQuery = await clickhouse.query({
             query: `
               SELECT DISTINCT tracking_code
-              FROM analytics.tracking_events
+              FROM analytics.tracking_events_buffer
               WHERE utm_campaign IN (${utmCampaignsList})
                 AND tracking_code != ''
                 AND tracking_code IS NOT NULL

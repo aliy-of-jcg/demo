@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 
 export const dynamic = 'force-dynamic';
@@ -7,23 +7,38 @@ export const dynamic = 'force-dynamic';
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const startDate = searchParams.get('start_date');
-    const endDate = searchParams.get('end_date');
+    const MAX_RANGE_DAYS = 90;
+
+    // Get date range from query parameters (default: last 30 days)
+    let endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
+    let startDate = searchParams.get('start_date');
+
+    if (!startDate) {
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      startDate = date.toISOString().split('T')[0];
+    }
+
+    // Enforce maximum date window (server-side safety net)
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      startDate = clampedStart.toISOString().split('T')[0];
+    }
+
     const limit = parseInt(searchParams.get('limit') || '20');
     const domain = searchParams.get('domain');
     const search = searchParams.get('search');
 
-    console.log(`🔗 Page Flow Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Limit: ${limit}, Domain: ${domain || 'all'}, Search: ${search || 'none'}`);
+    console.log(`🔗 Page Flow Analysis API - Date Range: ${startDate} to ${endDate}, Limit: ${limit}, Domain: ${domain || 'all'}, Search: ${search || 'none'}`);
 
-    // Build WHERE clause for date filtering
-    let whereClause = '1=1';
-
-    if (startDate) {
-      whereClause += ` AND toDate(timestamp) >= '${startDate}'`;
-    }
-    if (endDate) {
-      whereClause += ` AND toDate(timestamp) <= '${endDate}'`;
-    }
+    // Build WHERE clause for date filtering (always apply date filtering for memory safety)
+    const whereClause = `toDate(timestamp) >= '${startDate}' AND toDate(timestamp) <= '${endDate}'`;
 
     // Build filter clause for landing/exit pages (domain and search)
     let pageFilterClause = '';
@@ -41,13 +56,12 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // 1. Total Pageviews
     const totalPageviewsQuery = `
       SELECT COUNT(*) as total_pageviews
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND event_type = 'pageview'
     `;
 
-    const totalPageviewsResult = await clickhouse.query({
-      query: totalPageviewsQuery,
+    const totalPageviewsResult = await queryWithMemoryLimit(totalPageviewsQuery, {
       format: 'JSONEachRow',
     });
 
@@ -65,7 +79,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countDistinct(session_id) as total_sessions,
         COUNT(*) as total_pageviews,
         ROUND(COUNT(*) / countDistinct(session_id), 2) as avg_pageviews_per_session
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND event_type = 'pageview'
       GROUP BY utm_source
@@ -74,8 +88,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       LIMIT 10
     `;
 
-    const utmBreakdownResult = await clickhouse.query({
-      query: utmBreakdownQuery,
+    const utmBreakdownResult = await queryWithMemoryLimit(utmBreakdownQuery, {
       format: 'JSONEachRow',
     });
 
@@ -98,7 +111,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         SELECT 
           session_id,
           page_url as landing_page
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
           AND is_landing_page = 1
           AND event_type = 'pageview'
@@ -111,9 +124,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           COUNT(*) as pages_in_session,
           SUM(v.time_on_page) as total_time
         FROM landing_page_data l
-        LEFT JOIN analytics.visit_logs v ON l.session_id = v.session_id
-        WHERE v.timestamp >= (SELECT MIN(timestamp) FROM analytics.visit_logs WHERE ${whereClause})
+        LEFT JOIN analytics.visit_logs_buffer v ON l.session_id = v.session_id
           AND v.event_type = 'pageview'
+          AND toDate(v.timestamp) >= '${startDate}'
+          AND toDate(v.timestamp) <= '${endDate}'
         GROUP BY l.session_id, l.landing_page
       )
       SELECT 
@@ -128,8 +142,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       LIMIT ${limit}
     `;
 
-    const landingPagesResult = await clickhouse.query({
-      query: landingPagesQuery,
+    const landingPagesResult = await queryWithMemoryLimit(landingPagesQuery, {
       format: 'JSONEachRow',
     });
 
@@ -152,14 +165,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const exitPagesQuery = `
       WITH total_sessions AS (
         SELECT countDistinct(session_id) as cnt
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
       )
       SELECT 
         page_url,
         COUNT(*) as exits,
         ROUND(COUNT(*) / (SELECT cnt FROM total_sessions) * 100, 1) as exit_rate
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND is_exit_page = 1
         ${pageFilterClause}
@@ -168,8 +181,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       LIMIT ${limit}
     `;
 
-    const exitPagesResult = await clickhouse.query({
-      query: exitPagesQuery,
+    const exitPagesResult = await queryWithMemoryLimit(exitPagesQuery, {
       format: 'JSONEachRow',
     });
 
@@ -189,13 +201,12 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       SELECT 
         session_id,
         MAX(page_sequence) as max_sequence
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
       GROUP BY session_id
     `;
 
-    const sessionDepthResult = await clickhouse.query({
-      query: sessionDepthQuery,
+    const sessionDepthResult = await queryWithMemoryLimit(sessionDepthQuery, {
       format: 'JSONEachRow',
     });
 

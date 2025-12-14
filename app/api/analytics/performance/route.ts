@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
@@ -58,12 +58,11 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           countDistinct(user_id) as total_visitors,
           SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
           SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / countDistinct(user_id) as conversion_rate
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       `;
 
-      const metricsResult = await clickhouse.query({
-        query: metricsQuery,
+      const metricsResult = await queryWithMemoryLimit(metricsQuery, {
         format: 'JSONEachRow'
       });
       const metricsData = await metricsResult.json() as Array<{
@@ -83,7 +82,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
       const revenue = (revenueResult as any[])[0]?.total_spent || 0;
 
-      // Query 3: Channel Breakdown (by utm_source)
+      // Query 3: Channel Breakdown (by utm_source) - Uses channel_date_projection automatically
+      // ClickHouse optimizer will use the projection when query pattern matches
+      // Projection groups by: date, channel and pre-aggregates: visitors, conversions, revenue
       const channelQuery = `
       SELECT 
         CASE 
@@ -93,15 +94,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countDistinct(user_id) as visitors,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / countDistinct(user_id) as conversion_rate
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       GROUP BY channel
       ORDER BY visitors DESC
       LIMIT 10
     `;
 
-      const channelResult = await clickhouse.query({
-        query: channelQuery,
+      const channelResult = await queryWithMemoryLimit(channelQuery, {
         format: 'JSONEachRow'
       });
       const channelData = await channelResult.json() as Array<{
@@ -140,14 +140,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       SELECT 
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
         countDistinct(user_id) as visitors
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       GROUP BY date
       ORDER BY date ASC
     `;
 
-      const trendResult = await clickhouse.query({
-        query: trendQuery,
+      const trendResult = await queryWithMemoryLimit(trendQuery, {
         format: 'JSONEachRow'
       });
       const trendData = await trendResult.json() as Array<{
@@ -160,14 +159,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       SELECT 
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
         countDistinct(user_id) as visitors
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${comparisonStart}') AND toDate('${comparisonEnd}')
       GROUP BY date
       ORDER BY date ASC
     `;
 
-      const comparisonTrendResult = await clickhouse.query({
-        query: comparisonTrendQuery,
+      const comparisonTrendResult = await queryWithMemoryLimit(comparisonTrendQuery, {
         format: 'JSONEachRow'
       });
       const comparisonTrendData = await comparisonTrendResult.json() as Array<{

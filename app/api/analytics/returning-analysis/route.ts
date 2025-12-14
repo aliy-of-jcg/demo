@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 
@@ -80,28 +80,37 @@ export const dynamic = 'force-dynamic';
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const startDate = searchParams.get('start_date');
-    const endDate = searchParams.get('end_date');
+    const MAX_RANGE_DAYS = 90;
+
+    // Get date range from query parameters (default: last 30 days)
+    let endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
+    let startDate = searchParams.get('start_date');
+
+    if (!startDate) {
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      startDate = date.toISOString().split('T')[0];
+    }
+
+    // Enforce maximum date window (server-side safety net)
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      startDate = clampedStart.toISOString().split('T')[0];
+    }
 
     // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();
 
-    console.log(`🔄 Returning Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Timezone: ${timezone}`);
+    console.log(`🔄 Returning Analysis API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
 
-    // Build WHERE clause for date filtering (using system default timezone)
-    let whereClause = '1=1';
-
-    // Date filtering
-    if (startDate && endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
-    } else {
-      if (startDate) {
-        whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
-      }
-      if (endDate) {
-        whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
-      }
-    }
+    // Build WHERE clause for date filtering (always apply date filtering for memory safety)
+    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
 
     // 1. New vs Returning Visitors
     // GA4 Logic:
@@ -111,13 +120,12 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // First, get total visitors (to match performance dashboard)
     const totalVisitorsQuery = `
-      SELECT countDistinct(user_id) as total_visitors
-      FROM analytics.visit_logs
+      SELECT uniqExact(user_id) as total_visitors
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
     `;
 
-    const totalVisitorsResult = await clickhouse.query({
-      query: totalVisitorsQuery,
+    const totalVisitorsResult = await queryWithMemoryLimit(totalVisitorsQuery, {
       format: 'JSONEachRow',
     });
 
@@ -131,7 +139,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const newVsReturningQuery = `
       SELECT 
         visitor_type,
-        countDistinct(user_id) as visitors,
+        uniqExact(user_id) as visitors,
         SUM(pageviews) as pageviews,
         SUM(conversions) as conversions,
         AVG(avg_time_on_page) as avg_time_on_page
@@ -147,12 +155,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           COUNT(*) as pageviews,
           countIf(vl.event_type = 'conversion') as conversions,
           AVG(vl.time_on_page) as avg_time_on_page
-        FROM analytics.visit_logs vl
+        FROM analytics.visit_logs_buffer vl
         INNER JOIN (
           SELECT 
             user_id,
             toDate(MIN(timestamp)) as first_session_date
-          FROM analytics.visit_logs
+          FROM analytics.visit_logs_buffer
+          WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
+            AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
           GROUP BY user_id
         ) user_first_sessions ON vl.user_id = user_first_sessions.user_id
         WHERE ${whereClause}
@@ -161,8 +171,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       GROUP BY visitor_type
     `;
 
-    const newVsReturningResult = await clickhouse.query({
-      query: newVsReturningQuery,
+    const newVsReturningResult = await queryWithMemoryLimit(newVsReturningQuery, {
       format: 'JSONEachRow',
     });
 
@@ -243,8 +252,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM (
         SELECT 
           user_id,
-          countDistinct(visit_count) as visits_in_range
-        FROM analytics.visit_logs
+          uniqExact(visit_count) as visits_in_range
+        FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
         GROUP BY user_id
       )
@@ -252,8 +261,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       ORDER BY visits_in_range ASC
     `;
 
-    const visitFrequencyResult = await clickhouse.query({
-      query: visitFrequencyQuery,
+    const visitFrequencyResult = await queryWithMemoryLimit(visitFrequencyQuery, {
       format: 'JSONEachRow',
     });
 
@@ -288,19 +296,18 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         user_id,
         visit_count,
         MIN(timestamp) as visit_start
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND user_id IN (
           SELECT DISTINCT user_id 
-          FROM analytics.visit_logs 
+          FROM analytics.visit_logs_buffer 
           WHERE ${whereClause} AND is_new_visitor = 0
         )
       GROUP BY user_id, visit_count
       ORDER BY user_id, visit_count ASC
     `;
 
-    const returnIntervalResult = await clickhouse.query({
-      query: returnIntervalQuery,
+    const returnIntervalResult = await queryWithMemoryLimit(returnIntervalQuery, {
       format: 'JSONEachRow',
     });
 
@@ -377,8 +384,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const dailyTrendQuery = `
       SELECT 
         date,
-        countDistinctIf(user_id, visitor_type = 'new') as new_visitors,
-        countDistinctIf(user_id, visitor_type = 'returning') as returning_visitors
+        uniqExactIf(user_id, visitor_type = 'new') as new_visitors,
+        uniqExactIf(user_id, visitor_type = 'returning') as returning_visitors
       FROM (
         SELECT 
           vl.user_id,
@@ -389,12 +396,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             'new',
             'returning'
           ) as visitor_type
-        FROM analytics.visit_logs vl
+        FROM analytics.visit_logs_buffer vl
         INNER JOIN (
           SELECT 
             user_id,
             toDate(MIN(timestamp)) as first_session_date
-          FROM analytics.visit_logs
+          FROM analytics.visit_logs_buffer
+          WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
+            AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
           GROUP BY user_id
         ) user_first_sessions ON vl.user_id = user_first_sessions.user_id
         WHERE ${whereClause}
@@ -403,8 +412,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       ORDER BY date ASC
     `;
 
-    const dailyTrendResult = await clickhouse.query({
-      query: dailyTrendQuery,
+    const dailyTrendResult = await queryWithMemoryLimit(dailyTrendQuery, {
       format: 'JSONEachRow',
     });
 

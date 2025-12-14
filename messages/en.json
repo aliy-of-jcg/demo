@@ -430,6 +430,14 @@
       },
       "loading": "Loading campaign details..."
     },
+    "utmTools": {
+      "list": {
+        "toggle": {
+          "activateTitle": "Activate Tracking Link?",
+          "deactivateTitle": "Deactivate Tracking Link?"
+        }
+      }
+    },
     "loading": "Loading...",
     "create": {
       "title": "Create New Campaign",

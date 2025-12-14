@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 
@@ -18,22 +18,42 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     console.log(`🛤️ Session Journeys API - Fetching up to ${limit} sessions, Timezone: ${timezone}`);
 
     // Build WHERE clause for date filtering (using system default timezone)
-    let whereClause = '1=1';
+    // Default to last 90 days if no dates provided (prevents memory issues)
+    const MAX_RANGE_DAYS = 90;
+    let finalStartDate = startDate;
+    let finalEndDate = endDate || new Date().toISOString().split('T')[0];
+    
+    if (!finalStartDate) {
+      const end = new Date(finalEndDate);
+      const start = new Date(end);
+      start.setDate(start.getDate() - MAX_RANGE_DAYS);
+      finalStartDate = start.toISOString().split('T')[0];
+    }
 
-    if (startDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= '${startDate}'`;
+    // Enforce maximum date window (server-side safety net)
+    const startObj = new Date(finalStartDate);
+    const endObj = new Date(finalEndDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      finalStartDate = clampedStart.toISOString().split('T')[0];
     }
-    if (endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= '${endDate}'`;
-    }
+
+    // Build WHERE clause - use direct date comparison without timezone conversion in JOINs for better performance
+    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
 
     // Fetch all sessions with their complete page journeys
     // GA-aligned session duration: time from first pageview to last pageview (excluding exit page time)
     const sessionsQuery = `
       WITH session_list AS (
-        SELECT DISTINCT
+        SELECT 
           session_id,
           user_id,
+          MIN(timestamp) as session_start_ts,
+          MAX(timestamp) as session_end_ts,
           toString(MIN(timestamp)) as session_start,
           toString(MAX(timestamp)) as session_end,
           COUNT(*) as total_pages,
@@ -49,10 +69,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           MAX(device_type) as device_type,
           MAX(browser) as browser,
           MAX(os) as os
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
         GROUP BY session_id, user_id
-        ORDER BY session_start DESC
+        ORDER BY session_start_ts DESC
         LIMIT ${limit}
       ),
       session_pages AS (
@@ -67,8 +87,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           v.is_landing_page,
           v.is_exit_page,
           v.http_status
-        FROM analytics.visit_logs v
+        FROM analytics.visit_logs_buffer v
         INNER JOIN session_list s ON v.session_id = s.session_id
+        WHERE toDate(toTimeZone(v.timestamp, '${timezone}')) >= toDate('${finalStartDate}') 
+          AND toDate(toTimeZone(v.timestamp, '${timezone}')) <= toDate('${finalEndDate}')
         ORDER BY v.session_id, v.page_sequence
       )
       SELECT 
@@ -76,12 +98,11 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         groupArray((p.page_url, p.page_title, p.page_sequence, p.timestamp, p.time_on_page, p.event_type, p.is_landing_page, p.is_exit_page, p.http_status)) as pages
       FROM session_list s
       LEFT JOIN session_pages p ON s.session_id = p.session_id
-      GROUP BY s.session_id, s.user_id, s.session_start, s.session_end, s.total_pages, s.duration, s.landing_page, s.exit_page, s.utm_source, s.utm_medium, s.utm_campaign, s.device_type, s.browser, s.os
-      ORDER BY s.session_start DESC
+      GROUP BY s.session_id, s.user_id, s.session_start, s.session_end, s.total_pages, s.duration, s.landing_page, s.exit_page, s.utm_source, s.utm_medium, s.utm_campaign, s.device_type, s.browser, s.os, s.session_start_ts, s.session_end_ts
+      ORDER BY s.session_start_ts DESC
     `;
 
-    const result = await clickhouse.query({
-      query: sessionsQuery,
+    const result = await queryWithMemoryLimit(sessionsQuery, {
       format: 'JSONEachRow',
     });
 

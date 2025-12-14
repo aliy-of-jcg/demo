@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 
 export const dynamic = 'force-dynamic';
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Insert into ClickHouse
-    await clickhouse.insert({
+    await insertWithMemoryLimit({
       table: 'analytics.visit_logs',
       values: [eventData],
       format: 'JSONEachRow'

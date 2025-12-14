@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
-import clickhouse from "@/lib/clickhouse";
+import clickhouse, { insertWithMemoryLimit } from "@/lib/clickhouse";
 import { parseUserAgent } from "@/lib/user-agent";
 import { parseReferrer, getGeoLocation } from "@/lib/url-parser";
 import { getPool } from "@/lib/mysql";
@@ -203,7 +203,7 @@ export async function GET(
         const geoLocation = getGeoLocation(ip);
         
         // 1. Log click event to tracking_events
-        await clickhouse.insert({
+        await insertWithMemoryLimit({
           table: "analytics.tracking_events",
           values: [{
             id: nanoid(),

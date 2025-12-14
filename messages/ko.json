@@ -430,6 +430,14 @@
       },
       "loading": "캠페인 세부 정보 로딩 중..."
     },
+    "utmTools": {
+      "list": {
+        "toggle": {
+          "activateTitle": "추적 링크 활성화?",
+          "deactivateTitle": "추적 링크 비활성화?"
+        }
+      }
+    },
     "loading": "로딩 중...",
     "create": {
       "title": "새 캠페인 만들기",

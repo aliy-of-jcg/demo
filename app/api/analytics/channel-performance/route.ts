@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
@@ -32,14 +32,29 @@ interface ChannelSummary {
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
+    const MAX_RANGE_DAYS = 90;
 
     // Get date range from query parameters (default: last 30 days)
-    const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
-    const startDate = searchParams.get('start') || (() => {
+    let endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
+    let startDate = searchParams.get('start');
+
+    if (!startDate) {
       const date = new Date();
       date.setDate(date.getDate() - 30);
-      return date.toISOString().split('T')[0];
-    })();
+      startDate = date.toISOString().split('T')[0];
+    }
+
+    // Enforce maximum date window (server-side safety net)
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      startDate = clampedStart.toISOString().split('T')[0];
+    }
 
     // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();
@@ -55,26 +70,29 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // ============================================================
 
     // Step 1: Get actual traffic data grouped by UTM parameters
-    // Note: Now using tracking_code to link back to campaigns reliably
+    // Note: Uses tracking_code_date_projection automatically when query pattern matches
+    // The projection pre-aggregates by date, tracking_code, utm_source, utm_medium, utm_campaign
+    // Optimize: Use uniqExact instead of countDistinct for better memory efficiency
     const trafficQuery = `
       SELECT 
         tracking_code,
         utm_source,
         utm_medium,
         utm_campaign,
-        countDistinct(session_id) as sessions,
-        countDistinct(user_id) as users,
-        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
-      FROM analytics.visit_logs
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        uniqExact(session_id) as sessions,
+        uniqExact(user_id) as users,
+        countIf(event_type = 'conversion') as conversions
+      FROM analytics.visit_logs_buffer
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
+        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
         AND utm_source != ''
         AND utm_source != 'Direct'
         AND utm_source != '(direct)'
+        AND tracking_code != ''
       GROUP BY tracking_code, utm_source, utm_medium, utm_campaign
     `;
 
-    const trafficResult = await clickhouse.query({
-      query: trafficQuery,
+    const trafficResult = await queryWithMemoryLimit(trafficQuery, {
       format: 'JSONEachRow'
     });
 
@@ -83,17 +101,17 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Step 1.5: Get direct traffic data (utm_source = 'Direct' or '(direct)' for legacy data)
     const directTrafficQuery = `
       SELECT 
-        countDistinct(session_id) as sessions,
-        countDistinct(user_id) as users,
-        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
-      FROM analytics.visit_logs
+        uniqExact(session_id) as sessions,
+        uniqExact(user_id) as users,
+        countIf(event_type = 'conversion') as conversions
+      FROM analytics.visit_logs_buffer
       WHERE 
         (utm_source = 'Direct' OR utm_source = '(direct)' OR utm_source = '')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
+        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
     `;
 
-    const directTrafficResult = await clickhouse.query({
-      query: directTrafficQuery,
+    const directTrafficResult = await queryWithMemoryLimit(directTrafficQuery, {
       format: 'JSONEachRow'
     });
 
@@ -195,18 +213,18 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       try {
         const escapedCodes = trackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
 
+        // Query buffer table directly for real-time data
         const clicksQuery = `
           SELECT 
             tracking_code,
             COUNT(*) as total_clicks
-          FROM analytics.tracking_events
+          FROM analytics.tracking_events_buffer
           WHERE tracking_code IN (${escapedCodes})
-            AND toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           GROUP BY tracking_code
         `;
 
-        const clicksResult = await clickhouse.query({
-          query: clicksQuery,
+        const clicksResult = await queryWithMemoryLimit(clicksQuery, {
           format: 'JSONEachRow'
         });
 

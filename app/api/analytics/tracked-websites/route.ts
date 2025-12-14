@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getCache, setCache } from '@/lib/cache/simpleCache';
@@ -85,7 +85,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           user_id,
           event_type,
           timestamp
-        FROM analytics.visit_logs
+        FROM analytics.visit_logs_buffer
         WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           AND page_url != ''
           AND page_url IS NOT NULL
@@ -103,8 +103,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       LIMIT 200
     `;
 
-    const result = await clickhouse.query({
-      query,
+    const result = await queryWithMemoryLimit(query, {
       format: 'JSONEachRow'
     });
 
@@ -145,10 +144,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // (Summing would double-count users who visit multiple domains)
     let total_visitors = 0;
     try {
-      const totalVisitorsQuery = await clickhouse.query({
-        query: `
+      const totalVisitorsQuery = await queryWithMemoryLimit(`
           SELECT countDistinct(user_id) as unique_visitors
-          FROM analytics.visit_logs
+          FROM analytics.visit_logs_buffer
           WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
             AND page_url != ''
             AND page_url IS NOT NULL
@@ -162,9 +160,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
               '127.0.0.1',
               '0.0.0.0'
             )
-        `,
-        format: 'JSONEachRow'
-      });
+        `, { format: 'JSONEachRow' });
 
       const totalVisitorsResult = await totalVisitorsQuery.json() as Array<{ unique_visitors: number }>;
       total_visitors = totalVisitorsResult[0]?.unique_visitors || 0;

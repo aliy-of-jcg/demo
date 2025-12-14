@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getCache, setCache } from '@/lib/cache/simpleCache';
 
@@ -220,18 +220,24 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
       // Fetch analytics data from ClickHouse (for all tracking codes, not just paginated campaigns)
       // This data will be used both for paginated campaigns and for summary calculation
       try {
-        // Query 1: Get CLICKS from tracking_events (redirect clicks) - ALL tracking codes
-        const clicksQuery = await clickhouse.query({
-          query: `
+        // Query 1: Get CLICKS from materialized view (redirect clicks) - ALL tracking codes
+        // Query buffer table directly for real-time data (includes both pending and flushed data)
+        // This follows GA's approach: query pre-aggregated data, fast inserts
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 90); // Last 90 days
+        const startDateStr = startDate.toISOString().split('T')[0];
+
+        const clicksQuery = await queryWithMemoryLimit(`
           SELECT 
             tracking_code,
             COUNT(*) as total_clicks
-          FROM analytics.tracking_events
+          FROM analytics.tracking_events_buffer
           WHERE tracking_code != ''
+            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDateStr}')
+            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')
           GROUP BY tracking_code
-        `,
-          format: 'JSONEachRow'
-        });
+        `, { format: 'JSONEachRow' });
 
         const clicksResults = await clicksQuery.json() as any[];
         clicksResults.forEach((result: any) => {
@@ -242,6 +248,37 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
         if (campaignIds.length > 0) {
           try {
             const campaignIdList = campaignIds.join(',');
+
+            // Add date filtering (default to last 90 days, enforce max 90 days)
+            // Use searchParams directly to avoid variable shadowing
+            const MAX_RANGE_DAYS = 90;
+            const queryEndDate = searchParams.get('end_date') || '';
+            const queryStartDate = searchParams.get('start_date') || '';
+
+            let finalEndDateStr = queryEndDate || new Date().toISOString().split('T')[0];
+            let finalStartDateStr: string = queryStartDate;
+
+            if (!finalStartDateStr) {
+              const endDateObj = new Date(finalEndDateStr);
+              const startDateObj = new Date(endDateObj);
+              startDateObj.setDate(startDateObj.getDate() - MAX_RANGE_DAYS);
+              finalStartDateStr = startDateObj.toISOString().split('T')[0];
+            }
+
+            // Enforce maximum date window
+            const startObj = new Date(finalStartDateStr);
+            const endObj = new Date(finalEndDateStr);
+            const diffMs = endObj.getTime() - startObj.getTime();
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffDays > MAX_RANGE_DAYS) {
+              const clampedStartObj = new Date(endObj);
+              clampedStartObj.setDate(clampedStartObj.getDate() - MAX_RANGE_DAYS);
+              finalStartDateStr = clampedStartObj.toISOString().split('T')[0];
+            }
+
+            // Build date filter clause
+            const dateFilter = `AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${finalStartDateStr}') AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${finalEndDateStr}')`;
 
             // Build a mapping of campaign_id -> tracking_codes (for legacy fallback)
             const trackingCodesByCampaign: Record<number, string[]> = {};
@@ -268,16 +305,14 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
 
             // If no codes, fall back to campaign_id only query
             if (campaignCodePairs.length === 0) {
-              const visitorsByCampaignId = await clickhouse.query({
-                query: `
+              const visitorsByCampaignId = await queryWithMemoryLimit(`
                   SELECT campaign_id, countDistinct(user_id) as unique_visitors
-                  FROM analytics.visit_logs
+                  FROM analytics.visit_logs_buffer
                   WHERE campaign_id IN (${campaignIdList})
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                    ${dateFilter}
                   GROUP BY campaign_id
-                `,
-                format: 'JSONEachRow'
-              });
+                `, { format: 'JSONEachRow' });
               const visitorsByCampaignData = await visitorsByCampaignId.json() as any[];
               visitorsByCampaignData.forEach((row: any) => {
                 if (row.campaign_id) {
@@ -320,34 +355,36 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
                   countDistinct(user_id) AS unique_visitors
                 FROM (
                   SELECT user_id, campaign_id
-                  FROM analytics.visit_logs
+                  FROM analytics.visit_logs_buffer
                   WHERE campaign_id IN (${campaignIdList})
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                    ${dateFilter}
 
                   UNION ALL
 
                   SELECT v.user_id, cc.campaign_id
-                  FROM analytics.visit_logs v
+                  FROM analytics.visit_logs_buffer v
                   INNER JOIN campaign_codes cc ON v.tracking_code = cc.tracking_code
                   WHERE v.tracking_code != ''
                     AND v.tracking_code IS NOT NULL
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                    ${dateFilter}
                   ${campaignUtmsInline ? `
                   UNION ALL
 
                   SELECT v.user_id, cu.campaign_id
-                  FROM analytics.visit_logs v
+                  FROM analytics.visit_logs_buffer v
                   INNER JOIN campaign_utms cu ON v.utm_campaign = cu.utm_campaign
                   WHERE (v.tracking_code = '' OR v.tracking_code IS NULL)
                     AND v.utm_campaign != ''
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+                    ${dateFilter}
                   ` : ''}
                 )
                 GROUP BY campaign_id
               `;
 
-              const visitorsResult = await clickhouse.query({
-                query: visitorsQuery,
+              const visitorsResult = await queryWithMemoryLimit(visitorsQuery, {
                 format: 'JSONEachRow'
               });
               const visitorsData = await visitorsResult.json() as any[];
@@ -411,7 +448,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
                   utm_campaign,
                   tracking_code,
                   COUNT(*) as total_clicks
-                FROM analytics.tracking_events
+                FROM analytics.tracking_events_buffer
                 WHERE utm_campaign IN (${campaignNamesList})
                   AND tracking_code != ''
                   AND tracking_code IS NOT NULL
@@ -452,7 +489,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
               const clickhouseTrackingCodesQuery = await clickhouse.query({
                 query: `
                 SELECT DISTINCT campaign_id, tracking_code
-                FROM analytics.visit_logs
+                FROM analytics.visit_logs_buffer
                 WHERE campaign_id IN (${campaignIdsList})
                   AND tracking_code != ''
                   AND tracking_code IS NOT NULL
@@ -549,19 +586,16 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
 
                 if (utmData.length > 0) {
                   // Query visitors by UTM parameters
-                  const utmVisitorsQuery = await clickhouse.query({
-                    query: `
+                  const utmVisitorsQuery = await queryWithMemoryLimit(`
                     SELECT 
                       utm_campaign,
                       utm_source,
                       utm_medium,
                       countDistinct(user_id) as unique_visitors
-                    FROM analytics.visit_logs
+                    FROM analytics.visit_logs_buffer
                     WHERE utm_campaign != '' AND (tracking_code = '' OR tracking_code IS NULL)
                     GROUP BY utm_campaign, utm_source, utm_medium
-                  `,
-                    format: 'JSONEachRow'
-                  });
+                  `, { format: 'JSONEachRow' });
 
                   const utmVisitorsResults = await utmVisitorsQuery.json() as any[];
 
@@ -693,16 +727,13 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
           // Bulk visitors for all matching campaigns grouped by campaign_id (no per-campaign loop)
           try {
             const allCampaignIdList = allMatchingCampaignIds.join(',');
-            const visitorsAllCampaigns = await clickhouse.query({
-              query: `
+            const visitorsAllCampaigns = await queryWithMemoryLimit(`
                 SELECT campaign_id, countDistinct(user_id) as unique_visitors
-                FROM analytics.visit_logs
+                FROM analytics.visit_logs_buffer
                 WHERE campaign_id IN (${allCampaignIdList})
                   AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
                 GROUP BY campaign_id
-              `,
-              format: 'JSONEachRow'
-            });
+              `, { format: 'JSONEachRow' });
             const visitorsAllCampaignsData = await visitorsAllCampaigns.json() as any[];
             visitorsAllCampaignsData.forEach((row: any) => {
               if (row.campaign_id) {
@@ -794,13 +825,10 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
 
       let total_visitors_all_channels = 0;
       try {
-        const allChannelVisitorsQuery = await clickhouse.query({
-          query: `
+        const allChannelVisitorsQuery = await queryWithMemoryLimit(`
         SELECT countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs
-        `,
-          format: 'JSONEachRow'
-        });
+        FROM analytics.visit_logs_buffer
+        `, { format: 'JSONEachRow' });
 
         const allChannelData = await allChannelVisitorsQuery.json() as any[];
         if (allChannelData.length > 0) {

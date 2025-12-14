@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { RowDataPacket } from 'mysql2';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
@@ -60,6 +60,29 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();
 
+    // Add date filtering with default and max enforcement
+    const MAX_RANGE_DAYS = 90;
+    let finalEndDate = endDate || new Date().toISOString().split('T')[0];
+    let finalStartDate = startDate;
+
+    if (!finalStartDate) {
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      finalStartDate = date.toISOString().split('T')[0];
+    }
+
+    // Enforce maximum date window (server-side safety net)
+    const startObj = new Date(finalStartDate);
+    const endObj = new Date(finalEndDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      finalStartDate = clampedStart.toISOString().split('T')[0];
+    }
+
     // 2. Get all tracking codes for this campaign (include hidden for historical analytics)
     const [trackingCodes] = await pool.query<RowDataPacket[]>(
       'SELECT id, name, tracking_code, utm_campaign, utm_source, utm_medium, utm_content, status, budget, spent, landing_url FROM utm_codes WHERE campaign_id = ?',
@@ -117,16 +140,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       whereClause = `(campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesList}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))`;
     }
 
-    if (startDate && endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
-    } else {
-      if (startDate) {
-        whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
-      }
-      if (endDate) {
-        whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
-      }
-    }
+    // Always apply date filtering (required for memory safety)
+    whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
 
     // Platform filter (utm_medium or utm_source)
     if (platform && platform !== 'all') {
@@ -144,12 +159,11 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       SELECT 
         countDistinct(user_id) as unique_visitors,
         countIf(event_type = 'conversion') as conversions
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
     `;
 
-    const visitResult = await clickhouse.query({
-      query: visitMetricsQuery,
+    const visitResult = await queryWithMemoryLimit(visitMetricsQuery, {
       format: 'JSONEachRow',
     });
 
@@ -170,25 +184,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
       let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
 
-      if (startDate && endDate) {
-        clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
-      } else {
-        if (startDate) {
-          clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
-        }
-        if (endDate) {
-          clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
-        }
-      }
+      // Always apply date filtering (required for memory safety)
+      clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
 
       const clickQuery = `
         SELECT COUNT(*) as total_clicks
-        FROM analytics.tracking_events
+        FROM analytics.tracking_events_buffer
         WHERE ${clickWhereClause}
       `;
 
-      const clickResult = await clickhouse.query({
-        query: clickQuery,
+      const clickResult = await queryWithMemoryLimit(clickQuery, {
         format: 'JSONEachRow',
       });
 
@@ -203,25 +208,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
       let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
 
-      if (startDate && endDate) {
-        clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
-      } else {
-        if (startDate) {
-          clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
-        }
-        if (endDate) {
-          clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
-        }
-      }
+      // Always apply date filtering (required for memory safety)
+      clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
 
       const clickQuery = `
         SELECT COUNT(*) as total_clicks
-        FROM analytics.tracking_events
+        FROM analytics.tracking_events_buffer
         WHERE ${clickWhereClause}
       `;
 
-      const clickResult = await clickhouse.query({
-        query: clickQuery,
+      const clickResult = await queryWithMemoryLimit(clickQuery, {
         format: 'JSONEachRow',
       });
 
@@ -237,28 +233,17 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
         let legacyClickWhereClause = `utm_campaign IN (${utmCampaignsList}) AND tracking_code != '' AND tracking_code IS NOT NULL`;
 
-        if (startDate && endDate) {
-          legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
-        } else {
-          if (startDate) {
-            legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
-          }
-          if (endDate) {
-            legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
-          }
-        }
+        // Always apply date filtering (required for memory safety)
+        legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
 
-        const legacyClicksQuery = await clickhouse.query({
-          query: `
+        const legacyClicksQuery = await queryWithMemoryLimit(`
             SELECT 
               tracking_code,
               COUNT(*) as total_clicks
-            FROM analytics.tracking_events
+            FROM analytics.tracking_events_buffer
             WHERE ${legacyClickWhereClause}
             GROUP BY tracking_code
-          `,
-          format: 'JSONEachRow'
-        });
+          `, { format: 'JSONEachRow' });
 
         const legacyClicksData = await legacyClicksQuery.json() as any[];
 
@@ -302,16 +287,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
       // Check visit_logs for tracking codes that don't exist in MySQL
       if (campaignId) {
-        const clickhouseTrackingCodesQuery = await clickhouse.query({
-          query: `
+        const clickhouseTrackingCodesQuery = await queryWithMemoryLimit(`
             SELECT DISTINCT tracking_code
-            FROM analytics.visit_logs
+            FROM analytics.visit_logs_buffer
             WHERE campaign_id = ${campaignId}
               AND tracking_code != ''
               AND tracking_code IS NOT NULL
-          `,
-          format: 'JSONEachRow'
-        });
+          `, { format: 'JSONEachRow' });
 
         const clickhouseTrackingCodesData = await clickhouseTrackingCodesQuery.json() as Array<{ tracking_code: string }>;
         const clickhouseTrackingCodes = new Set(
@@ -356,14 +338,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
         countDistinct(user_id) as visitors,
         countIf(event_type = 'conversion') as conversions
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
       GROUP BY date
       ORDER BY date ASC
     `;
 
-    const dailyResult = await clickhouse.query({
-      query: dailyQuery,
+    const dailyResult = await queryWithMemoryLimit(dailyQuery, {
       format: 'JSONEachRow',
     });
 
@@ -419,28 +400,19 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           // Build WHERE clause for this specific UTM
           let utmWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
 
-          if (startDate && endDate) {
-            utmWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
-          } else {
-            if (startDate) {
-              utmWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
-            }
-            if (endDate) {
-              utmWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
-            }
-          }
+          // Always apply date filtering (required for memory safety)
+          utmWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
 
           // Get visitors and conversions for this UTM
           const utmVisitQuery = `
             SELECT 
               countDistinct(user_id) as unique_visitors,
               countIf(event_type = 'conversion') as conversions
-            FROM analytics.visit_logs
+            FROM analytics.visit_logs_buffer
             WHERE ${utmWhereClause}
           `;
 
-          const utmVisitResult = await clickhouse.query({
-            query: utmVisitQuery,
+          const utmVisitResult = await queryWithMemoryLimit(utmVisitQuery, {
             format: 'JSONEachRow',
           });
 
@@ -451,25 +423,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           // Get clicks for this UTM
           let utmClickWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
 
-          if (startDate && endDate) {
-            utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`;
-          } else {
-            if (startDate) {
-              utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')`;
-            }
-            if (endDate) {
-              utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
-            }
-          }
+          // Always apply date filtering (required for memory safety)
+          utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
 
           const utmClickQuery = `
             SELECT COUNT(*) as total_clicks
-            FROM analytics.tracking_events
+            FROM analytics.tracking_events_buffer
             WHERE ${utmClickWhereClause}
           `;
 
-          const utmClickResult = await clickhouse.query({
-            query: utmClickQuery,
+          const utmClickResult = await queryWithMemoryLimit(utmClickQuery, {
             format: 'JSONEachRow',
           });
 
@@ -482,14 +445,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
               toDate(toTimeZone(timestamp, '${timezone}')) as date,
               countDistinct(user_id) as visitors,
               countIf(event_type = 'conversion') as conversions
-            FROM analytics.visit_logs
+            FROM analytics.visit_logs_buffer
             WHERE ${utmWhereClause}
             GROUP BY date
             ORDER BY date ASC
           `;
 
-          const utmDailyResult = await clickhouse.query({
-            query: utmDailyQuery,
+          const utmDailyResult = await queryWithMemoryLimit(utmDailyQuery, {
             format: 'JSONEachRow',
           });
 

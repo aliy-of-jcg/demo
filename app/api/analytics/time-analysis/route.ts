@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 
@@ -53,39 +53,52 @@ export const dynamic = 'force-dynamic';
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const startDate = searchParams.get('start_date');
-    const endDate = searchParams.get('end_date');
+    const MAX_RANGE_DAYS = 90;
+
+    // Get date range from query parameters (default: last 30 days)
+    let endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
+    let startDate = searchParams.get('start_date');
+
+    if (!startDate) {
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      startDate = date.toISOString().split('T')[0];
+    }
+
+    // Enforce maximum date window (server-side safety net)
+    const startObj = new Date(startDate);
+    const endObj = new Date(endDate);
+    const diffMs = endObj.getTime() - startObj.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays > MAX_RANGE_DAYS) {
+      const clampedStart = new Date(endObj);
+      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
+      startDate = clampedStart.toISOString().split('T')[0];
+    }
 
     // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();
 
-    console.log(`⏰ Time Analysis API - Date Range: ${startDate || 'default'} to ${endDate || 'default'}, Timezone: ${timezone}`);
+    console.log(`⏰ Time Analysis API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
 
-    // Build WHERE clause for date filtering (using system default timezone)
-    let whereClause = '1=1';
-
-    if (startDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= '${startDate}'`;
-    }
-    if (endDate) {
-      whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) <= '${endDate}'`;
-    }
+    // Build WHERE clause for date filtering (always apply date filtering for memory safety)
+    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
 
     // 1. Hourly Distribution (0-23 hours) - using system default timezone
     const hourlyQuery = `
       SELECT 
         toHour(toTimeZone(timestamp, '${timezone}')) as hour,
-        countDistinct(user_id) as visitors,
+        uniqExact(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
       GROUP BY hour
       ORDER BY hour ASC
     `;
 
-    const hourlyResult = await clickhouse.query({
-      query: hourlyQuery,
+    const hourlyResult = await queryWithMemoryLimit(hourlyQuery, {
       format: 'JSONEachRow',
     });
 
@@ -109,17 +122,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const dayOfWeekQuery = `
       SELECT 
         toDayOfWeek(toTimeZone(timestamp, '${timezone}')) as day_of_week,
-        countDistinct(user_id) as visitors,
+        uniqExact(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
       GROUP BY day_of_week
       ORDER BY day_of_week ASC
     `;
 
-    const dayOfWeekResult = await clickhouse.query({
-      query: dayOfWeekQuery,
+    const dayOfWeekResult = await queryWithMemoryLimit(dayOfWeekQuery, {
       format: 'JSONEachRow',
     });
 
@@ -147,17 +159,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const dailyTrendQuery = `
       SELECT 
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
-        countDistinct(user_id) as visitors,
+        uniqExact(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
-      FROM analytics.visit_logs
+      FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
       GROUP BY date
       ORDER BY date ASC
     `;
 
-    const dailyTrendResult = await clickhouse.query({
-      query: dailyTrendQuery,
+    const dailyTrendResult = await queryWithMemoryLimit(dailyTrendQuery, {
       format: 'JSONEachRow',
     });
 

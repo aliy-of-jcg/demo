@@ -9,6 +9,90 @@ const clickhouse = createClient({
 
 export default clickhouse;
 
+/**
+ * Query ClickHouse with memory limits (GA-style safety)
+ * Prevents memory errors by capping memory usage per query
+ * 
+ * @param query - SQL query string
+ * @param options - Additional query options (format, query_params, etc.)
+ * @returns Query result
+ */
+export async function queryWithMemoryLimit(
+  query: string,
+  options?: {
+    format?: 'JSONEachRow' | 'JSON' | 'CSV' | 'TabSeparated';
+    query_params?: Record<string, any>;
+    [key: string]: any;
+  }
+) {
+  return clickhouse.query({
+    query,
+    format: options?.format || 'JSONEachRow',
+    clickhouse_settings: {
+      // Memory limit: 2GB per query (prevents memory exhaustion)
+      max_memory_usage: 2_000_000_000, // 2GB
+
+      // External sorting/grouping: Use disk when RAM limit reached
+      // This allows queries to complete even with large datasets
+      max_bytes_before_external_group_by: 1_000_000_000, // 1GB - use disk for GROUP BY overflow
+      max_bytes_before_external_sort: 1_000_000_000, // 1GB - use disk for ORDER BY overflow
+
+      // Query timeout: 5 minutes max (prevents hanging queries)
+      max_execution_time: 300, // 5 minutes
+
+      // Allow external aggregation (use disk when needed)
+      allow_experimental_projection_optimization: 1,
+    } as Record<string, string | number>,
+    ...options,
+  });
+}
+
+/**
+ * Insert data into ClickHouse with async buffer tables (GA-style)
+ * Uses buffer tables to prevent memory limit errors during materialized view updates
+ * Buffer tables flush to destination tables asynchronously, preventing blocking
+ * 
+ * @param options - Insert options (table, values, format, etc.)
+ * @returns Insert result
+ */
+export async function insertWithMemoryLimit(
+  options: {
+    table: string;
+    values: any[] | any;
+    format?: 'JSONEachRow' | 'JSON' | 'CSV' | 'TabSeparated';
+    [key: string]: any;
+  }
+) {
+  // Route inserts to buffer tables for async processing
+  // This prevents synchronous materialized view updates from blocking inserts
+  let targetTable = options.table;
+
+  if (targetTable === 'analytics.tracking_events') {
+    targetTable = 'analytics.tracking_events_buffer';
+  } else if (targetTable === 'analytics.visit_logs') {
+    targetTable = 'analytics.visit_logs_buffer';
+  }
+
+  return clickhouse.insert({
+    ...options,
+    table: targetTable,
+    clickhouse_settings: {
+      // Memory limit: 2GB per insert (safety net, but buffer tables prevent most issues)
+      max_memory_usage: 2_000_000_000, // 2GB
+
+      // External sorting/grouping: Use disk when RAM limit reached
+      max_bytes_before_external_group_by: 1_000_000_000, // 1GB
+      max_bytes_before_external_sort: 1_000_000_000, // 1GB
+
+      // Insert timeout: 2 minutes max (inserts should be fast)
+      max_execution_time: 120, // 2 minutes
+
+      // Allow external aggregation (use disk when needed)
+      allow_experimental_projection_optimization: 1,
+    } as Record<string, string | number>,
+  });
+}
+
 export const initClickHouseSchema = async () => {
   await clickhouse.command({
     query: `CREATE DATABASE IF NOT EXISTS analytics`,
@@ -189,6 +273,7 @@ export const initClickHouseSchema = async () => {
     // Projections might already exist, ignore error
     console.log('Projection setup note:', error);
   }
+
 
   console.log('ClickHouse schema initialized successfully');
 };
