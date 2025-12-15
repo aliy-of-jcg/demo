@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
-import { getCache, setCache } from '@/lib/cache/simpleCache';
+import { getCache, setCache } from '@/lib/cache/cache';
 
 // Type definitions for the analytics data
 interface TimeAnalysisData {
@@ -86,7 +86,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Check cache (2 minutes TTL)
     const cacheTtlMs = 120_000; // 2 minutes
     const cacheKey = `time-analysis:${startDate}:${endDate}:${timezone}`;
-    const cached = getCache<any>(cacheKey);
+    const cached = await getCache<any>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
     }
@@ -227,7 +227,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       },
     };
 
-    setCache(cacheKey, response, cacheTtlMs);
+    await setCache(cacheKey, response, cacheTtlMs);
     return NextResponse.json(response);
 
   } catch (error) {

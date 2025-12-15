@@ -34,11 +34,18 @@ interface UTMBreakdown {
   avg_pageviews_per_session: number;
 }
 
+interface PageTransition {
+  from: string;
+  to: string;
+  count: number;
+}
+
 interface ApiResponse {
   success: boolean;
   landingPages: PageData[];
   exitPages: ExitPageData[];
   utmBreakdown: UTMBreakdown[];
+  pageTransitions?: PageTransition[];
   insights: {
     totalSessions: number;
     totalPageviews: number;
@@ -594,8 +601,104 @@ export default function PageFlowAnalysisPage() {
             </div>
           </div>
 
+          {/* Page Transitions */}
+          {data.pageTransitions && data.pageTransitions.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4 sm:mb-6">
+              <div className="p-3 sm:p-4 border-b border-gray-200">
+                <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('pageTransitions.title')}</h2>
+                <p className="text-xs sm:text-sm text-gray-600">{t('pageTransitions.subtitle')}</p>
+              </div>
+              {/* Calculate total transitions for percentage */}
+              {(() => {
+                const totalTransitions = data.pageTransitions.reduce((sum, t) => sum + t.count, 0);
+                return (
+                  <>
+                    {/* Desktop Table */}
+                    <div className="hidden lg:block overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('pageTransitions.fromPage')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('pageTransitions.toPage')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('pageTransitions.transitions')}</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('pageTransitions.percentage')}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {data.pageTransitions.map((transition, idx) => {
+                            const percentage = totalTransitions > 0 ? ((transition.count / totalTransitions) * 100).toFixed(1) : '0.0';
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 text-sm text-gray-900" title={transition.from}>
+                                  {truncateUrl(transition.from, 60)}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-900" title={transition.to}>
+                                  <span className="text-blue-600">→</span> {truncateUrl(transition.to, 60)}
+                                </td>
+                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{transition.count.toLocaleString()}</td>
+                                <td className="px-6 py-4 text-sm text-gray-900">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                      <div
+                                        className="bg-blue-600 h-2 rounded-full"
+                                        style={{ width: `${percentage}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs text-gray-600 w-12 text-right">{percentage}%</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Mobile/Tablet Card View */}
+                    <div className="lg:hidden divide-y divide-gray-200">
+                      {data.pageTransitions.map((transition, idx) => {
+                        const percentage = totalTransitions > 0 ? ((transition.count / totalTransitions) * 100).toFixed(1) : '0.0';
+                        return (
+                          <div key={idx} className="p-4 hover:bg-gray-50">
+                            <div className="mb-3">
+                              <p className="text-sm text-gray-600 mb-1" title={transition.from}>
+                                {t('pageTransitions.fromPage')}: {truncateUrl(transition.from, 50)}
+                              </p>
+                              <p className="text-sm font-medium text-gray-900" title={transition.to}>
+                                <span className="text-blue-600">→</span> {truncateUrl(transition.to, 50)}
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <span className="text-gray-500 text-xs">{t('pageTransitions.transitions')}</span>
+                                <p className="font-medium text-gray-900">{transition.count.toLocaleString()}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-500 text-xs">{t('pageTransitions.percentage')}</span>
+                                <p className="font-medium text-gray-900">{percentage}%</p>
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-blue-600 h-2 rounded-full"
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
           {/* Empty State */}
-          {data.landingPages.length === 0 && data.exitPages.length === 0 && (
+          {data.landingPages.length === 0 && data.exitPages.length === 0 && (!data.pageTransitions || data.pageTransitions.length === 0) && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
               <p className="text-gray-500">{t('empty.noData')}</p>
               <p className="text-sm text-gray-400 mt-1">{t('empty.hint')}</p>

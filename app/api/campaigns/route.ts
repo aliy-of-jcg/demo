@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
-import { getCache, setCache } from '@/lib/cache/simpleCache';
+import { getCache, setCache } from '@/lib/cache/cache';
 
 
 export const GET = requirePermission('campaigns:read', async (request: NextRequest, context: AuthContext) => {
@@ -18,7 +18,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
   // Cache key includes filters/pagination/sort
   const cacheKey = `campaigns:${page}:${limit}:${searchParams.get('search') || ''}:${searchParams.get('source') || ''}:${searchParams.get('medium') || ''}:${searchParams.get('status') || ''}:${searchParams.get('course_id') || ''}:${searchParams.get('start_date') || ''}:${searchParams.get('end_date') || ''}:${searchParams.get('sort_by') || ''}:${searchParams.get('sort_order') || ''}`;
 
-  const cached = getCache<any>(cacheKey);
+  const cached = await getCache<any>(cacheKey);
   if (cached) {
     return NextResponse.json(cached);
   }
@@ -862,7 +862,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
       };
 
       // Cache the full response
-      setCache(cacheKey, responsePayload, cacheTtlMs);
+      await setCache(cacheKey, responsePayload, cacheTtlMs);
 
       return NextResponse.json(responsePayload);
     } catch (dbError: any) {

@@ -121,7 +121,7 @@ API 문서: http://localhost:3000/api-docs
 2. **Owner로 업그레이드 (선택사항):**
    ```bash
    # MySQL에 연결
-   docker exec -it mysql mysql -u appuser -papppassword -D appdb
+   docker exec -it mysql mysql -u appuser -pdemo_password -D appdb
    
    # 첫 번째 사용자를 owner로 업그레이드
    UPDATE users SET user_type = 'owner' WHERE id = 1;
@@ -410,8 +410,12 @@ MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_DATABASE=appdb
 MYSQL_USER=appuser
-MYSQL_PASSWORD=apppassword
-MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_PASSWORD=demo_password
+MYSQL_ROOT_PASSWORD=demo_root_password
+
+# Redis 구성
+REDIS_HOST=redis
+REDIS_PORT=6379
 
 # 애플리케이션 구성
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -461,6 +465,16 @@ NEXTAUTH_URL=http://localhost:3000
    - 애플리케이션 데이터베이스
    - 기본 사용자: appuser
    - 기본 데이터베이스: appdb
+   
+3. **Redis** (포트 6379)
+   - 공유 캐시 서버
+   - 분석 API 캐싱용
+   - AOF 지속성 활성화
+   
+3. **Redis** (포트 6379)
+   - 공유 캐시 서버
+   - 분석 API 캐싱용
+   - AOF 지속성 활성화
 
 ### 데이터베이스 스키마
 
@@ -877,6 +891,7 @@ docker-compose restart
 # 로그 확인
 docker-compose logs clickhouse
 docker-compose logs mysql
+docker-compose logs redis
 ```
 
 **2. 테이블을 찾을 수 없음**
@@ -925,6 +940,9 @@ lsof -ti:3306 | xargs kill -9
 - `z_documentation/`의 문서 확인
 - `/api-docs`에서 API 문서 검토
 - Docker 로그 확인: `docker-compose logs`
+  - ClickHouse: `docker-compose logs clickhouse`
+  - MySQL: `docker-compose logs mysql`
+  - Redis: `docker-compose logs redis`
 - 환경 변수가 올바르게 설정되어 있는지 확인
 
 ## 📊 성능 팁

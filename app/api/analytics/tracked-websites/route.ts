@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
-import { getCache, setCache } from '@/lib/cache/simpleCache';
+import { getCache, setCache } from '@/lib/cache/cache';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
@@ -57,7 +57,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     console.log(`📊 Tracked Websites Analysis - Date Range: ${startDate} to ${endDate}`);
 
     const cacheKey = `tracked-websites:${startDate}:${endDate}`;
-    const cached = getCache<any>(cacheKey);
+    const cached = await getCache<any>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
     }
@@ -210,7 +210,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       summary: summary
     };
 
-    setCache(cacheKey, responsePayload, cacheTtlMs);
+    await setCache(cacheKey, responsePayload, cacheTtlMs);
 
     return NextResponse.json(responsePayload);
 

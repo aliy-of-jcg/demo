@@ -3,7 +3,7 @@ import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
-import { getCache, setCache } from '@/lib/cache/simpleCache';
+import { getCache, setCache } from '@/lib/cache/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +48,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Check cache (2 minutes TTL)
     const cacheTtlMs = 120_000; // 2 minutes
     const cacheKey = `performance:${startDate}:${endDate}:${timezone}`;
-    const cached = getCache<any>(cacheKey);
+    const cached = await getCache<any>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
     }
@@ -208,7 +208,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
       console.log(`✅ Performance data fetched: ${response.metrics.totalVisitors} visitors, ${channelDataEnhanced.length} channels`);
 
-      setCache(cacheKey, response, cacheTtlMs);
+      await setCache(cacheKey, response, cacheTtlMs);
       return NextResponse.json(response);
 
     } catch (chError: any) {

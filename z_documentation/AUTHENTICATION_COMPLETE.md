@@ -52,7 +52,7 @@
 # 2. Click "Sign up" and create first user
 # 3. After signup, convert to owner:
 
-docker exec -it mysql-app mysql -u appuser -papppassword -D appdb
+docker exec -it mysql mysql -u appuser -pdemo_password -D appdb
 
 # Then run:
 UPDATE users SET user_type = 'owner' WHERE id = 1;
@@ -129,7 +129,7 @@ exit;
 
 ```bash
 # Connect to MySQL
-docker exec -it mysql-app mysql -u appuser -papppassword -D appdb
+docker exec -it mysql mysql -u appuser -pdemo_password -D appdb
 
 # Check users
 SELECT id, email, company_name, user_type FROM users;
@@ -193,7 +193,7 @@ exit;
 MySQL: localhost:3306
 Database: appdb
 User: appuser
-Password: apppassword
+Password: demo_password
 ```
 
 **Access:**

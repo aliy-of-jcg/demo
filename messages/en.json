@@ -1074,6 +1074,14 @@
       "exitRate": "Exit Rate",
       "noData": "No exit page data"
     },
+    "pageTransitions": {
+      "title": "Page Flow Transitions",
+      "subtitle": "Most common page-to-page navigation paths users take",
+      "fromPage": "From Page",
+      "toPage": "To Page",
+      "transitions": "Transitions",
+      "percentage": "% of Total"
+    },
     "empty": {
       "noData": "No data available",
       "hint": "Data will appear as visitors navigate your site"

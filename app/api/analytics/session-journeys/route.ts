@@ -22,7 +22,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const MAX_RANGE_DAYS = 90;
     let finalStartDate = startDate;
     let finalEndDate = endDate || new Date().toISOString().split('T')[0];
-    
+
     if (!finalStartDate) {
       const end = new Date(finalEndDate);
       const start = new Date(end);

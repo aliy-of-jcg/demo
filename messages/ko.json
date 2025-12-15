@@ -1074,6 +1074,14 @@
       "exitRate": "이탈률",
       "noData": "이탈 페이지 데이터 없음"
     },
+    "pageTransitions": {
+      "title": "페이지 흐름 전환",
+      "subtitle": "사용자가 가장 자주 이동하는 페이지 간 네비게이션 경로",
+      "fromPage": "출발 페이지",
+      "toPage": "도착 페이지",
+      "transitions": "전환",
+      "percentage": "전체 대비 %"
+    },
     "empty": {
       "noData": "데이터 없음",
       "hint": "방문자가 사이트를 탐색하면 데이터가 표시됩니다"

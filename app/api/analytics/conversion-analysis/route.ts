@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
-import { getCache, setCache } from '@/lib/cache/simpleCache';
+import { getCache, setCache } from '@/lib/cache/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +40,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Check cache (30 seconds TTL)
     const cacheTtlMs = 30_000; // 30 seconds
     const cacheKey = `conversion-analysis:${startDate}:${endDate}:${campaignId || 'all'}:${timezone}`;
-    const cached = getCache<any>(cacheKey);
+    const cached = await getCache<any>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
     }
@@ -156,7 +156,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       }
     };
 
-    setCache(cacheKey, response, cacheTtlMs);
+    await setCache(cacheKey, response, cacheTtlMs);
     return NextResponse.json(response);
 
   } catch (error) {

@@ -1,9 +1,9 @@
 /**
  * Next.js Instrumentation Hook
- *
+ * 
  * Runs once when the Next.js server starts.
  * Intended for startup tasks (DB init, telemetry, feature flags).
- *
+ * 
  * NOTE:
  * - Do NOT monkey-patch console methods here
  * - Do NOT suppress framework errors globally
@@ -25,7 +25,7 @@ export async function register() {
   // ----------------------------
   try {
     const { initializeDatabases } = await import('./lib/db-init');
-
+    
     // Run asynchronously – do not block server startup
     initializeDatabases().catch((err) => {
       console.error('[instrumentation] Database initialization failed:', err);

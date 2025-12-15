@@ -624,7 +624,7 @@ npm run mysql:init
 
 # Or manually create table:
 docker exec -it mysql-app mysql -u appuser -p
-# Enter password: apppassword
+# Enter password: demo_password
 USE appdb;
 # Paste CREATE TABLE statement from scripts/init-mysql.sql
 ```
@@ -729,7 +729,7 @@ MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_DATABASE=appdb
 MYSQL_USER=appuser
-MYSQL_PASSWORD=apppassword
+MYSQL_PASSWORD=demo_password
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 

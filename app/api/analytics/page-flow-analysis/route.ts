@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
-import { getCache, setCache } from '@/lib/cache/simpleCache';
+import { getCache, setCache } from '@/lib/cache/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +41,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Check cache (30 seconds TTL)
     const cacheTtlMs = 30_000; // 30 seconds
     const cacheKey = `page-flow-analysis:${startDate}:${endDate}:${limit}:${domain || 'all'}:${search || 'none'}`;
-    const cached = getCache<any>(cacheKey);
+    const cached = await getCache<any>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
     }
@@ -63,6 +63,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // 1. Total Pageviews
+    console.log('🔍 [Page Flow] Executing query 1: Total Pageviews');
     const totalPageviewsQuery = `
       SELECT COUNT(*) as total_pageviews
       FROM analytics.visit_logs_buffer
@@ -76,10 +77,12 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     const totalPageviewsJson = await totalPageviewsResult.json() as Array<{ total_pageviews: number }>;
     const totalPageviews = totalPageviewsJson[0]?.total_pageviews || 0;
+    console.log('✅ [Page Flow] Query 1 completed: Total Pageviews =', totalPageviews);
 
     // 2. UTM Source Breakdown with avg pageviews per session
     // OPTIMIZED: Avoid JOIN - use window functions or direct aggregation
     // Normalize all direct traffic variations to 'Direct'
+    console.log('🔍 [Page Flow] Executing query 2: UTM Source Breakdown');
     const utmBreakdownQuery = `
       WITH top_sources AS (
         -- Phase 1: Get top UTM sources by session count
@@ -133,6 +136,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       total_pageviews: number;
       avg_pageviews_per_session: string;
     }>;
+    console.log('✅ [Page Flow] Query 2 completed: UTM Breakdown rows =', utmBreakdownJson.length);
     const utmBreakdown = utmBreakdownJson.map((row) => ({
       utm_source: row.utm_source,
       total_sessions: row.total_sessions || 0,
@@ -142,6 +146,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // 3. Landing Pages with bounce rate and avg pageviews
     // OPTIMIZED: Avoid JOIN - use WHERE IN pattern
+    console.log('🔍 [Page Flow] Executing query 3: Landing Pages');
     const landingPagesQuery = `
       WITH top_landing_pages AS (
         -- Phase 1: Get top landing pages
@@ -203,6 +208,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       bounce_rate: string;
       avg_time_on_page: number;
     }>;
+    console.log('✅ [Page Flow] Query 3 completed: Landing Pages rows =', landingPagesJson.length);
     const landingPages = landingPagesJson.map((row) => ({
       page: row.page_url,
       visits: row.visits || 0,
@@ -213,6 +219,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // 4. Exit Pages with exit count and exit rate
     // TWO-PHASE PATTERN: Get top exit pages first, then calculate rate only for those
+    console.log('🔍 [Page Flow] Executing query 4: Exit Pages');
     const exitPagesQuery = `
       WITH total_sessions AS (
         SELECT uniqExact(session_id) as cnt
@@ -250,6 +257,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       exits: number;
       exit_rate: string;
     }>;
+    console.log('✅ [Page Flow] Query 4 completed: Exit Pages rows =', exitPagesJson.length);
     const exitPages = exitPagesJson.map((row) => ({
       page: row.page_url,
       exits: row.exits || 0,
@@ -257,6 +265,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }));
 
     // 5. Average session depth (pages per session)
+    console.log('🔍 [Page Flow] Executing query 5: Session Depth');
     const sessionDepthQuery = `
       SELECT 
         session_id,
@@ -274,6 +283,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       session_id: string;
       max_sequence: number;
     }>;
+    console.log('✅ [Page Flow] Query 5 completed: Session Depth rows =', sessionDepthJson.length);
 
     const sessionDepths = sessionDepthJson.map((row) => row.max_sequence || 1);
     const totalSessions = sessionDepths.length;
@@ -291,6 +301,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // 6. Page Flow Transitions (page-to-page navigation)
     // GA-style pattern: Use window functions instead of JOINs to avoid memory issues
+    console.log('🔍 [Page Flow] Executing query 6: Page Transitions');
     const pageTransitionsQuery = `
       WITH transitions AS (
         SELECT
@@ -325,6 +336,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       to_page: string;
       transitions: number;
     }>;
+    console.log('✅ [Page Flow] Query 6 completed: Page Transitions rows =', pageTransitionsJson.length);
     const pageTransitions = pageTransitionsJson.map((row) => ({
       from: row.from_page,
       to: row.to_page,
@@ -346,7 +358,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       },
     };
 
-    setCache(cacheKey, response, cacheTtlMs);
+    await setCache(cacheKey, response, cacheTtlMs);
     return NextResponse.json(response);
 
   } catch (error) {

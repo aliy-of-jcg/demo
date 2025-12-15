@@ -175,7 +175,7 @@ jobs:
             cd /app
             # 데이터베이스 서비스 확인 및 시작
             echo "🗄️ 데이터베이스 서비스 확인..."
-            docker compose --profile dev up -d mysql clickhouse
+            docker compose --profile dev up -d mysql clickhouse redis
 
             # 데이터베이스 준비 대기
             echo "⏳ 데이터베이스 준비 대기..."
@@ -277,7 +277,7 @@ jobs:
             # 데이터베이스 서비스 확인 및 시작
             echo "🗄️ 데이터베이스 서비스 확인..."
             cd /app
-            docker compose --profile prod-only up -d mysql clickhouse
+            docker compose --profile prod-only up -d mysql clickhouse redis
 
             # 데이터베이스 준비 대기
             echo "⏳ 데이터베이스 준비 대기..."
@@ -373,4 +373,5 @@ jobs:
           echo "  - Next.js Application (Port 3000)"
           echo "  - MySQL Database (Port 3306)"
           echo "  - ClickHouse Analytics (Port 8123)"
+          echo "  - Redis Cache (Port 6379)"
 

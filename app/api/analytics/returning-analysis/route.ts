@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
-import { getCache, setCache } from '@/lib/cache/simpleCache';
+import { getCache, setCache } from '@/lib/cache/cache';
 
 /**
  * Returning Visitor Analysis API
@@ -113,7 +113,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Check cache (2 minutes TTL)
     const cacheTtlMs = 120_000; // 2 minutes
     const cacheKey = `returning-analysis:${startDate}:${endDate}:${timezone}`;
-    const cached = getCache<any>(cacheKey);
+    const cached = await getCache<any>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
     }
@@ -148,13 +148,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Memory scales with rows scanned, not users grouped
     const newVsReturningQuery = `
       WITH user_first_sessions AS (
-        SELECT 
-          user_id,
-          toDate(MIN(timestamp)) as first_session_date
+          SELECT 
+            user_id,
+            toDate(MIN(timestamp)) as first_session_date
         FROM analytics.visit_logs_buffer
         WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
           AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
-        GROUP BY user_id
+          GROUP BY user_id
       )
       SELECT 
         if(
@@ -251,7 +251,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Second phase: Group by visit count to build histogram (low cardinality - < 100 groups)
     const visitFrequencyQuery = `
       WITH per_user_visits AS (
-        SELECT
+        SELECT 
           user_id,
           uniqExact(visit_count) AS visits_in_range
         FROM analytics.visit_logs_buffer
@@ -320,7 +320,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           ) AS return_interval_days
         FROM user_visits
       )
-      SELECT
+      SELECT 
         user_id,
         visit_count,
         visit_start,
@@ -363,14 +363,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     returnIntervalJson.forEach((row) => {
       const daysDiff = row.return_interval_days;
 
-      totalIntervals++;
-      intervalSum += daysDiff;
+        totalIntervals++;
+        intervalSum += daysDiff;
 
-      // Find appropriate bucket
-      for (const bucket of intervalBuckets) {
-        if (daysDiff >= bucket.min && daysDiff <= bucket.max) {
-          bucket.users++;
-          break;
+        // Find appropriate bucket
+        for (const bucket of intervalBuckets) {
+          if (daysDiff >= bucket.min && daysDiff <= bucket.max) {
+            bucket.users++;
+            break;
         }
       }
     });
@@ -382,13 +382,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // GA4 Logic: Classify users based on their first-ever session date, then aggregate by date
     const dailyTrendQuery = `
       WITH user_first_sessions AS (
-        SELECT 
-          user_id,
-          toDate(MIN(timestamp)) as first_session_date
+          SELECT 
+            user_id,
+            toDate(MIN(timestamp)) as first_session_date
         FROM analytics.visit_logs_buffer
         WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
           AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
-        GROUP BY user_id
+          GROUP BY user_id
       )
       SELECT 
         toDate(toTimeZone(vl.timestamp, '${timezone}')) as date,
@@ -401,7 +401,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         ) as returning_visitors
       FROM analytics.visit_logs_buffer vl
       INNER JOIN user_first_sessions ufs ON vl.user_id = ufs.user_id
-      WHERE ${whereClause}
+        WHERE ${whereClause}
       GROUP BY date
       ORDER BY date ASC
     `;
@@ -433,7 +433,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       dailyTrend,
     };
 
-    setCache(cacheKey, response, cacheTtlMs);
+    await setCache(cacheKey, response, cacheTtlMs);
     return NextResponse.json(response);
 
   } catch (error) {

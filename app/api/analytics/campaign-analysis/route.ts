@@ -4,7 +4,7 @@ import { getPool } from '@/lib/mysql';
 import { RowDataPacket } from 'mysql2';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
-import { getCache, setCache } from '@/lib/cache/simpleCache';
+import { getCache, setCache } from '@/lib/cache/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,7 +87,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Check cache (2 minutes TTL) - after date variables are set
     const cacheTtlMs = 120_000; // 2 minutes
     const cacheKey = `campaign-analysis:${campaignId}:${finalStartDate}:${finalEndDate}:${platform || 'all'}:${timezone}`;
-    const cached = getCache<any>(cacheKey);
+    const cached = await getCache<any>(cacheKey);
     if (cached) {
       return NextResponse.json(cached);
     }
@@ -554,7 +554,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       utmBreakdown,
     };
 
-    setCache(cacheKey, response, cacheTtlMs);
+    await setCache(cacheKey, response, cacheTtlMs);
     return NextResponse.json(response);
 
   } catch (error) {

@@ -120,7 +120,7 @@ API Documentation: http://localhost:3000/api-docs
 2. **Upgrade to Owner (optional):**
    ```bash
    # Connect to MySQL
-   docker exec -it mysql mysql -u appuser -papppassword -D appdb
+   docker exec -it mysql mysql -u appuser -pdemo_password -D appdb
    
    # Upgrade first user to owner
    UPDATE users SET user_type = 'owner' WHERE id = 1;
@@ -407,8 +407,12 @@ MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_DATABASE=appdb
 MYSQL_USER=appuser
-MYSQL_PASSWORD=apppassword
-MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_PASSWORD=demo_password
+MYSQL_ROOT_PASSWORD=demo_root_password
+
+# Redis Configuration
+REDIS_HOST=redis
+REDIS_PORT=6379
 
 # Application Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -458,6 +462,11 @@ The `docker-compose.yml` configures two services:
    - Application database
    - Default user: appuser
    - Default database: appdb
+   
+3. **Redis** (Port 6379)
+   - Shared cache server
+   - Used for analytics API caching
+   - AOF persistence enabled
 
 ### Database Schemas
 
@@ -910,6 +919,7 @@ docker-compose restart
 # Check logs
 docker-compose logs clickhouse
 docker-compose logs mysql
+docker-compose logs redis
 ```
 
 **2. Tables Not Found**
@@ -958,6 +968,9 @@ lsof -ti:3306 | xargs kill -9
 - Check documentation in `z_documentation/`
 - Review API docs at `/api-docs`
 - Check Docker logs: `docker-compose logs`
+  - ClickHouse: `docker-compose logs clickhouse`
+  - MySQL: `docker-compose logs mysql`
+  - Redis: `docker-compose logs redis`
 - Verify environment variables are set correctly
 
 ## 📊 Performance Tips
