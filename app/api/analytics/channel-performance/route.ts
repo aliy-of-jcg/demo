@@ -70,8 +70,6 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // ============================================================
 
     // Step 1: Get actual traffic data grouped by UTM parameters
-    // Note: Uses tracking_code_date_projection automatically when query pattern matches
-    // The projection pre-aggregates by date, tracking_code, utm_source, utm_medium, utm_campaign
     // Optimize: Use uniqExact instead of countDistinct for better memory efficiency
     const trafficQuery = `
       SELECT 

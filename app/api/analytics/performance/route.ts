@@ -82,9 +82,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
       const revenue = (revenueResult as any[])[0]?.total_spent || 0;
 
-      // Query 3: Channel Breakdown (by utm_source) - Uses channel_date_projection automatically
-      // ClickHouse optimizer will use the projection when query pattern matches
-      // Projection groups by: date, channel and pre-aggregates: visitors, conversions, revenue
+      // Query 3: Channel Breakdown (by utm_source)
       const channelQuery = `
       SELECT 
         CASE 

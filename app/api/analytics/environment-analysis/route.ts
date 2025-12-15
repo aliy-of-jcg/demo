@@ -49,8 +49,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
-      WHERE ${whereClause}
-        AND device_type != ''
+        WHERE ${whereClause}
+          AND device_type != ''
       GROUP BY device_type
       ORDER BY visitors DESC
     `;
@@ -75,21 +75,21 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // 2. Operating System Breakdown (optimized: avoid subquery)
     const osQuery = `
-      SELECT 
-        CASE 
-          WHEN lower(os) = 'ios' THEN 'iOS'
-          WHEN lower(os) = 'mac os' THEN 'macOS'
-          WHEN lower(os) = 'android' THEN 'Android'
-          WHEN lower(os) = 'windows' THEN 'Windows'
-          WHEN lower(os) = 'linux' THEN 'Linux'
-          ELSE os
-        END as os,
+        SELECT 
+          CASE 
+            WHEN lower(os) = 'ios' THEN 'iOS'
+            WHEN lower(os) = 'mac os' THEN 'macOS'
+            WHEN lower(os) = 'android' THEN 'Android'
+            WHEN lower(os) = 'windows' THEN 'Windows'
+            WHEN lower(os) = 'linux' THEN 'Linux'
+            ELSE os
+          END as os,
         uniqExact(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
-      WHERE ${whereClause}
-        AND os != ''
+        WHERE ${whereClause}
+          AND os != ''
       GROUP BY os
       ORDER BY visitors DESC
     `;
@@ -114,22 +114,22 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // 3. Browser Breakdown (optimized: avoid subquery)
     const browserQuery = `
-      SELECT 
-        CASE 
-          WHEN lower(browser) LIKE '%chrome%' AND lower(browser) NOT LIKE '%edg%' THEN 'Chrome'
-          WHEN lower(browser) LIKE '%safari%' AND lower(browser) NOT LIKE '%chrome%' THEN 'Safari'
-          WHEN lower(browser) LIKE '%firefox%' THEN 'Firefox'
-          WHEN lower(browser) LIKE '%edge%' OR lower(browser) LIKE '%edg%' THEN 'Edge'
-          WHEN lower(browser) LIKE '%opera%' THEN 'Opera'
-          WHEN lower(browser) = 'ie' OR lower(browser) LIKE '%internet explorer%' THEN 'Internet Explorer'
-          ELSE browser
-        END as browser,
+        SELECT 
+          CASE 
+            WHEN lower(browser) LIKE '%chrome%' AND lower(browser) NOT LIKE '%edg%' THEN 'Chrome'
+            WHEN lower(browser) LIKE '%safari%' AND lower(browser) NOT LIKE '%chrome%' THEN 'Safari'
+            WHEN lower(browser) LIKE '%firefox%' THEN 'Firefox'
+            WHEN lower(browser) LIKE '%edge%' OR lower(browser) LIKE '%edg%' THEN 'Edge'
+            WHEN lower(browser) LIKE '%opera%' THEN 'Opera'
+            WHEN lower(browser) = 'ie' OR lower(browser) LIKE '%internet explorer%' THEN 'Internet Explorer'
+            ELSE browser
+          END as browser,
         uniqExact(user_id) as visitors,
         COUNT(*) as pageviews,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
-      WHERE ${whereClause}
-        AND browser != ''
+        WHERE ${whereClause}
+          AND browser != ''
       GROUP BY browser
       ORDER BY visitors DESC
     `;

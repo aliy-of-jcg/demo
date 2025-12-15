@@ -63,21 +63,48 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // Query to extract domains from page_url and aggregate metrics
+    // OPTIMIZED: Avoid JOIN by using a single pass with WHERE IN (top domains)
     // Normalize domains: remove www. prefix, convert to lowercase, ignore protocol/port
     const query = `
+      WITH top_domains AS (
+        -- Phase 1: Lightweight - just get top domain list
+        SELECT 
+          normalized_domain
+        FROM (
+          SELECT 
+            lower(if(startsWith(domain(page_url), 'www.'), 
+              substring(domain(page_url), 5), 
+              domain(page_url))) as normalized_domain,
+            uniqExact(session_id) as session_count
+          FROM analytics.visit_logs_buffer
+          WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+            AND page_url != ''
+            AND page_url IS NOT NULL
+            AND domain(page_url) != ''
+          GROUP BY normalized_domain
+          HAVING normalized_domain NOT IN (
+            'dev.cosmosai.co.kr',
+            'cosmosai.co.kr',
+            'localhost',
+            '127.0.0.1',
+            '0.0.0.0'
+          )
+          ORDER BY session_count DESC
+          LIMIT 200
+        )
+      )
+      -- Phase 2: Single-pass aggregation on filtered domains (no JOIN)
       SELECT 
         normalized_domain as domain,
-        countDistinct(session_id) as total_sessions,
-        countDistinct(user_id) as unique_visitors,
-        SUM(CASE WHEN event_type = 'pageview' THEN 1 ELSE 0 END) as total_pageviews,
-        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as total_conversions,
+        uniqExact(session_id) as total_sessions,
+        uniqExact(user_id) as unique_visitors,
+        countIf(event_type = 'pageview') as total_pageviews,
+        countIf(event_type = 'conversion') as total_conversions,
         MIN(timestamp) as first_seen,
         MAX(timestamp) as last_seen,
-        -- Consider active if last seen within 7 days
         CASE WHEN MAX(timestamp) >= now() - INTERVAL 7 DAY THEN 1 ELSE 0 END as is_active
       FROM (
         SELECT 
-          -- Normalize domain: remove www. prefix and convert to lowercase
           lower(if(startsWith(domain(page_url), 'www.'), 
             substring(domain(page_url), 5), 
             domain(page_url))) as normalized_domain,
@@ -91,16 +118,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           AND page_url IS NOT NULL
           AND domain(page_url) != ''
       )
+      WHERE normalized_domain IN (SELECT normalized_domain FROM top_domains)
       GROUP BY normalized_domain
-      HAVING normalized_domain NOT IN (
-        'dev.cosmosai.co.kr',
-        'cosmosai.co.kr',
-        'localhost',
-        '127.0.0.1',
-        '0.0.0.0'
-      )
       ORDER BY total_sessions DESC
-      LIMIT 200
     `;
 
     const result = await queryWithMemoryLimit(query, {

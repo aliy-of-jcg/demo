@@ -10,14 +10,86 @@ const clickhouse = createClient({
 export default clickhouse;
 
 /**
- * Query ClickHouse with memory limits (GA-style safety)
- * Prevents memory errors by capping memory usage per query
+ * Query ClickHouse with memory limits and optional cardinality protection
+ * 
+ * Query Modes:
+ * - 'exact': For queries requiring complete, accurate results (KPIs, totals, time-series)
+ *   - No cardinality limits (allows full aggregation)
+ *   - Use for: total visitors, conversions, hourly/daily breakdowns, low-cardinality groups
+ * 
+ * - 'exploratory': For high-cardinality queries that can tolerate partial results
+ *   - Applies cardinality limits to prevent memory explosions
+ *   - Use for: session journeys, user-level analytics, tracking code breakdowns
+ *   - WARNING: May return partial results if cardinality limit exceeded
  * 
  * @param query - SQL query string
- * @param options - Additional query options (format, query_params, etc.)
+ * @param options - Query options
+ * @param options.queryMode - 'exact' (default) for complete results, 'exploratory' for high-cardinality queries
+ * @param options.format - Output format
  * @returns Query result
  */
 export async function queryWithMemoryLimit(
+  query: string,
+  options?: {
+    queryMode?: 'exact' | 'exploratory';
+    format?: 'JSONEachRow' | 'JSON' | 'CSV' | 'TabSeparated';
+    query_params?: Record<string, any>;
+    [key: string]: any;
+  }
+) {
+  const queryMode = options?.queryMode ?? 'exact';
+  const isExploratory = queryMode === 'exploratory';
+
+  return clickhouse.query({
+    query,
+    format: options?.format || 'JSONEachRow',
+    clickhouse_settings: {
+      // RAM limit: 1GB per query (conservative limit for shared system)
+      max_memory_usage: 1_000_000_000, // 1GB
+
+      // Disk spill: Use disk when RAM limit reached
+      max_bytes_before_external_group_by: 500_000_000, // 500MB
+      max_bytes_before_external_sort: 500_000_000, // 500MB
+
+      // Cardinality protection (ONLY for exploratory queries)
+      // and returns PARTIAL results once limit is reached. Use only when incomplete
+      // results are acceptable (e.g., top N sessions, exploratory analytics).
+      ...(isExploratory ? {
+        max_rows_to_group_by: 1_000_000, // 1M unique groups max
+        group_by_overflow_mode: 'break', // Stops creating new groups, returns partial results (does NOT fail)
+      } : {}),
+
+      // Scan limits: Always enabled (protects against runaway queries)
+      max_rows_to_read: 100_000_000, // 100M rows max
+      max_bytes_to_read: 50_000_000_000, // 50GB max
+
+      // Join safety: Always enabled
+      max_bytes_in_join: 500_000_000, // 500MB max for join operations
+
+      // Result limits: Tighter limits for practical application consumption
+      // 100MB is more reasonable than 1GB for API responses
+      max_result_rows: 1_000_000, // 1M rows max in result
+      max_result_bytes: 100_000_000, // 100MB max in result (was 1GB - too permissive)
+
+      // Timeout: 5 minutes max (prevents hanging queries)
+      max_execution_time: 300, // 5 minutes
+    } as Record<string, string | number>,
+    ...options,
+  });
+}
+
+/**
+ * Helper for exact queries (KPIs, totals, time-series)
+ * Ensures complete, accurate results without cardinality limits
+ * 
+ * Use for:
+ * - Total visitors/users/sessions
+ * - Hourly/daily time-series (low cardinality)
+ * - Channel/device/browser breakdowns (low cardinality)
+ * - Conversion totals
+ * - Revenue calculations
+ */
+export async function queryExact(
   query: string,
   options?: {
     format?: 'JSONEachRow' | 'JSON' | 'CSV' | 'TabSeparated';
@@ -25,26 +97,30 @@ export async function queryWithMemoryLimit(
     [key: string]: any;
   }
 ) {
-  return clickhouse.query({
-    query,
-    format: options?.format || 'JSONEachRow',
-    clickhouse_settings: {
-      // Memory limit: 2GB per query (prevents memory exhaustion)
-      max_memory_usage: 2_000_000_000, // 2GB
+  return queryWithMemoryLimit(query, { ...options, queryMode: 'exact' });
+}
 
-      // External sorting/grouping: Use disk when RAM limit reached
-      // This allows queries to complete even with large datasets
-      max_bytes_before_external_group_by: 1_000_000_000, // 1GB - use disk for GROUP BY overflow
-      max_bytes_before_external_sort: 1_000_000_000, // 1GB - use disk for ORDER BY overflow
-
-      // Query timeout: 5 minutes max (prevents hanging queries)
-      max_execution_time: 300, // 5 minutes
-
-      // Allow external aggregation (use disk when needed)
-      allow_experimental_projection_optimization: 1,
-    } as Record<string, string | number>,
-    ...options,
-  });
+/**
+ * Helper for exploratory queries (high-cardinality, can tolerate partial results)
+ * Applies cardinality limits to prevent memory explosions
+ * 
+ * Use for:
+ * - Session journeys (GROUP BY session_id)
+ * - User-level analytics (GROUP BY user_id)
+ * - Tracking code breakdowns (thousands of codes)
+ * - Page URL aggregations (thousands of URLs)
+ * 
+ * WARNING: May return partial results if cardinality limit (1M groups) is exceeded
+ */
+export async function queryExploratory(
+  query: string,
+  options?: {
+    format?: 'JSONEachRow' | 'JSON' | 'CSV' | 'TabSeparated';
+    query_params?: Record<string, any>;
+    [key: string]: any;
+  }
+) {
+  return queryWithMemoryLimit(query, { ...options, queryMode: 'exploratory' });
 }
 
 /**
@@ -88,7 +164,6 @@ export async function insertWithMemoryLimit(
       max_execution_time: 120, // 2 minutes
 
       // Allow external aggregation (use disk when needed)
-      allow_experimental_projection_optimization: 1,
     } as Record<string, string | number>,
   });
 }
@@ -181,99 +256,6 @@ export const initClickHouseSchema = async () => {
     SETTINGS index_granularity = 8192
     `,
   });
-
-  // Add tracking_code column to existing visit_logs table if it doesn't exist
-  try {
-    await clickhouse.command({
-      query: `ALTER TABLE analytics.visit_logs ADD COLUMN IF NOT EXISTS tracking_code String DEFAULT ''`
-    });
-    await clickhouse.command({
-      query: `ALTER TABLE analytics.visit_logs ADD COLUMN IF NOT EXISTS referrer_domain String DEFAULT ''`
-    });
-  } catch (error) {
-    // Column might already exist, ignore error
-    console.log('Schema update note:', error);
-  }
-
-  // Add projections for common query patterns (Phase 1 optimization)
-  try {
-    // Projection 1: Campaign + Date aggregations
-    await clickhouse.command({
-      query: `
-        ALTER TABLE analytics.visit_logs 
-        ADD PROJECTION IF NOT EXISTS campaign_date_projection (
-          SELECT 
-            toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
-            campaign_id,
-            countDistinct(user_id) as unique_visitors,
-            countDistinct(session_id) as sessions,
-            countIf(event_type = 'conversion') as conversions,
-            SUM(conversion_value) as revenue
-          GROUP BY date, campaign_id
-        )
-      `
-    });
-
-    // Projection 2: Channel (utm_source) + Date aggregations
-    await clickhouse.command({
-      query: `
-        ALTER TABLE analytics.visit_logs 
-        ADD PROJECTION IF NOT EXISTS channel_date_projection (
-          SELECT 
-            toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
-            CASE 
-              WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'
-              ELSE utm_source
-            END as channel,
-            countDistinct(user_id) as visitors,
-            countIf(event_type = 'conversion') as conversions,
-            SUM(conversion_value) as revenue
-          GROUP BY date, channel
-        )
-      `
-    });
-
-    // Projection 3: Conversion type + Date aggregations
-    await clickhouse.command({
-      query: `
-        ALTER TABLE analytics.visit_logs 
-        ADD PROJECTION IF NOT EXISTS conversion_date_projection (
-          SELECT 
-            toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
-            conversion_type,
-            countIf(conversion_type != '' AND event_type = 'conversion') as count,
-            sumIf(conversion_value, conversion_type != '' AND event_type = 'conversion') as total_value,
-            countDistinctIf(user_id, conversion_type != '' AND event_type = 'conversion') as unique_users
-          GROUP BY date, conversion_type
-        )
-      `
-    });
-
-    // Projection 4: Tracking code + Date aggregations
-    await clickhouse.command({
-      query: `
-        ALTER TABLE analytics.visit_logs 
-        ADD PROJECTION IF NOT EXISTS tracking_code_date_projection (
-          SELECT 
-            toDate(toTimeZone(timestamp, 'Asia/Seoul')) as date,
-            tracking_code,
-            utm_source,
-            utm_medium,
-            utm_campaign,
-            countDistinctIf(session_id, tracking_code != '') as sessions,
-            countDistinctIf(user_id, tracking_code != '') as users,
-            countIf(tracking_code != '' AND event_type = 'conversion') as conversions
-          GROUP BY date, tracking_code, utm_source, utm_medium, utm_campaign
-        )
-      `
-    });
-
-    console.log('Projections added successfully');
-  } catch (error) {
-    // Projections might already exist, ignore error
-    console.log('Projection setup note:', error);
-  }
-
 
   console.log('ClickHouse schema initialized successfully');
 };

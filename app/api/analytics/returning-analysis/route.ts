@@ -133,41 +133,34 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const totalVisitors = totalVisitorsJson[0]?.total_visitors || 0;
 
     // Now get new vs returning breakdown using GA4 logic
-    // Step 1: Find each user's first-ever session date (globally using MIN(timestamp))
-    // Step 2: Classify based on whether that date falls within the selected range
-    // Uses MIN(timestamp) globally (GA4 approach) instead of filtering by is_new_visitor flag
+    // OPTIMIZED: Push aggregation upward, eliminate heavy intermediate GROUP BY user_id
+    // Step 1: Find each user's first-ever session date (unavoidable - needed for classification)
+    // Step 2: Tag rows with visitor_type and aggregate directly at that level (only 2 groups!)
+    // Memory scales with rows scanned, not users grouped
     const newVsReturningQuery = `
-      SELECT 
-        visitor_type,
-        uniqExact(user_id) as visitors,
-        SUM(pageviews) as pageviews,
-        SUM(conversions) as conversions,
-        AVG(avg_time_on_page) as avg_time_on_page
-      FROM (
+      WITH user_first_sessions AS (
         SELECT 
-          vl.user_id,
-          if(
-            first_session_date >= toDate('${startDate || '1970-01-01'}') 
-            AND first_session_date <= toDate('${endDate || '2099-12-31'}'),
-            'new',
-            'returning'
-          ) as visitor_type,
-          COUNT(*) as pageviews,
-          countIf(vl.event_type = 'conversion') as conversions,
-          AVG(vl.time_on_page) as avg_time_on_page
-        FROM analytics.visit_logs_buffer vl
-        INNER JOIN (
-          SELECT 
-            user_id,
-            toDate(MIN(timestamp)) as first_session_date
-          FROM analytics.visit_logs_buffer
-          WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
-            AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
-          GROUP BY user_id
-        ) user_first_sessions ON vl.user_id = user_first_sessions.user_id
-        WHERE ${whereClause}
-        GROUP BY vl.user_id, visitor_type, first_session_date
+          user_id,
+          toDate(MIN(timestamp)) as first_session_date
+        FROM analytics.visit_logs_buffer
+        WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
+          AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        GROUP BY user_id
       )
+      SELECT 
+        if(
+          ufs.first_session_date >= toDate('${startDate}') 
+          AND ufs.first_session_date <= toDate('${endDate}'),
+          'new',
+          'returning'
+        ) AS visitor_type,
+        uniqExact(vl.user_id) AS visitors,
+        COUNT(*) AS pageviews,
+        countIf(vl.event_type = 'conversion') AS conversions,
+        AVG(vl.time_on_page) AS avg_time_on_page
+      FROM analytics.visit_logs_buffer vl
+      INNER JOIN user_first_sessions ufs ON vl.user_id = ufs.user_id
+      WHERE ${whereClause}
       GROUP BY visitor_type
     `;
 
@@ -244,19 +237,22 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // 2. Visit Frequency Distribution
     // Count distinct visits per user within the date range (not lifetime visit_count)
-    // This matches Google Analytics behavior: shows how many times users visited in the selected period
+    // Two-phase pattern: Per-user aggregation is necessary to calculate frequency distribution
+    // First phase: Get visit count per user (necessary - can't avoid this)
+    // Second phase: Group by visit count to build histogram (low cardinality - < 100 groups)
     const visitFrequencyQuery = `
-      SELECT 
-        visits_in_range,
-        COUNT(*) as users
-      FROM (
-        SELECT 
+      WITH per_user_visits AS (
+        SELECT
           user_id,
-          uniqExact(visit_count) as visits_in_range
+          uniqExact(visit_count) AS visits_in_range
         FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
         GROUP BY user_id
       )
+      SELECT
+        visits_in_range,
+        COUNT(*) AS users
+      FROM per_user_visits
       GROUP BY visits_in_range
       ORDER BY visits_in_range ASC
     `;
@@ -289,25 +285,47 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     });
 
     // 3. Return Interval Analysis (days between consecutive visits)
-    // Calculate intervals between consecutive visits per user (using visit_count instead of session_id)
-    // This ensures we measure actual return visits, not multiple sessions within the same visit
+    // Calculate intervals between consecutive visits per user using window functions
+    // High-cardinality output (one row per user visit) - use exploratory mode
+    // Note: Window functions can't be used in WHERE, so we need to wrap in CTE
     const returnIntervalQuery = `
-      SELECT 
+      WITH user_visits AS (
+        SELECT
+          user_id,
+          visit_count,
+          MIN(timestamp) AS visit_start
+        FROM analytics.visit_logs_buffer
+        WHERE ${whereClause}
+          AND is_new_visitor = 0
+        GROUP BY user_id, visit_count
+      ),
+      intervals AS (
+        SELECT
+          user_id,
+          visit_count,
+          visit_start,
+          dateDiff(
+            'day',
+            lag(visit_start) OVER (PARTITION BY user_id ORDER BY visit_start),
+            visit_start
+          ) AS return_interval_days
+        FROM user_visits
+      )
+      SELECT
         user_id,
         visit_count,
-        MIN(timestamp) as visit_start
-      FROM analytics.visit_logs_buffer
-      WHERE ${whereClause}
-        AND user_id IN (
-          SELECT DISTINCT user_id 
-          FROM analytics.visit_logs_buffer 
-          WHERE ${whereClause} AND is_new_visitor = 0
-        )
-      GROUP BY user_id, visit_count
+        visit_start,
+        return_interval_days
+      FROM intervals
+      WHERE return_interval_days IS NOT NULL
+        AND return_interval_days > 0
       ORDER BY user_id, visit_count ASC
     `;
 
+    // High-cardinality query: One row per user visit (exploratory analysis)
+    // Use exploratory mode to prevent memory explosion
     const returnIntervalResult = await queryWithMemoryLimit(returnIntervalQuery, {
+      queryMode: 'exploratory',
       format: 'JSONEachRow',
     });
 
@@ -315,9 +333,11 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       user_id: string;
       visit_count: number;
       visit_start: string;
+      return_interval_days: number;
     }[];
 
-    // Calculate intervals between consecutive visits
+    // Intervals are now calculated in SQL using window functions
+    // Process intervals into buckets and calculate average
     let totalIntervals = 0;
     let intervalSum = 0;
 
@@ -330,47 +350,18 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       { label: '31+ days', min: 31, max: Infinity, users: 0 },
     ];
 
-    // Group visits by user (each visit has a unique visit_count)
-    const userVisits = new Map<string, Array<{ visit_count: number; visit_start: Date }>>();
+    // Process SQL-calculated intervals
     returnIntervalJson.forEach((row) => {
-      if (!userVisits.has(row.user_id)) {
-        userVisits.set(row.user_id, []);
-      }
-      userVisits.get(row.user_id)!.push({
-        visit_count: row.visit_count,
-        visit_start: new Date(row.visit_start)
-      });
-    });
+      const daysDiff = row.return_interval_days;
 
-    // Calculate intervals between consecutive visits for each user
-    userVisits.forEach((visits, userId) => {
-      // Sort visits by visit_count (should already be sorted, but ensure it)
-      visits.sort((a, b) => a.visit_count - b.visit_count);
+      totalIntervals++;
+      intervalSum += daysDiff;
 
-      // Calculate intervals between consecutive visit_counts
-      for (let i = 1; i < visits.length; i++) {
-        const prevVisit = visits[i - 1];
-        const currentVisit = visits[i];
-
-        // Skip if visit_count is not consecutive (shouldn't happen, but safety check)
-        if (currentVisit.visit_count !== prevVisit.visit_count + 1) {
-          continue;
-        }
-
-        const daysDiff = Math.floor(
-          (currentVisit.visit_start.getTime() - prevVisit.visit_start.getTime())
-          / (1000 * 60 * 60 * 24)
-        );
-
-        totalIntervals++;
-        intervalSum += daysDiff;
-
-        // Find appropriate bucket
-        for (const bucket of intervalBuckets) {
-          if (daysDiff >= bucket.min && daysDiff <= bucket.max) {
-            bucket.users++;
-            break;
-          }
+      // Find appropriate bucket
+      for (const bucket of intervalBuckets) {
+        if (daysDiff >= bucket.min && daysDiff <= bucket.max) {
+          bucket.users++;
+          break;
         }
       }
     });
@@ -378,36 +369,30 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const avgReturnInterval = totalIntervals > 0 ? Math.round(intervalSum / totalIntervals) : 0;
 
     // 4. Daily new vs returning trend
-    // GA4 Logic: Classify users based on their first-ever session date (globally)
-    // Then count their daily activity
-    // Uses MIN(timestamp) globally (GA4 approach) instead of filtering by is_new_visitor flag
+    // OPTIMIZED: Push aggregation upward, eliminate heavy intermediate per-user grouping
+    // GA4 Logic: Classify users based on their first-ever session date, then aggregate by date
     const dailyTrendQuery = `
-      SELECT 
-        date,
-        uniqExactIf(user_id, visitor_type = 'new') as new_visitors,
-        uniqExactIf(user_id, visitor_type = 'returning') as returning_visitors
-      FROM (
+      WITH user_first_sessions AS (
         SELECT 
-          vl.user_id,
-          toDate(toTimeZone(vl.timestamp, '${timezone}')) as date,
-          if(
-            first_session_date >= toDate('${startDate || '1970-01-01'}') 
-            AND first_session_date <= toDate('${endDate || '2099-12-31'}'),
-            'new',
-            'returning'
-          ) as visitor_type
-        FROM analytics.visit_logs_buffer vl
-        INNER JOIN (
-          SELECT 
-            user_id,
-            toDate(MIN(timestamp)) as first_session_date
-          FROM analytics.visit_logs_buffer
-          WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
-            AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
-          GROUP BY user_id
-        ) user_first_sessions ON vl.user_id = user_first_sessions.user_id
-        WHERE ${whereClause}
+          user_id,
+          toDate(MIN(timestamp)) as first_session_date
+        FROM analytics.visit_logs_buffer
+        WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
+          AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        GROUP BY user_id
       )
+      SELECT 
+        toDate(toTimeZone(vl.timestamp, '${timezone}')) as date,
+        uniqExactIf(vl.user_id, 
+          ufs.first_session_date >= toDate('${startDate}') 
+          AND ufs.first_session_date <= toDate('${endDate}')
+        ) as new_visitors,
+        uniqExactIf(vl.user_id,
+          ufs.first_session_date < toDate('${startDate}')
+        ) as returning_visitors
+      FROM analytics.visit_logs_buffer vl
+      INNER JOIN user_first_sessions ufs ON vl.user_id = ufs.user_id
+      WHERE ${whereClause}
       GROUP BY date
       ORDER BY date ASC
     `;

@@ -46,36 +46,53 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
 
     // Fetch all sessions with their complete page journeys
-    // GA-aligned session duration: time from first pageview to last pageview (excluding exit page time)
+    // TWO-PHASE PATTERN (GA-style): Optimize for LIMIT performance
+    // Phase 1: Get session IDs only (lightweight - just for sorting/limiting)
+    // Phase 2: Aggregate only those limited sessions (heavy aggregations on small set)
     const sessionsQuery = `
-      WITH session_list AS (
+      WITH session_ids AS (
+        -- Phase 1: Lightweight - just get session IDs and sort key
+        -- LIMIT applies here, so we only process top N sessions later
         SELECT 
           session_id,
           user_id,
-          MIN(timestamp) as session_start_ts,
-          MAX(timestamp) as session_end_ts,
-          toString(MIN(timestamp)) as session_start,
-          toString(MAX(timestamp)) as session_end,
-          COUNT(*) as total_pages,
-          -- GA Logic: Session duration = time from first pageview to last pageview (excluding exit page time)
-          -- Only count pageview events, not page_exit events
-          toUnixTimestamp(MAX(CASE WHEN event_type = 'pageview' THEN timestamp ELSE NULL END)) - 
-          toUnixTimestamp(MIN(CASE WHEN event_type = 'pageview' THEN timestamp ELSE NULL END)) as duration,
-          MAX(CASE WHEN is_landing_page = 1 THEN page_url ELSE '' END) as landing_page,
-          MAX(CASE WHEN is_exit_page = 1 THEN page_url ELSE '' END) as exit_page,
-          MAX(utm_source) as utm_source,
-          MAX(utm_medium) as utm_medium,
-          MAX(utm_campaign) as utm_campaign,
-          MAX(device_type) as device_type,
-          MAX(browser) as browser,
-          MAX(os) as os
+          MIN(timestamp) as session_start_ts
         FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
         GROUP BY session_id, user_id
         ORDER BY session_start_ts DESC
         LIMIT ${limit}
       ),
+      session_list AS (
+        -- Phase 2: Heavy aggregations ONLY on the ${limit} selected sessions
+        -- Much more efficient than aggregating all sessions first
+        SELECT 
+          v.session_id,
+          v.user_id,
+          MIN(v.timestamp) as session_start_ts,
+          MAX(v.timestamp) as session_end_ts,
+          toString(MIN(v.timestamp)) as session_start,
+          toString(MAX(v.timestamp)) as session_end,
+          COUNT(*) as total_pages,
+          -- GA Logic: Session duration = time from first pageview to last pageview (excluding exit page time)
+          -- Only count pageview events, not page_exit events
+          toUnixTimestamp(MAX(CASE WHEN v.event_type = 'pageview' THEN v.timestamp ELSE NULL END)) - 
+          toUnixTimestamp(MIN(CASE WHEN v.event_type = 'pageview' THEN v.timestamp ELSE NULL END)) as duration,
+          MAX(CASE WHEN v.is_landing_page = 1 THEN v.page_url ELSE '' END) as landing_page,
+          MAX(CASE WHEN v.is_exit_page = 1 THEN v.page_url ELSE '' END) as exit_page,
+          MAX(v.utm_source) as utm_source,
+          MAX(v.utm_medium) as utm_medium,
+          MAX(v.utm_campaign) as utm_campaign,
+          MAX(v.device_type) as device_type,
+          MAX(v.browser) as browser,
+          MAX(v.os) as os
+        FROM analytics.visit_logs_buffer v
+        INNER JOIN session_ids si ON v.session_id = si.session_id AND v.user_id = si.user_id
+        WHERE ${whereClause}
+        GROUP BY v.session_id, v.user_id
+      ),
       session_pages AS (
+        -- Phase 3: Get page details for those sessions
         SELECT 
           v.session_id,
           v.page_url,
@@ -88,7 +105,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           v.is_exit_page,
           v.http_status
         FROM analytics.visit_logs_buffer v
-        INNER JOIN session_list s ON v.session_id = s.session_id
+        INNER JOIN session_ids si ON v.session_id = si.session_id
         WHERE toDate(toTimeZone(v.timestamp, '${timezone}')) >= toDate('${finalStartDate}') 
           AND toDate(toTimeZone(v.timestamp, '${timezone}')) <= toDate('${finalEndDate}')
         ORDER BY v.session_id, v.page_sequence
@@ -102,7 +119,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       ORDER BY s.session_start_ts DESC
     `;
 
+    // High-cardinality query: GROUP BY session_id (millions of groups possible)
+    // Use exploratory mode to prevent memory explosion
     const result = await queryWithMemoryLimit(sessionsQuery, {
+      queryMode: 'exploratory',
       format: 'JSONEachRow',
     });
 
