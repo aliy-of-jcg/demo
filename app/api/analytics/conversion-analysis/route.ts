@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     const campaignId = searchParams.get('campaignId');
+
+    // Check cache (30 seconds TTL)
+    const cacheTtlMs = 30_000; // 30 seconds
+    const cacheKey = `conversion-analysis:${startDate}:${endDate}:${campaignId || 'all'}:${timezone}`;
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Build WHERE clause
     const whereConditions = [`toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`];
@@ -137,7 +146,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       total_revenue: number;
     }>;
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: {
         summary: summaryData,
@@ -145,12 +154,21 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         bySource: sourceData,
         funnel: funnelData[0] || {}
       }
-    });
+    };
+
+    setCache(cacheKey, response, cacheTtlMs);
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Conversion analysis error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch conversion analytics' },
+      {
+        success: false,
+        error: normalizedError.message || 'Failed to fetch conversion analytics'
+      },
       { status: 500 }
     );
   }

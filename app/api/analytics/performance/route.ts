@@ -3,6 +3,7 @@ import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const timezone = await getDefaultTimezone();
 
     console.log(`📊 Performance Dashboard API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
+
+    // Check cache (2 minutes TTL)
+    const cacheTtlMs = 120_000; // 2 minutes
+    const cacheKey = `performance:${startDate}:${endDate}:${timezone}`;
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Calculate comparison period (previous period of same length)
     const startMs = new Date(startDate).getTime();
@@ -199,6 +208,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
       console.log(`✅ Performance data fetched: ${response.metrics.totalVisitors} visitors, ${channelDataEnhanced.length} channels`);
 
+      setCache(cacheKey, response, cacheTtlMs);
       return NextResponse.json(response);
 
     } catch (chError: any) {
@@ -226,11 +236,17 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           message: 'No analytics data available yet. Start tracking campaigns to see performance metrics.'
         });
       }
-      throw chError;
+      // Normalize error before re-throwing
+      throw chError instanceof Error
+        ? chError
+        : new Error('Unexpected server error');
     }
 
   } catch (error) {
     console.error('❌ Performance Dashboard API Error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
 
     // Fallback date range calculation
     const fallbackEndDate = new Date().toISOString().split('T')[0];

@@ -21,7 +21,7 @@ interface WebsiteData {
 }
 
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
-  const cacheTtlMs = 60_000; // 60s
+  const cacheTtlMs = 300_000; // 5 minutes
   try {
     const searchParams = request.nextUrl.searchParams;
     const MAX_RANGE_DAYS = 90;
@@ -216,11 +216,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
   } catch (error) {
     console.error('❌ Tracked Websites Analysis API Error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to fetch tracked websites data',
-        message: error instanceof Error ? error.message : String(error)
+        message: normalizedError.message
       },
       { status: 500 }
     );

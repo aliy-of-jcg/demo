@@ -3,6 +3,7 @@ import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const timezone = await getDefaultTimezone();
 
     console.log(`📊 Channel Performance Analysis API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
+
+    // Check cache (2 minutes TTL)
+    const cacheTtlMs = 120_000; // 2 minutes
+    const cacheKey = `channel-performance:${startDate}:${endDate}:${timezone}`;
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     const pool = getPool();
 
@@ -387,15 +396,19 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       chartData: chartData
     };
 
+    setCache(cacheKey, response, cacheTtlMs);
     return NextResponse.json(response);
 
   } catch (error) {
     console.error('❌ Channel Performance Analysis API Error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
     return NextResponse.json(
       {
         success: false,
         error: 'Failed to fetch channel performance data',
-        message: error instanceof Error ? error.message : String(error)
+        message: normalizedError.message
       },
       { status: 500 }
     );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const search = searchParams.get('search');
 
     console.log(`🔗 Page Flow Analysis API - Date Range: ${startDate} to ${endDate}, Limit: ${limit}, Domain: ${domain || 'all'}, Search: ${search || 'none'}`);
+
+    // Check cache (30 seconds TTL)
+    const cacheTtlMs = 30_000; // 30 seconds
+    const cacheKey = `page-flow-analysis:${startDate}:${endDate}:${limit}:${domain || 'all'}:${search || 'none'}`;
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Build WHERE clause for date filtering (always apply date filtering for memory safety)
     const whereClause = `toDate(timestamp) >= '${startDate}' AND toDate(timestamp) <= '${endDate}'`;
@@ -322,7 +331,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       count: row.transitions || 0,
     }));
 
-    return NextResponse.json({
+    const response = {
       success: true,
       landingPages,
       exitPages,
@@ -335,14 +344,20 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         uniqueLandingPagesCount,
         avgSessionDepth,
       },
-    });
+    };
+
+    setCache(cacheKey, response, cacheTtlMs);
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Page flow analysis API error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error'
+        error: normalizedError.message
       },
       { status: 500 }
     );

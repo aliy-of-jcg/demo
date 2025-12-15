@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 
 // Type definitions for the analytics data
 interface TimeAnalysisData {
@@ -81,6 +82,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const timezone = await getDefaultTimezone();
 
     console.log(`⏰ Time Analysis API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
+
+    // Check cache (2 minutes TTL)
+    const cacheTtlMs = 120_000; // 2 minutes
+    const cacheKey = `time-analysis:${startDate}:${endDate}:${timezone}`;
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Build WHERE clause for date filtering (always apply date filtering for memory safety)
     const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
@@ -207,7 +216,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         visitors: d.visitors,
       }));
 
-    return NextResponse.json({
+    const response = {
       success: true,
       hourly: hourlyData,
       dayOfWeek: dayOfWeekData,
@@ -216,14 +225,20 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         peakHours,
         peakDays,
       },
-    });
+    };
+
+    setCache(cacheKey, response, cacheTtlMs);
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Time-based analysis API error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error'
+        error: normalizedError.message
       },
       { status: 500 }
     );

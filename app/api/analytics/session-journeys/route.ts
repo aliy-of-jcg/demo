@@ -206,10 +206,13 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
   } catch (error) {
     console.error('Session journeys API error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error'
+        error: normalizedError.message
       },
       { status: 500 }
     );

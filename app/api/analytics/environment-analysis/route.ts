@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const timezone = await getDefaultTimezone();
 
     console.log(`🌍 Environment Analysis API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
+
+    // Check cache (2 minutes TTL)
+    const cacheTtlMs = 120_000; // 2 minutes
+    const cacheKey = `environment-analysis:${startDate}:${endDate}:${timezone}`;
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Build WHERE clause for date filtering (using system default timezone)
     // Always apply date filtering (required for memory safety)
@@ -181,20 +190,26 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       pageviews: row.pageviews || 0,
     }));
 
-    return NextResponse.json({
+    const response = {
       success: true,
       devices: deviceData,
       os: osData,
       browsers: browserData,
       resolutions: resolutionData,
-    });
+    };
+
+    setCache(cacheKey, response, cacheTtlMs);
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Environment analysis API error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error'
+        error: normalizedError.message
       },
       { status: 500 }
     );

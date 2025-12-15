@@ -4,6 +4,7 @@ import { getPool } from '@/lib/mysql';
 import { RowDataPacket } from 'mysql2';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
+import { getCache, setCache } from '@/lib/cache/simpleCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,14 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       const clampedStart = new Date(endObj);
       clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
       finalStartDate = clampedStart.toISOString().split('T')[0];
+    }
+
+    // Check cache (2 minutes TTL) - after date variables are set
+    const cacheTtlMs = 120_000; // 2 minutes
+    const cacheKey = `campaign-analysis:${campaignId}:${finalStartDate}:${finalEndDate}:${platform || 'all'}:${timezone}`;
+    const cached = getCache<any>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     // 2. Get all tracking codes for this campaign (include hidden for historical analytics)
@@ -512,7 +521,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       ? ((nonLegacyMetrics.visitors / nonLegacyMetrics.clicks) * 100).toFixed(2)
       : '0.00';
 
-    return NextResponse.json({
+    const response = {
       success: true,
       campaign: {
         id: campaign.id,
@@ -543,14 +552,20 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       },
       dailyData,
       utmBreakdown,
-    });
+    };
+
+    setCache(cacheKey, response, cacheTtlMs);
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Campaign analysis API error:', error);
+    const normalizedError = error instanceof Error
+      ? error
+      : new Error('Unexpected server error');
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Internal server error'
+        error: normalizedError.message
       },
       { status: 500 }
     );
