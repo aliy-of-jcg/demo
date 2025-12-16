@@ -1,23 +1,16 @@
 import Redis from 'ioredis';
 
 // Determine Redis host based on environment
-// If REDIS_HOST is 'redis' (Docker hostname) but we're running locally, use 'localhost'
+// Respect REDIS_HOST environment variable if set, otherwise default to localhost
 const getRedisHost = (): string => {
-    const envHost = process.env.REDIS_HOST || 'localhost';
-    
-    // If explicitly set to 'redis' (Docker hostname), check if we're in Docker
-    // We're likely in Docker if explicitly set via environment variable
-    const isInDocker = process.env.DOCKER_CONTAINER === 'true' || 
-                       process.env.IN_DOCKER === 'true';
-    
-    // If host is 'redis' but we're not explicitly in Docker, use localhost for local dev
-    // This handles the case where REDIS_HOST=redis is set but app runs locally
-    if (envHost === 'redis' && !isInDocker) {
-        console.log('⚠️ REDIS_HOST is set to "redis" but not in Docker. Using "localhost" instead.');
-        return 'localhost';
+    // If REDIS_HOST is explicitly set, use it (trust the environment)
+    // This works for both Docker (REDIS_HOST=redis) and local dev (REDIS_HOST=localhost)
+    if (process.env.REDIS_HOST) {
+        return process.env.REDIS_HOST;
     }
     
-    return envHost;
+    // Default to localhost if not set (for local development without Docker)
+    return 'localhost';
 };
 
 // Redis connection configuration

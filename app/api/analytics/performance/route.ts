@@ -62,24 +62,29 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     try {
       // Query 1: Summary Metrics (visitors, conversions, revenue)
+      // OPTIMIZED: Use uniqExact instead of countDistinct, calculate conversion_rate separately
       const metricsQuery = `
         SELECT 
-          countDistinct(user_id) as total_visitors,
-          SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
-          SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / countDistinct(user_id) as conversion_rate
+          uniqExact(user_id) as total_visitors,
+          SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
         FROM analytics.visit_logs_buffer
-        WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
+          AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
       `;
 
       const metricsResult = await queryWithMemoryLimit(metricsQuery, {
-        format: 'JSONEachRow'
+        format: 'JSONEachRow',
+        queryMode: 'exact' // Keep exact for KPIs
       });
       const metricsData = await metricsResult.json() as Array<{
         total_visitors: number;
         conversions: number;
-        conversion_rate: string;
       }>;
-      const metrics = metricsData[0] || { total_visitors: 0, conversions: 0, conversion_rate: '0' };
+      const metrics = metricsData[0] || { total_visitors: 0, conversions: 0 };
+      // Calculate conversion rate in application code to avoid double aggregation
+      const conversionRate = metrics.total_visitors > 0 
+        ? (metrics.conversions * 100.0 / metrics.total_visitors).toFixed(2)
+        : '0.00';
 
       // Query 2: Get revenue from MySQL campaigns (budget spent)
       const pool = getPool();
@@ -92,30 +97,31 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       const revenue = (revenueResult as any[])[0]?.total_spent || 0;
 
       // Query 3: Channel Breakdown (by utm_source)
+      // OPTIMIZED: Use uniqExact, calculate conversion_rate in application code
       const channelQuery = `
       SELECT 
         CASE 
           WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'
           ELSE utm_source
         END as channel,
-        countDistinct(user_id) as visitors,
-        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions,
-        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) * 100.0 / countDistinct(user_id) as conversion_rate
+        uniqExact(user_id) as visitors,
+        SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
+        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
       GROUP BY channel
       ORDER BY visitors DESC
       LIMIT 10
     `;
 
       const channelResult = await queryWithMemoryLimit(channelQuery, {
-        format: 'JSONEachRow'
+        format: 'JSONEachRow',
+        queryMode: 'exact' // Keep exact for KPIs
       });
       const channelData = await channelResult.json() as Array<{
         channel: string;
         visitors: number;
         conversions: number;
-        conversion_rate: string;
       }>;
 
       // Get campaign budgets for each channel to calculate CPA
@@ -130,12 +136,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
           const spent = (budgetResult as any[])[0]?.channel_spent || 0;
           const cpa = channel.conversions > 0 ? spent / channel.conversions : 0;
+          // Calculate conversion rate in application code
+          const conversionRate = channel.visitors > 0 
+            ? (channel.conversions * 100.0 / channel.visitors).toFixed(2)
+            : '0.00';
 
           return {
             channel: channel.channel,
             visitors: channel.visitors,
             conversions: channel.conversions,
-            rate: parseFloat(channel.conversion_rate).toFixed(2),
+            rate: conversionRate,
             revenue: spent, // Using spent as revenue for now
             cpa: Math.round(cpa)
           };
@@ -143,18 +153,21 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       );
 
       // Query 4: Daily Visitor Trend (current period)
+      // OPTIMIZED: Use uniqExact, use >= and <= instead of BETWEEN
       const trendQuery = `
       SELECT 
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
-        countDistinct(user_id) as visitors
+        uniqExact(user_id) as visitors
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
+        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
       GROUP BY date
       ORDER BY date ASC
     `;
 
       const trendResult = await queryWithMemoryLimit(trendQuery, {
-        format: 'JSONEachRow'
+        format: 'JSONEachRow',
+        queryMode: 'exact' // Keep exact for time-series
       });
       const trendData = await trendResult.json() as Array<{
         date: string;
@@ -162,18 +175,21 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       }>;
 
       // Query 5: Comparison Period Trend
+      // OPTIMIZED: Use uniqExact, use >= and <= instead of BETWEEN
       const comparisonTrendQuery = `
       SELECT 
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
-        countDistinct(user_id) as visitors
+        uniqExact(user_id) as visitors
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${comparisonStart}') AND toDate('${comparisonEnd}')
+      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${comparisonStart}')
+        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${comparisonEnd}')
       GROUP BY date
       ORDER BY date ASC
     `;
 
       const comparisonTrendResult = await queryWithMemoryLimit(comparisonTrendQuery, {
-        format: 'JSONEachRow'
+        format: 'JSONEachRow',
+        queryMode: 'exact' // Keep exact for time-series
       });
       const comparisonTrendData = await comparisonTrendResult.json() as Array<{
         date: string;
@@ -190,7 +206,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         metrics: {
           totalVisitors: metrics.total_visitors || 0,
           conversions: metrics.conversions || 0,
-          conversionRate: parseFloat(metrics.conversion_rate || '0').toFixed(2),
+          conversionRate: conversionRate,
           revenue: parseFloat(revenue)
         },
         channelData: channelDataEnhanced,

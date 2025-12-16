@@ -153,17 +153,15 @@ export async function insertWithMemoryLimit(
     ...options,
     table: targetTable,
     clickhouse_settings: {
-      // Memory limit: 2GB per insert (safety net, but buffer tables prevent most issues)
-      max_memory_usage: 2_000_000_000, // 2GB
+      // Memory limit: 100MB per insert (buffer tables are lightweight)
+      // Buffer tables just append to memory, no aggregation/sorting needed
+      max_memory_usage: 300_000_000, // 300MB
 
-      // External sorting/grouping: Use disk when RAM limit reached
-      max_bytes_before_external_group_by: 1_000_000_000, // 1GB
-      max_bytes_before_external_sort: 1_000_000_000, // 1GB
+      // Insert timeout: 30 seconds max (buffer inserts should be instant)
+      max_execution_time: 30, // 30 seconds
 
-      // Insert timeout: 2 minutes max (inserts should be fast)
-      max_execution_time: 120, // 2 minutes
-
-      // Allow external aggregation (use disk when needed)
+      // No external sorting/grouping needed for buffer inserts
+      // Buffer tables are append-only, no heavy operations
     } as Record<string, string | number>,
   });
 }
@@ -249,7 +247,8 @@ export const initClickHouseSchema = async () => {
       session_page_count Int32 DEFAULT 0,
       conversion_type String DEFAULT '',
       conversion_value Float64 DEFAULT 0,
-      conversion_metadata String DEFAULT ''
+      conversion_metadata String DEFAULT '',
+      http_status Int32 DEFAULT 200
     ) ENGINE = MergeTree()
     PARTITION BY toYYYYMM(toTimeZone(timestamp, 'Asia/Seoul'))
     ORDER BY (toDate(toTimeZone(timestamp, 'Asia/Seoul')), session_id, user_id)

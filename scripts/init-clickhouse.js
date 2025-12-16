@@ -108,6 +108,24 @@ async function initSchema() {
     });
     console.log('✅ Table visit_logs created\n');
 
+    console.log('Creating buffer table: tracking_events_buffer');
+    await clickhouse.command({
+      query: `
+        CREATE TABLE IF NOT EXISTS analytics.tracking_events_buffer AS analytics.tracking_events
+        ENGINE = Buffer(analytics, tracking_events, 16, 10, 100, 10000, 1000000, 10000000, 100000000)
+      `,
+    });
+    console.log('✅ Buffer table tracking_events_buffer created\n');
+
+    console.log('Creating buffer table: visit_logs_buffer');
+    await clickhouse.command({
+      query: `
+        CREATE TABLE IF NOT EXISTS analytics.visit_logs_buffer AS analytics.visit_logs
+        ENGINE = Buffer(analytics, visit_logs, 16, 10, 100, 10000, 1000000, 10000000, 100000000)
+      `,
+    });
+    console.log('✅ Buffer table visit_logs_buffer created\n');
+
     console.log('Verifying tables...');
     const result = await clickhouse.query({
       query: 'SHOW TABLES FROM analytics',
