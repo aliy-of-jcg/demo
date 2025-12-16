@@ -159,4 +159,3 @@ process.on('SIGTERM', () => {
   dockerLogs.kill();
   process.exit(0);
 });
-
