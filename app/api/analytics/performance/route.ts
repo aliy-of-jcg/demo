@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
+import { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
@@ -82,7 +82,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       }>;
       const metrics = metricsData[0] || { total_visitors: 0, conversions: 0 };
       // Calculate conversion rate in application code to avoid double aggregation
-      const conversionRate = metrics.total_visitors > 0 
+      const conversionRate = metrics.total_visitors > 0
         ? (metrics.conversions * 100.0 / metrics.total_visitors).toFixed(2)
         : '0.00';
 
@@ -137,7 +137,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const spent = (budgetResult as any[])[0]?.channel_spent || 0;
           const cpa = channel.conversions > 0 ? spent / channel.conversions : 0;
           // Calculate conversion rate in application code
-          const conversionRate = channel.visitors > 0 
+          const conversionRate = channel.visitors > 0
             ? (channel.conversions * 100.0 / channel.visitors).toFixed(2)
             : '0.00';
 
