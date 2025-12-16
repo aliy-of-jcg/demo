@@ -1382,7 +1382,8 @@
         "create": "Create UTM Code",
         "update": "Update UTM Code",
         "creating": "Creating...",
-        "updating": "Updating..."
+        "updating": "Updating...",
+        "edit": "Edit"
       },
       "validation": {
         "selectCampaign": "Please select a campaign first",

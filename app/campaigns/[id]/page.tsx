@@ -118,14 +118,33 @@ export default function CampaignDetailsPage() {
   }, [campaignId]);
 
   // Auto-fill UTM name from campaign name when campaign is loaded (like UTM generator)
+  // But only if modal is not open (to avoid overwriting user input)
   useEffect(() => {
-    if (campaign?.name) {
+    if (campaign?.name && !showAddLinkModal) {
       setFormData(prev => ({
         ...prev,
         name: campaign.name
       }));
     }
-  }, [campaign?.name]);
+  }, [campaign?.name, showAddLinkModal]);
+
+  // Reset form data when modal opens to ensure clean state
+  useEffect(() => {
+    if (showAddLinkModal) {
+      setFormData({
+        name: campaign?.name || '',
+        utm_source: '', // Explicitly empty - user must select
+        utm_medium: '', // Explicitly empty - user must select
+        utm_campaign: campaign?.name || '',
+        utm_term: '',
+        utm_content: '',
+        landing_url: '', // Explicitly empty - user must fill
+        budget: '',
+        auto_pause_on_budget: false,
+        auto_update_campaign_budget: true
+      });
+    }
+  }, [showAddLinkModal, campaign?.name]);
 
   const fetchCampaignDetails = async () => {
     try {
@@ -558,29 +577,16 @@ export default function CampaignDetailsPage() {
             <p className="text-sm text-gray-600 mt-1">{t('detail.manageLinks')}</p>
           </div>
           <ProtectedComponent permission="utm_codes:create" hideOnUnauthorized>
-            <button
-              onClick={() => {
-                // Auto-fill with campaign's source, medium, and landing URL
-                const firstLink = trackingLinks[0];
-                setFormData({
-                  name: campaign?.name || '', // Auto-filled from campaign (not editable)
-                  utm_source: campaign?.source || '',
-                  utm_medium: campaign?.medium || '',
-                  utm_campaign: campaign?.name || '', // Auto-filled from campaign (not editable)
-                  utm_term: '',
-                  utm_content: '',
-                  landing_url: firstLink?.landing_url || '',
-                  budget: '',
-                  auto_pause_on_budget: false,
-                  auto_update_campaign_budget: true
-                });
-                setShowAddLinkModal(true);
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
+          <button
+            onClick={() => {
+                // Just open the modal - formData will be reset by useEffect
+              setShowAddLinkModal(true);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
               <span>{t('detail.addTrackingLink')}</span>
-            </button>
+          </button>
           </ProtectedComponent>
         </div>
 
@@ -627,8 +633,8 @@ export default function CampaignDetailsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{link.name}</div>
-                          <div className="text-xs text-gray-500">{link.utm_campaign}</div>
+                      <div className="text-sm font-medium text-gray-900">{link.name}</div>
+                      <div className="text-xs text-gray-500">{link.utm_campaign}</div>
                         </div>
                         {link.landingPageTracked === false && (
                           <span
@@ -973,7 +979,22 @@ export default function CampaignDetailsPage() {
               <div className="flex items-center justify-end gap-4 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowAddLinkModal(false)}
+                  onClick={() => {
+                    setShowAddLinkModal(false);
+                    // Reset form data when modal closes
+                    setFormData({
+                      name: '',
+                      utm_source: '',
+                      utm_medium: '',
+                      utm_campaign: '',
+                      utm_term: '',
+                      utm_content: '',
+                      landing_url: '',
+                      budget: '',
+                      auto_pause_on_budget: false,
+                      auto_update_campaign_budget: true
+                    });
+                  }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   {t('detail.modal.cancel')}

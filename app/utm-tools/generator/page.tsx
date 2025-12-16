@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from 'react';
-import { Copy, Check, RefreshCw, ArrowLeft, Loader2 } from 'lucide-react';
+import { Copy, Check, RefreshCw, ArrowLeft, Loader2, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageFooter } from '@/components/page-footer';
@@ -22,6 +22,7 @@ function UTMGeneratorPageContent() {
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(!isEditMode); // Start in edit mode for new UTMs
   const [campaigns, setCampaigns] = useState<Array<{ id: number; name: string; source: string; medium: string }>>([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -103,6 +104,7 @@ function UTMGeneratorPageContent() {
         campaign_id: data.utm_code.campaign_id?.toString() || ''
       });
       setTrackingCode(data.utm_code.tracking_code || null);
+      setIsEditing(false); // Start in view mode for edit mode
     } catch (error: any) {
       console.error('Error fetching UTM code:', error);
       toast.error(error.message || t('error.loadFailed'));
@@ -205,6 +207,12 @@ function UTMGeneratorPageContent() {
       campaign_id: ''
     });
     setInitialFormData(isEditMode ? null : null);
+    setTrackingCode(null);
+    setIsEditing(true);
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
   };
 
   const handleChange = (field: string, value: string) => {
@@ -260,17 +268,19 @@ function UTMGeneratorPageContent() {
         throw new Error(data.error || (isEditMode ? t('error.updateFailed') : t('error.createFailed')));
       }
 
-      // For new creations, store the tracking code
+      // For new creations, store the tracking code and disable editing
       if (!isEditMode && data.utm_code && data.utm_code.tracking_code) {
         setTrackingCode(data.utm_code.tracking_code);
+        setIsEditing(false); // Disable editing after creation
+        // Update initialFormData to current formData for change detection
+        setInitialFormData({ ...formData });
+      } else {
+        // For edit mode, update initialFormData and disable editing
+        setInitialFormData({ ...formData });
+        setIsEditing(false);
       }
 
       toast.success(isEditMode ? t('success.updated') : t('success.created'));
-
-      // Redirect after a short delay to show the success message
-      setTimeout(() => {
-        router.push('/utm-tools');
-      }, 1000);
     } catch (error: any) {
       console.error('Error saving UTM code:', error);
       toast.error(error.message || (isEditMode ? t('error.updateFailed') : t('error.createFailed')));
@@ -313,7 +323,18 @@ function UTMGeneratorPageContent() {
         {/* Form Section */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">{t('utmParameters')}</h2>
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-base sm:text-lg font-semibold text-gray-900">{t('utmParameters')}</h2>
+              {trackingCode && !isEditing && (
+                <button
+                  onClick={handleEdit}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <Edit className="w-4 h-4" />
+                  <span>{t('actions.edit')}</span>
+                </button>
+              )}
+            </div>
 
             <div className="space-y-4 sm:space-y-6">
               {/* Link to Campaign (First - Required) */}
@@ -324,7 +345,8 @@ function UTMGeneratorPageContent() {
                 <select
                   value={formData.campaign_id}
                   onChange={(e) => handleChange('campaign_id', e.target.value)}
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!isEditing}
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">{t('form.selectCampaign')}</option>
                   {campaigns.map((campaign) => (
@@ -347,7 +369,8 @@ function UTMGeneratorPageContent() {
                   type="text"
                   value={formData.name}
                   readOnly
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-50"
+                  disabled={!isEditing}
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
                 <p className="text-xs text-gray-500 mt-1">{t('form.utmNameHint')}</p>
               </div>
@@ -362,7 +385,8 @@ function UTMGeneratorPageContent() {
                   value={formData.landing_url}
                   onChange={(e) => handleChange('landing_url', e.target.value)}
                   placeholder={t('form.landingUrlPlaceholder')}
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={!isEditing}
+                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
                 <p className="text-xs text-gray-500 mt-1">{t('form.landingUrlHint')}</p>
               </div>
@@ -376,7 +400,8 @@ function UTMGeneratorPageContent() {
                   <select
                     value={formData.utm_source}
                     onChange={(e) => handleChange('utm_source', e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={!isEditing}
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     {sourceOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -395,7 +420,8 @@ function UTMGeneratorPageContent() {
                   <select
                     value={formData.utm_medium}
                     onChange={(e) => handleChange('utm_medium', e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={!isEditing}
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     {mediumOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -418,7 +444,8 @@ function UTMGeneratorPageContent() {
                     value={formData.utm_term}
                     onChange={(e) => handleChange('utm_term', e.target.value)}
                     placeholder={t('form.termPlaceholder')}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={!isEditing}
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                   <p className="text-xs text-gray-500 mt-1">{t('form.termHint')}</p>
                 </div>
@@ -432,13 +459,15 @@ function UTMGeneratorPageContent() {
                     value={formData.utm_content}
                     onChange={(e) => handleChange('utm_content', e.target.value)}
                     placeholder={t('form.contentPlaceholder')}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={!isEditing}
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                   <p className="text-xs text-gray-500 mt-1">{t('form.contentHint')}</p>
                 </div>
               </div>
 
               {/* Action Buttons */}
+              {isEditing && (
               <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 pt-4">
                 <button
                   onClick={handleReset}
@@ -452,7 +481,7 @@ function UTMGeneratorPageContent() {
                   onClick={handleSave}
                   disabled={
                     saving ||
-                    (isEditMode && initialFormData
+                      (trackingCode && initialFormData
                       ? JSON.stringify(formData) === JSON.stringify(initialFormData)
                       : false)
                   }
@@ -461,13 +490,14 @@ function UTMGeneratorPageContent() {
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{isEditMode ? t('actions.updating') : t('actions.creating')}</span>
+                        <span>{trackingCode ? t('actions.updating') : t('actions.creating')}</span>
                     </>
                   ) : (
-                    <span>{isEditMode ? t('actions.update') : t('actions.create')}</span>
+                      <span>{trackingCode ? t('actions.update') : t('actions.create')}</span>
                   )}
                 </button>
               </div>
+              )}
             </div>
           </div>
         </div>

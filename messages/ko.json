@@ -1382,7 +1382,8 @@
         "create": "UTM 코드 생성",
         "update": "UTM 코드 업데이트",
         "creating": "생성 중...",
-        "updating": "업데이트 중..."
+        "updating": "업데이트 중...",
+        "edit": "편집"
       },
       "validation": {
         "selectCampaign": "먼저 캠페인을 선택하세요",
