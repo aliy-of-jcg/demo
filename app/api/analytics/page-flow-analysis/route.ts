@@ -324,7 +324,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         AND to_page != from_page
       GROUP BY from_page, to_page
       ORDER BY transitions DESC
-      LIMIT 100
+      LIMIT 10
     `;
 
     const pageTransitionsResult = await queryWithMemoryLimit(pageTransitionsQuery, {
