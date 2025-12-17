@@ -7,7 +7,7 @@ interface UseIntersectionOnceOptions {
 }
 
 export function useIntersectionOnce(options: UseIntersectionOnceOptions = {}) {
-  const { threshold = 0.1, rootMargin = '50px 0px', sectionName } = options;
+  const { threshold = 0.1, rootMargin = '0px 0px', sectionName } = options;
   const ref = useRef<HTMLDivElement>(null);
   const [hasIntersected, setHasIntersected] = useState(false);
 
@@ -31,4 +31,3 @@ export function useIntersectionOnce(options: UseIntersectionOnceOptions = {}) {
 
   return { ref, hasIntersected };
 }
-
