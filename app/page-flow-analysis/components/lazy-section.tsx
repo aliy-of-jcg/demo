@@ -13,8 +13,8 @@ export function LazySection({ children, className, sectionName }: LazySectionPro
   const { ref, hasIntersected } = useIntersectionOnce({ sectionName });
 
   return (
-    <div ref={ref} className={className} style={{ minHeight: '1px' }}>
-      {children(hasIntersected)}
+    <div ref={ref} className={className} style={{ minHeight: '200px', padding: '1px' }}>
+      {children(hasIntersected) || <div style={{ height: '200px' }} />}
     </div>
   );
 }

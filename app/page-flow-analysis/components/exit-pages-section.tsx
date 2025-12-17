@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { usePageFlowExitPages } from '@/lib/hooks/usePageFlowExitPages';
+import { usePageFlowExitPages } from '@/lib/hooks/page-flow-analysis/useExitPages';
 
 interface ExitPagesSectionProps {
   startDate: string;

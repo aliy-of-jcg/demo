@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { usePageFlowTransitions } from '@/lib/hooks/usePageFlowTransitions';
+import { usePageFlowTransitions } from '@/lib/hooks/page-flow-analysis/useTransitions';
 
 interface FlowTransitionsSectionProps {
   startDate: string;

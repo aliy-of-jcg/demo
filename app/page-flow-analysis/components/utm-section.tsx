@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { usePageFlowUTM } from '@/lib/hooks/usePageFlowUTM';
+import { usePageFlowUTM } from '@/lib/hooks/page-flow-analysis/useUTM';
 
 interface UTMSectionProps {
   startDate: string;

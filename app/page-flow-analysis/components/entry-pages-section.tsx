@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Search } from 'lucide-react';
-import { usePageFlowLandingPages } from '@/lib/hooks/usePageFlowLandingPages';
+import { usePageFlowLandingPages } from '@/lib/hooks/page-flow-analysis/useLandingPages';
 
 interface EntryPagesSectionProps {
   startDate: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { usePageFlowInsights } from '@/lib/hooks/usePageFlowInsights';
+import { usePageFlowInsights } from '@/lib/hooks/page-flow-analysis/useInsights';
 
 interface SummarySectionProps {
   startDate: string;
