@@ -155,13 +155,13 @@ export default function PageFlowAnalysisPage() {
           </div>
           <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
             <TrackingStatusBadge />
-            <ExportToPDFButton
-              element="[data-export-content]"
-              filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
-              title={t('export.title', { start: dateRange.start, end: dateRange.end })}
-              label={t('export.buttonLabel')}
-              size="sm"
-            />
+              <ExportToPDFButton
+                element="[data-export-content]"
+                filename={t('export.filename', { start: dateRange.start, end: dateRange.end })}
+                title={t('export.title', { start: dateRange.start, end: dateRange.end })}
+                label={t('export.buttonLabel')}
+                size="sm"
+              />
           </div>
         </div>
       </div>
@@ -170,40 +170,40 @@ export default function PageFlowAnalysisPage() {
       <div className="mb-4 sm:mb-6 bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
           {/* Left: Date Range Picker */}
-          <DateRangePicker
-            startDate={dateRange.start}
-            endDate={dateRange.end}
-            onStartDateChange={(date) => {
-              if (dateRange && date !== null) {
-                if (!dateRange.end) {
-                  setDateRange({ ...dateRange, start: date });
-                  return;
+            <DateRangePicker
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              onStartDateChange={(date) => {
+                if (dateRange && date !== null) {
+                  if (!dateRange.end) {
+                    setDateRange({ ...dateRange, start: date });
+                    return;
+                  }
+                  const { start, end, clamped } = clampDateRange(date, dateRange.end);
+                  if (clamped) {
+                    toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                  }
+                  setDateRange({ start, end });
                 }
-                const { start, end, clamped } = clampDateRange(date, dateRange.end);
-                if (clamped) {
-                  toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+              }}
+              onEndDateChange={(date) => {
+                if (dateRange && date !== null) {
+                  if (!dateRange.start) {
+                    setDateRange({ ...dateRange, end: date });
+                    return;
+                  }
+                  const { start, end, clamped } = clampDateRange(dateRange.start, date);
+                  if (clamped) {
+                    toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+                  }
+                  setDateRange({ start, end });
                 }
-                setDateRange({ start, end });
-              }
-            }}
-            onEndDateChange={(date) => {
-              if (dateRange && date !== null) {
-                if (!dateRange.start) {
-                  setDateRange({ ...dateRange, end: date });
-                  return;
-                }
-                const { start, end, clamped } = clampDateRange(dateRange.start, date);
-                if (clamped) {
-                  toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
-                }
-                setDateRange({ start, end });
-              }
-            }}
-            maxRangeDays={MAX_RANGE_DAYS}
-            onRangeClamped={() => {
-              toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
-            }}
-          />
+              }}
+              maxRangeDays={MAX_RANGE_DAYS}
+              onRangeClamped={() => {
+                toast.info(t('dateRange.limitedToMaxDays', { days: MAX_RANGE_DAYS }));
+              }}
+            />
 
           {/* Right: Quick Range Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -230,7 +230,7 @@ export default function PageFlowAnalysisPage() {
       </div>
 
       {/* Data Display */}
-      <div data-export-content>
+        <div data-export-content>
         {/* Tier 1: Immediate Load - Summary (always) */}
         <SummarySection
           startDate={dateRange.start}
@@ -314,7 +314,7 @@ export default function PageFlowAnalysisPage() {
             />
           )}
         </LazySection>
-      </div>
+        </div>
 
       {/* Footer */}
       <div className="mt-8">
