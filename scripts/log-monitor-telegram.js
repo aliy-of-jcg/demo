@@ -106,31 +106,43 @@ function truncateMessage(message, maxLength = 4000) {
 }
 
 async function getClickHouseStorage() {
+
   try {
     // Query analytics database size
-    const analyticsQuery = `SELECT formatReadableSize(sum(bytes_on_disk)) AS size FROM system.parts WHERE database = 'analytics' AND active = 1 FORMAT JSON`;
+    const analyticsQuery = `
+        SELECT formatReadableSize(sum(bytes_on_disk)) AS size
+        FROM system.parts
+        WHERE database = 'analytics' AND active = 1
+        FORMAT JSON
+      `;
+
+    const { stdout: analyticsStdout } = await execAsync(
+      `docker exec ${CLICKHOUSE_CONTAINER} clickhouse-client --query "${analyticsQuery}"`
+    );
+    const analyticsResult = JSON.parse(analyticsStdout);
+
     let analyticsSize = '0 B';
-    try {
-      const { stdout: analyticsStdout } = await execAsync(`docker exec ${CLICKHOUSE_CONTAINER} clickhouse-client --query "${analyticsQuery}"`);
-      const analyticsResult = JSON.parse(analyticsStdout);
-      if (analyticsResult && analyticsResult.length > 0 && analyticsResult[0].size) {
-        analyticsSize = analyticsResult[0].size;
-      }
-    } catch (e) {
-      console.error('Error querying analytics:', e.message);
+    if (analyticsResult?.data?.length) {
+      analyticsSize = analyticsResult.data[0].size;
     }
 
+
     // Query system database size
-    const systemQuery = `SELECT formatReadableSize(sum(bytes_on_disk)) AS size FROM system.parts WHERE database = 'system' AND active = 1 FORMAT JSON`;
+    const systemQuery = `
+        SELECT formatReadableSize(sum(bytes_on_disk)) AS size
+        FROM system.parts
+        WHERE database = 'system' AND active = 1
+        FORMAT JSON
+      `;
+
+    const { stdout: systemStdout } = await execAsync(
+      `docker exec ${CLICKHOUSE_CONTAINER} clickhouse-client --query "${systemQuery}"`
+    );
+    const systemResult = JSON.parse(systemStdout);
+
     let systemSize = '0 B';
-    try {
-      const { stdout: systemStdout } = await execAsync(`docker exec ${CLICKHOUSE_CONTAINER} clickhouse-client --query "${systemQuery}"`);
-      const systemResult = JSON.parse(systemStdout);
-      if (systemResult && systemResult.length > 0 && systemResult[0].size) {
-        systemSize = systemResult[0].size;
-      }
-    } catch (e) {
-      console.error('Error querying system:', e.message);
+    if (systemResult?.data?.length) {
+      systemSize = systemResult.data[0].size;
     }
 
     // Get disk usage
