@@ -47,6 +47,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
+    const LOOKBACK_DAYS = 365;
+    const lookbackWhereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL ${LOOKBACK_DAYS} DAY AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
 
     // Get total visitors
     const totalVisitorsQuery = `
@@ -67,7 +69,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       WITH user_first_sessions AS (
           SELECT 
             user_id,
-            toDate(MIN(timestamp)) as first_session_date
+            toDate(MIN(toTimeZone(timestamp, '${timezone}'))) as first_session_date
         FROM analytics.visit_logs_buffer
         WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
           AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
@@ -101,37 +103,41 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // Get average return interval
     const returnIntervalQuery = `
-      WITH user_visits AS (
-        SELECT
-          user_id,
-          visit_count,
-          MIN(timestamp) AS visit_start
-        FROM analytics.visit_logs_buffer
-        WHERE ${whereClause}
-          AND is_new_visitor = 0
-        GROUP BY user_id, visit_count
-      ),
-      intervals AS (
-        SELECT
-          user_id,
-          visit_count,
-          visit_start,
-          dateDiff(
-            'day',
-            lag(visit_start) OVER (PARTITION BY user_id ORDER BY visit_start),
-            visit_start
-          ) AS return_interval_days
-        FROM user_visits
-      )
-      SELECT 
-        AVG(return_interval_days) as avg_interval
+      WITH
+        toDate('${startDate}') AS report_start,
+        toDate('${endDate}') AS report_end
+      , user_sessions AS (
+          SELECT
+            user_id,
+            visit_count,
+            min(toTimeZone(timestamp, '${timezone}')) AS session_start
+          FROM analytics.visit_logs_buffer
+          WHERE ${lookbackWhereClause}
+          GROUP BY user_id, visit_count
+        )
+      , intervals AS (
+          SELECT
+            user_id,
+            visit_count,
+            session_start,
+            dateDiff(
+              'day',
+              toDate(lag(session_start) OVER (PARTITION BY user_id ORDER BY session_start)),
+              toDate(session_start)
+            ) AS return_interval_days
+          FROM user_sessions
+        )
+      SELECT
+        AVG(return_interval_days) AS avg_interval
       FROM intervals
       WHERE return_interval_days IS NOT NULL
-        AND return_interval_days > 0
+        AND return_interval_days >= 0
+        AND toDate(session_start) >= report_start
+        AND toDate(session_start) <= report_end
     `;
 
     const returnIntervalResult = await queryWithMemoryLimit(returnIntervalQuery, {
-      queryMode: 'exploratory',
+      queryMode: 'exact',
       format: 'JSONEachRow',
     });
 

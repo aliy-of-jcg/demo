@@ -49,7 +49,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       WITH user_first_sessions AS (
           SELECT 
             user_id,
-            toDate(MIN(timestamp)) as first_session_date
+            toDate(MIN(toTimeZone(timestamp, '${timezone}'))) as first_session_date
         FROM analytics.visit_logs_buffer
         WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
           AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
