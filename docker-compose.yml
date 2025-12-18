@@ -122,9 +122,10 @@ services:
       - ./scripts:/app/scripts
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8492459788:AAH3Gky7LdHlpzLMrbsig6HuzxfUcP30fYw}
-      - TELEGRAM_CHANNEL=${TELEGRAM_CHANNEL:-@cosmos_ai_alerts}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHANNEL=${TELEGRAM_CHANNEL}
       - CONTAINER_NAME=cosmos-ai
+      - CLICKHOUSE_CONTAINER=clickhouse-analytics
     command: sh -c "apk add --no-cache docker-cli && node scripts/log-monitor-telegram.js"
     depends_on:
       - cosmos-ai

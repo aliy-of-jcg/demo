@@ -1,10 +1,14 @@
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 const https = require('https');
+const { promisify } = require('util');
+
+const execAsync = promisify(exec);
 
 // Configuration
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHANNEL = process.env.TELEGRAM_CHANNEL; // Can be @channel_name or chat_id
 const CONTAINER_NAME = process.env.CONTAINER_NAME || 'cosmos-ai';
+const CLICKHOUSE_CONTAINER = process.env.CLICKHOUSE_CONTAINER || 'clickhouse-analytics';
 const KEYWORDS = [
   'error', 'Error', 'ERROR',
   'typeerror', 'TypeError', 'TYPEERROR',
@@ -19,8 +23,9 @@ const KEYWORDS = [
 const RATE_LIMIT_MS = 5000;
 const messageQueue = [];
 let lastSentTime = 0;
+let lastUpdateId = 0;
 
-function sendTelegramMessage(message) {
+function sendTelegramMessage(message, isCommandResponse = false) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHANNEL) {
     console.error('❌ Telegram credentials not configured!');
     return;
@@ -29,20 +34,24 @@ function sendTelegramMessage(message) {
   const now = Date.now();
   const timeSinceLastMessage = now - lastSentTime;
 
-  if (timeSinceLastMessage < RATE_LIMIT_MS) {
-    messageQueue.push(message);
+  if (timeSinceLastMessage < RATE_LIMIT_MS && !isCommandResponse) {
+    messageQueue.push({ message, isCommandResponse });
     return;
   }
 
   // Support both channel username (@channel) and chat ID
-  const chatId = TELEGRAM_CHANNEL.startsWith('@') 
-    ? TELEGRAM_CHANNEL 
+  const chatId = TELEGRAM_CHANNEL.startsWith('@')
+    ? TELEGRAM_CHANNEL
     : TELEGRAM_CHANNEL;
 
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+  const text = isCommandResponse
+    ? message
+    : `🚨 *Cosmos-AI Error Alert*\n\n\`\`\`\n${message}\n\`\`\``;
+
   const data = JSON.stringify({
     chat_id: chatId,
-    text: `🚨 *Cosmos-AI Error Alert*\n\n\`\`\`\n${message}\n\`\`\``,
+    text: text,
     parse_mode: 'Markdown',
     disable_web_page_preview: true
   });
@@ -68,7 +77,7 @@ function sendTelegramMessage(message) {
           setTimeout(() => {
             const queuedMessage = messageQueue.shift();
             if (queuedMessage) {
-              sendTelegramMessage(queuedMessage);
+              sendTelegramMessage(queuedMessage.message, queuedMessage.isCommandResponse);
             }
           }, RATE_LIMIT_MS);
         }
@@ -94,6 +103,90 @@ function containsKeyword(line) {
 function truncateMessage(message, maxLength = 4000) {
   if (message.length <= maxLength) return message;
   return message.substring(0, maxLength) + '\n\n... (truncated)';
+}
+
+async function getClickHouseStorage() {
+  try {
+    // Query analytics database size
+    const analyticsQuery = `SELECT formatReadableSize(sum(bytes_on_disk)) AS size FROM system.parts WHERE database = 'analytics' AND active = 1 FORMAT JSON`;
+    let analyticsSize = '0 B';
+    try {
+      const { stdout: analyticsStdout } = await execAsync(`docker exec ${CLICKHOUSE_CONTAINER} clickhouse-client --query "${analyticsQuery}"`);
+      const analyticsResult = JSON.parse(analyticsStdout);
+      if (analyticsResult && analyticsResult.length > 0 && analyticsResult[0].size) {
+        analyticsSize = analyticsResult[0].size;
+      }
+    } catch (e) {
+      console.error('Error querying analytics:', e.message);
+    }
+
+    // Query system database size
+    const systemQuery = `SELECT formatReadableSize(sum(bytes_on_disk)) AS size FROM system.parts WHERE database = 'system' AND active = 1 FORMAT JSON`;
+    let systemSize = '0 B';
+    try {
+      const { stdout: systemStdout } = await execAsync(`docker exec ${CLICKHOUSE_CONTAINER} clickhouse-client --query "${systemQuery}"`);
+      const systemResult = JSON.parse(systemStdout);
+      if (systemResult && systemResult.length > 0 && systemResult[0].size) {
+        systemSize = systemResult[0].size;
+      }
+    } catch (e) {
+      console.error('Error querying system:', e.message);
+    }
+
+    // Get disk usage
+    const { stdout: diskUsage } = await execAsync(`docker exec ${CLICKHOUSE_CONTAINER} df -h /var/lib/clickhouse`);
+
+    let message = '📊 *ClickHouse Storage Status*\n\n*Database Sizes:*\n';
+    message += `systemdb size: ${systemSize}\n`;
+    message += `analytics size: ${analyticsSize}\n`;
+
+    message += '\n*Disk Usage:*\n';
+    message += '```\n' + diskUsage + '\n```';
+
+    return message;
+  } catch (error) {
+    console.error('Error getting ClickHouse storage:', error.message);
+    return `❌ Error getting storage info: ${error.message}`;
+  }
+}
+
+async function pollTelegramUpdates() {
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=10`;
+
+    const response = await new Promise((resolve, reject) => {
+      https.get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }).on('error', reject);
+    });
+
+    if (response.ok && response.result) {
+      for (const update of response.result) {
+        lastUpdateId = update.update_id;
+
+        // Check for channel posts
+        if (update.channel_post) {
+          const text = (update.channel_post.text || '').toLowerCase().trim();
+
+          if (text === 'db' || text === 'db status') {
+            console.log('📨 DB status command received');
+            const storageInfo = await getClickHouseStorage();
+            sendTelegramMessage(storageInfo, true);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error polling Telegram updates:', error.message);
+  }
 }
 
 console.log(`🔍 Monitoring logs from container: ${CONTAINER_NAME}`);
@@ -159,3 +252,6 @@ process.on('SIGTERM', () => {
   dockerLogs.kill();
   process.exit(0);
 });
+
+// Start polling for Telegram commands every 5 seconds
+setInterval(pollTelegramUpdates, 5000);
