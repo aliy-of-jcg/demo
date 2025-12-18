@@ -43,53 +43,69 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       return NextResponse.json(cached);
     }
 
-    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
+    // GA-style return interval requires lookback so the first in-range session can still have a previous session.
+    // Align lookback with other returning-analysis endpoints (new-vs-returning uses 365 days).
+    const LOOKBACK_DAYS = 365;
+    const lookbackWhereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL ${LOOKBACK_DAYS} DAY AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
 
+    // IMPORTANT:
+    // - Do NOT filter out `is_new_visitor = 1` rows before computing lag(); that breaks the visit(1)->visit(2) interval.
+    // - Include 0-day intervals so "Same day" is meaningful.
+    // - Aggregate in ClickHouse to avoid streaming a large per-user/per-session result to Node.
     const returnIntervalQuery = `
-      WITH user_visits AS (
-        SELECT
-          user_id,
-          visit_count,
-          MIN(timestamp) AS visit_start
-        FROM analytics.visit_logs_buffer
-        WHERE ${whereClause}
-          AND is_new_visitor = 0
-        GROUP BY user_id, visit_count
-      ),
-      intervals AS (
-        SELECT
-          user_id,
-          visit_count,
-          visit_start,
-          dateDiff(
-            'day',
-            lag(visit_start) OVER (PARTITION BY user_id ORDER BY visit_start),
-            visit_start
-          ) AS return_interval_days
-        FROM user_visits
-      )
-      SELECT 
-        user_id,
-        visit_count,
-        visit_start,
-        return_interval_days
+      WITH
+        toDate('${startDate}') AS report_start,
+        toDate('${endDate}') AS report_end
+      , user_sessions AS (
+          SELECT
+            user_id,
+            visit_count,
+            min(toTimeZone(timestamp, '${timezone}')) AS session_start
+          FROM analytics.visit_logs_buffer
+          WHERE ${lookbackWhereClause}
+          GROUP BY user_id, visit_count
+        )
+      , intervals AS (
+          SELECT
+            user_id,
+            visit_count,
+            session_start,
+            dateDiff(
+              'day',
+              toDate(lag(session_start) OVER (PARTITION BY user_id ORDER BY session_start)),
+              toDate(session_start)
+            ) AS return_interval_days
+          FROM user_sessions
+        )
+      SELECT
+        multiIf(
+          return_interval_days = 0, 'Same day',
+          return_interval_days BETWEEN 1 AND 3, '1-3 days',
+          return_interval_days BETWEEN 4 AND 7, '4-7 days',
+          return_interval_days BETWEEN 8 AND 14, '8-14 days',
+          return_interval_days BETWEEN 15 AND 30, '15-30 days',
+          return_interval_days >= 31, '31+ days',
+          'Other'
+        ) AS label,
+        uniqExact(user_id) AS users
       FROM intervals
       WHERE return_interval_days IS NOT NULL
-        AND return_interval_days > 0
-      ORDER BY user_id, visit_count ASC
+        AND return_interval_days >= 0
+        AND toDate(session_start) >= report_start
+        AND toDate(session_start) <= report_end
+      GROUP BY label
     `;
 
     const returnIntervalResult = await queryWithMemoryLimit(returnIntervalQuery, {
-      queryMode: 'exploratory',
+      // Low-cardinality aggregation -> prefer exact mode (no partial results)
+      queryMode: 'exact',
       format: 'JSONEachRow',
     });
 
-    const returnIntervalJson = await returnIntervalResult.json() as {
-      user_id: string;
-      visit_count: number;
-      visit_start: string;
-      return_interval_days: number;
-    }[];
+    const returnIntervalJson = await returnIntervalResult.json() as Array<{
+      label: string;
+      users: number;
+    }>;
 
     const intervalBuckets = [
       { label: 'Same day', min: 0, max: 0, users: 0 },
@@ -100,15 +116,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       { label: '31+ days', min: 31, max: Infinity, users: 0 },
     ];
 
-    returnIntervalJson.forEach((row) => {
-      const daysDiff = row.return_interval_days;
-
-      for (const bucket of intervalBuckets) {
-        if (daysDiff >= bucket.min && daysDiff <= bucket.max) {
-          bucket.users++;
-          break;
-        }
-      }
+    // Merge ClickHouse aggregation into our fixed bucket order (and ignore unexpected labels)
+    const usersByLabel = new Map(returnIntervalJson.map((r) => [r.label, r.users]));
+    intervalBuckets.forEach((b) => {
+      b.users = usersByLabel.get(b.label) ?? 0;
     });
 
     const response = {
