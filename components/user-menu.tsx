@@ -106,7 +106,7 @@ export function UserMenu() {
           <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setIsOpen(false)} />
 
           {/* Dropdown - Opens below and slightly to the left to stay within sidebar */}
-          <div className="absolute right-0 top-full mt-2 w-56 rounded-lg bg-white shadow-2xl border border-gray-200 z-50 overflow-hidden">
+          <div className="absolute -right-5 top-full mt-2 w-56 rounded-lg bg-white shadow-2xl border border-gray-200 z-50 overflow-hidden">
             {/* User Info Header */}
             <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-3 text-white">
               <div className="flex items-start gap-2">
