@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
+import { parseRequestBody } from '@/lib/utils/parse-request-body';
 
 /**
  * Internal Tracking API - For Local Testing Only
@@ -30,7 +31,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await request.json();
+    // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
+    const { error, body: data } = await parseRequestBody(request);
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid request body' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     const {
       event_type,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
+import { parseRequestBody } from '@/lib/utils/parse-request-body';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,8 +39,14 @@ export async function POST(request: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
   
   try {
-    // Parse request body
-    const body = await request.json();
+    // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
+    const { error, body } = await parseRequestBody(request);
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid request body' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     // Validate required fields
     if (!body.session_id || !body.user_id || !body.page_url) {

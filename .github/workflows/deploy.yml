@@ -183,15 +183,11 @@ jobs:
 
             # CosMos AI 애플리케이션 재시작
             echo "🔄 CosMos AI 서비스 재시작 중..."
-            # Stop and remove old container to ensure fresh start
-            docker compose --profile dev stop cosmos-ai || true
-            docker compose --profile dev rm -f cosmos-ai || true
-            
-            # Pull latest image
+            # Pull new image first (doesn't affect running container)
             docker compose --profile dev pull cosmos-ai
             
-            # Recreate container with new image
-            docker compose --profile dev up -d cosmos-ai
+            # Graceful restart (respects stop_grace_period, allows in-flight requests to complete)
+            docker compose --profile dev up -d --no-deps cosmos-ai
 
             # 배포 상태 확인
             echo "📊 서비스 상태 확인..."
