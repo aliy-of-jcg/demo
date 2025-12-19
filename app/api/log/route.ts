@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { parseRequestBody } from '@/lib/utils/parse-request-body';
+import { isTransientInfraError, isLikelyBugOrSchemaError } from '@/lib/utils/db-error-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,8 +118,21 @@ export async function POST(request: NextRequest) {
             utm_medium: body.utm_medium
           });
         }
-      } catch (mysqlError) {
-        console.warn('⚠️  Failed to link UTM to campaign:', mysqlError);
+      } catch (mysqlError: any) {
+        if (isTransientInfraError(mysqlError)) {
+          console.warn('⚠️  Transient DB error linking UTM to campaign; continuing', {
+            code: mysqlError?.code,
+            errno: mysqlError?.errno
+          });
+        } else if (isLikelyBugOrSchemaError(mysqlError)) {
+          console.error('🚨 DB bug/schema error linking UTM to campaign; investigate', {
+            code: mysqlError?.code,
+            errno: mysqlError?.errno,
+            message: mysqlError?.message
+          });
+        } else {
+          console.warn('⚠️  Failed to link UTM to campaign:', mysqlError);
+        }
         // Continue with campaign_id = 0 if linking fails
       }
     }
@@ -156,19 +170,68 @@ export async function POST(request: NextRequest) {
     };
 
     // Insert into ClickHouse
-    await insertWithMemoryLimit({
-      table: 'analytics.visit_logs',
-      values: [eventData],
-      format: 'JSONEachRow'
-    });
+    try {
+      await insertWithMemoryLimit({
+        table: 'analytics.visit_logs',
+        values: [eventData],
+        format: 'JSONEachRow'
+      });
 
-    // Return success response
-    return NextResponse.json(
-      { success: true, message: 'Event logged' },
-      { status: 200, headers: corsHeaders }
-    );
+      // Return success response
+      return NextResponse.json(
+        { success: true, message: 'Event logged' },
+        { status: 200, headers: corsHeaders }
+      );
+    } catch (insertError: any) {
+      if (isTransientInfraError(insertError)) {
+        console.warn('[Tracking Log] ⚠️ DB/infra transient error; skipping insert', {
+          code: insertError?.code,
+          errno: insertError?.errno,
+          sqlState: insertError?.sqlState
+        });
+        // During shutdown, return success to avoid blocking user
+        return NextResponse.json(
+          { success: true, message: 'Event may not have been logged due to shutdown' },
+          { status: 200, headers: corsHeaders }
+        );
+      }
 
-  } catch (error) {
+      if (isLikelyBugOrSchemaError(insertError)) {
+        console.error('[Tracking Log] 🚨 DB bug/schema error; investigate', {
+          code: insertError?.code,
+          errno: insertError?.errno,
+          sqlState: insertError?.sqlState,
+          message: insertError?.message
+        });
+        // Still return success to avoid blocking user, but log loudly
+        return NextResponse.json(
+          { success: true, message: 'Event may not have been logged due to database error' },
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      console.error('[Tracking Log] ❌ Unknown error inserting event:', insertError);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Failed to log event',
+          message: insertError instanceof Error ? insertError.message : String(insertError)
+        },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+  } catch (error: any) {
+    if (isTransientInfraError(error)) {
+      console.warn('[Tracking Log] ⚠️ DB/infra transient error in outer catch', {
+        code: error?.code,
+        errno: error?.errno
+      });
+      return NextResponse.json(
+        { success: true, message: 'Event may not have been logged due to shutdown' },
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
     console.error('[Tracking Log] ❌ Error logging event:', error);
     
     return NextResponse.json(

@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { getPool } from '@/lib/mysql';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
 import { parseRequestBody } from '@/lib/utils/parse-request-body';
+import { isTransientInfraError, isLikelyBugOrSchemaError, cachedOrFailOpen } from '@/lib/utils/db-error-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,13 +88,31 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
       console.log(`✅ Auto-registered new domain: ${domain}`);
       return true;
     }
-  } catch (error) {
-    console.error('Error checking domain status:', error);
-    // On error, check if we have cached value, otherwise fail open
-    if (cached && (now - cached.last_refresh) < CACHE_TTL) {
-      return cached.is_enabled;
+  } catch (error: any) {
+    const now = Date.now();
+
+    if (isTransientInfraError(error)) {
+      console.warn('⚠️ DB/infra transient error; using cache/fail-open', {
+        code: error?.code,
+        errno: error?.errno,
+        sqlState: error?.sqlState
+      });
+      return cachedOrFailOpen(cached, now, CACHE_TTL);
     }
-    return true; // Fail open if no cache
+
+    if (isLikelyBugOrSchemaError(error)) {
+      console.error('🚨 DB bug/schema/auth error; investigate', {
+        code: error?.code,
+        errno: error?.errno,
+        sqlState: error?.sqlState,
+        message: error?.message
+      });
+      // Still fail open if that's the product choice, but log loudly
+      return cachedOrFailOpen(cached, now, CACHE_TTL);
+    }
+
+    console.error('❗ Unknown error checking domain status', error);
+    return cachedOrFailOpen(cached, now, CACHE_TTL);
   }
 }
 
@@ -243,8 +262,29 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json({ success: true });
-    } catch (error) {
-      console.error('Failed to insert tracking data:', error);
+    } catch (error: any) {
+      if (isTransientInfraError(error)) {
+        console.warn('⚠️ DB/infra transient error; skipping insert', {
+          code: error?.code,
+          errno: error?.errno,
+          sqlState: error?.sqlState
+        });
+        // During shutdown, return success to avoid blocking user
+        return NextResponse.json({ success: true, message: 'Data may not have been recorded due to shutdown' });
+      }
+
+      if (isLikelyBugOrSchemaError(error)) {
+        console.error('🚨 DB bug/schema error during insert; investigate', {
+          code: error?.code,
+          errno: error?.errno,
+          sqlState: error?.sqlState,
+          message: error?.message
+        });
+        // Still return success to avoid blocking the user, but log loudly
+        return NextResponse.json({ success: true, message: 'Data may not have been recorded due to database error' });
+      }
+
+      console.error('❗ Unknown error inserting tracking data:', error);
       // Still return success to avoid blocking the user
       return NextResponse.json({ success: true });
     }

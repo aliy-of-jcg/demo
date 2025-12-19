@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
 import { parseRequestBody } from '@/lib/utils/parse-request-body';
+import { isTransientInfraError, isLikelyBugOrSchemaError } from '@/lib/utils/db-error-handler';
 
 /**
  * Internal Tracking API - For Local Testing Only
@@ -148,16 +149,53 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Internal test tracking recorded'
       }, { headers: corsHeaders });
-    } catch (error) {
-      console.error('Failed to insert internal tracking data:', error);
+    } catch (error: any) {
+      if (isTransientInfraError(error)) {
+        console.warn('⚠️ DB/infra transient error; skipping insert', {
+          code: error?.code,
+          errno: error?.errno,
+          sqlState: error?.sqlState
+        });
+        return NextResponse.json({
+          success: true,
+          warning: 'Data may not have been recorded due to shutdown'
+        }, { headers: corsHeaders });
+      }
+
+      if (isLikelyBugOrSchemaError(error)) {
+        console.error('🚨 DB bug/schema error during insert; investigate', {
+          code: error?.code,
+          errno: error?.errno,
+          sqlState: error?.sqlState,
+          message: error?.message
+        });
+        // Still return success to avoid blocking the user, but log loudly
+        return NextResponse.json({
+          success: true,
+          warning: 'Data may not have been recorded due to database error'
+        }, { headers: corsHeaders });
+      }
+
+      console.error('❗ Unknown error inserting internal tracking data:', error);
       // Still return success to avoid blocking the user
       return NextResponse.json({
         success: true,
         warning: 'Data may not have been recorded'
       }, { headers: corsHeaders });
     }
-  } catch (error) {
-    console.error('Internal tracking endpoint error:', error);
+  } catch (error: any) {
+    if (isTransientInfraError(error)) {
+      console.warn('⚠️ DB/infra transient error in outer catch', {
+        code: error?.code,
+        errno: error?.errno
+      });
+      return NextResponse.json(
+        { success: true, message: 'Request may not have been processed due to shutdown' },
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    console.error('❗ Unknown error in internal tracking endpoint:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500, headers: corsHeaders }
