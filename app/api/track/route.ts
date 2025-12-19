@@ -3,6 +3,7 @@ import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { nanoid } from 'nanoid';
 import { getPool } from '@/lib/mysql';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
+import { parseRequestBody } from '@/lib/utils/parse-request-body';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,7 +108,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await request.json();
+    // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
+    const { error, body: data } = await parseRequestBody(request);
+    if (error) return error;
 
     const {
       event_type,

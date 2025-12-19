@@ -915,21 +915,45 @@
       sessionStorage.setItem('cosmos_last_page_full', fullPageUrl);
     },
 
-    sendEvent: function (data) {
-      // Force fetch instead of sendBeacon to ensure credentials: 'omit' is used
-      // sendBeacon doesn't support credentials option, which can cause CORS issues
-      // if (navigator.sendBeacon) {
-      //   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-      //   navigator.sendBeacon(CONFIG.apiEndpoint, blob);
-      // } else {
-      fetch(CONFIG.apiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        keepalive: true,
-        credentials: 'omit', // Google Analytics approach: no credentials needed
-      }).catch(() => { });
-      // }
+    sendEvent: function (data, retries = 3) {
+      // Retry logic to prevent analytics data loss during deployment
+      const attempt = async function (attemptNumber) {
+        try {
+          const response = await fetch(CONFIG.apiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+            keepalive: true,
+            credentials: 'omit', // Google Analytics approach: no credentials needed
+          });
+          
+          // Retry on 5xx errors (server errors during deploy)
+          if (!response.ok && response.status >= 500 && attemptNumber < retries) {
+            await new Promise(function (resolve) { 
+              setTimeout(resolve, 1000 * attemptNumber); 
+            });
+            return attempt(attemptNumber + 1);
+          }
+          
+          return response;
+        } catch (error) {
+          // Retry on network errors
+          if (attemptNumber < retries) {
+            await new Promise(function (resolve) { 
+              setTimeout(resolve, 1000 * attemptNumber); 
+            });
+            return attempt(attemptNumber + 1);
+          }
+          // Log to console in dev, but don't throw (silent in prod)
+          if (window.location.hostname === 'localhost') {
+            console.error('[CosMos] Tracking failed after retries:', error);
+          }
+          return null;
+        }
+      };
+      
+      // Fire and forget, but with retries
+      attempt(1).catch(function () { });
     },
 
     // Update exit candidate on beforeunload (Google Analytics approach)
