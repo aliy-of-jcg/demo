@@ -73,6 +73,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           FROM analytics.visit_logs_buffer
           WHERE ${whereClause}
             AND event_type = 'pageview'
+            AND utm_source != ''
           GROUP BY utm_source
           HAVING session_count > 0
           ORDER BY session_count DESC
@@ -91,6 +92,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND event_type = 'pageview'
+        AND utm_source != ''
         AND (
           CASE 
             WHEN utm_source = '' OR utm_source = '(direct)' OR utm_source = 'Direct' THEN 'Direct'

@@ -70,6 +70,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         FROM analytics.visit_logs_buffer
         WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
           AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+          AND utm_source != ''
       `;
 
       const metricsResult = await queryWithMemoryLimit(metricsQuery, {
@@ -109,6 +110,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
       WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
         AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        AND utm_source != ''
       GROUP BY channel
       ORDER BY visitors DESC
       LIMIT 10
@@ -161,6 +163,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
       WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
         AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        AND utm_source != ''
       GROUP BY date
       ORDER BY date ASC
     `;
@@ -183,6 +186,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
       WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${comparisonStart}')
         AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${comparisonEnd}')
+        AND utm_source != ''
       GROUP BY date
       ORDER BY date ASC
     `;

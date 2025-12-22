@@ -63,6 +63,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             min(toTimeZone(timestamp, '${timezone}')) AS session_start
           FROM analytics.visit_logs_buffer
           WHERE ${lookbackWhereClause}
+            AND utm_source != ''
           GROUP BY user_id, visit_count
         )
       , intervals AS (

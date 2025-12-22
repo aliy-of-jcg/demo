@@ -68,6 +68,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
           AND browser != ''
+          AND utm_source != ''
       GROUP BY browser
       ORDER BY visitors DESC
     `;

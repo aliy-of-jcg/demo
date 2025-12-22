@@ -81,6 +81,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             AND page_url != ''
             AND page_url IS NOT NULL
             AND domain(page_url) != ''
+            AND utm_source != ''
           GROUP BY normalized_domain
           HAVING normalized_domain NOT IN (
             'dev.cosmosai.co.kr',
@@ -117,6 +118,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           AND page_url != ''
           AND page_url IS NOT NULL
           AND domain(page_url) != ''
+          AND utm_source != ''
       )
       WHERE normalized_domain IN (SELECT normalized_domain FROM top_domains)
       GROUP BY normalized_domain

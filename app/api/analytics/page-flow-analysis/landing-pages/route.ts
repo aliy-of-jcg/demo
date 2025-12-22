@@ -79,6 +79,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         WHERE ${whereClause}
           AND is_landing_page = 1
           AND event_type = 'pageview'
+          AND utm_source != ''
           ${pageFilterClause}
         GROUP BY page_url
         ORDER BY sessions DESC
@@ -93,6 +94,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         WHERE ${whereClause}
           AND is_landing_page = 1
           AND event_type = 'pageview'
+          AND utm_source != ''
           AND page_url IN (SELECT page_url FROM top_landing_pages)
       ),
       session_stats AS (
@@ -105,6 +107,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         FROM analytics.visit_logs_buffer v
         WHERE ${whereClause}
           AND v.event_type = 'pageview'
+          AND v.utm_source != ''
           AND v.session_id IN (SELECT session_id FROM landing_page_data)
         GROUP BY v.session_id
       )

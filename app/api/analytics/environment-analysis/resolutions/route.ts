@@ -59,6 +59,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND screen_resolution != ''
+        AND utm_source != ''
       GROUP BY screen_resolution
       ORDER BY visitors DESC
       LIMIT 10

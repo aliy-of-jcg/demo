@@ -69,6 +69,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
           AND event_type = 'pageview'
+          AND utm_source != ''
       )
       SELECT
         from_page,
