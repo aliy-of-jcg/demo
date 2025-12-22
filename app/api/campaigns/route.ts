@@ -3,6 +3,7 @@ import { getPool } from '@/lib/mysql';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getCache, setCache } from '@/lib/cache/cache';
+import { parseRequestBody } from '@/lib/utils/parse-request-body';
 
 
 export const GET = requirePermission('campaigns:read', async (request: NextRequest, context: AuthContext) => {
@@ -925,7 +926,10 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
+    const { error, body } = await parseRequestBody(request);
+    if (error) return error;
+
     const {
       name,
       utm_name,  // Added: Name for the tracking link
