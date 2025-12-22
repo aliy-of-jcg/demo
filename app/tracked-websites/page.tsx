@@ -10,6 +10,7 @@ import { ProtectedComponent } from '@/components/auth/ProtectedComponent';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { fetchWithAuth } from '@/lib/utils/fetch-with-auth';
 import { useSystemSettings } from '@/lib/contexts/SystemSettingsContext';
+import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -585,9 +586,12 @@ function TrackedWebsitesPageContent() {
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <Globe className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
-                            <div className="text-sm font-medium text-blue-600 break-all">
+                            <Link
+                              href={`/tracked-websites/${encodeURIComponent(website.domain)}`}
+                              className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline break-all"
+                            >
                               {formatDomain(website.domain)}
-                            </div>
+                            </Link>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -673,9 +677,12 @@ function TrackedWebsitesPageContent() {
                     <div className="flex items-start flex-1 min-w-0">
                       <Globe className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0 mt-0.5" />
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold text-blue-600 break-all mb-1">
+                        <Link
+                          href={`/tracked-websites/${encodeURIComponent(website.domain)}`}
+                          className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline break-all block mb-1"
+                        >
                           {formatDomain(website.domain)}
-                        </h3>
+                        </Link>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span>First: {formatDate(website.first_seen)}</span>
                           <span>•</span>
