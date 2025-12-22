@@ -52,6 +52,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           uniqExact(visit_count) AS visits_in_range
         FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
+          AND utm_source != ''
         GROUP BY user_id
       )
       SELECT

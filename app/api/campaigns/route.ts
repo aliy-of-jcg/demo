@@ -829,6 +829,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
         const allChannelVisitorsQuery = await queryWithMemoryLimit(`
         SELECT countDistinct(user_id) as unique_visitors
         FROM analytics.visit_logs_buffer
+        WHERE utm_source != ''
         `, { format: 'JSONEachRow' });
 
         const allChannelData = await allChannelVisitorsQuery.json() as any[];

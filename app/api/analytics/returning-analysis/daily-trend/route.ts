@@ -53,6 +53,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         FROM analytics.visit_logs_buffer
         WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
           AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+          AND utm_source != ''
           GROUP BY user_id
       )
       SELECT 
@@ -67,6 +68,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer vl
       INNER JOIN user_first_sessions ufs ON vl.user_id = ufs.user_id
         WHERE ${whereClause}
+          AND vl.utm_source != ''
       GROUP BY date
       ORDER BY date ASC
     `;

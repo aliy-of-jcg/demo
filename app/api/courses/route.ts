@@ -277,6 +277,7 @@ export const GET = requirePermission('courses:read', async (request: NextRequest
               countDistinct(user_id) as total_visits
             FROM analytics.visit_logs_buffer
             WHERE utm_campaign != '' AND tracking_code = ''
+              AND utm_source != ''
             GROUP BY utm_campaign, utm_source, utm_medium
           `;
 

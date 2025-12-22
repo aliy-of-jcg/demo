@@ -63,6 +63,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND event_type = 'pageview'
+        AND utm_source != ''
     `;
 
     const totalPageviewsResult = await queryWithMemoryLimit(totalPageviewsQuery, {
@@ -81,6 +82,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         MAX(page_sequence) as max_sequence
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
+        AND utm_source != ''
       GROUP BY session_id
     `;
 
@@ -112,6 +114,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       WHERE ${whereClause}
         AND is_landing_page = 1
         AND event_type = 'pageview'
+        AND utm_source != ''
     `;
 
     const uniqueLandingPagesResult = await queryWithMemoryLimit(uniqueLandingPagesQuery, {

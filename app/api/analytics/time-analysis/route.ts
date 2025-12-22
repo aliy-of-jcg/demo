@@ -103,6 +103,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
+        AND utm_source != ''
       GROUP BY hour
       ORDER BY hour ASC
     `;
@@ -136,6 +137,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
+        AND utm_source != ''
       GROUP BY day_of_week
       ORDER BY day_of_week ASC
     `;
@@ -173,6 +175,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
+        AND utm_source != ''
       GROUP BY date
       ORDER BY date ASC
     `;

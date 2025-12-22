@@ -74,6 +74,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         SELECT uniqExact(session_id) as cnt
         FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
+          AND utm_source != ''
       ),
       top_exit_pages AS (
         -- Phase 1: Get top exit pages by exit count
@@ -83,6 +84,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
         AND is_exit_page = 1
+        AND utm_source != ''
         ${pageFilterClause}
       GROUP BY page_url
         ORDER BY exit_count DESC

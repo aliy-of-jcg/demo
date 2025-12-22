@@ -1,6 +1,6 @@
 /**
  * CosMos AI - Client-Side Tracking Script
- * Version: 4.8.3
+ * Version: 4.8.4
  *
  * Key Features:
  * - Tracks ALL visitors (with or without UTM parameters)
@@ -12,6 +12,11 @@
  * - Proper landing page tracking across multiple sessions
  * - Client-side navigation tracking (SPA/Next.js router support)
  * - 2-year UUID expiration (Google Analytics standard)
+ *
+ * New in v4.8.4:
+ * - Added one-time localStorage reset for RPA bot session cleanup
+ * - Reset flag ensures localStorage is cleared once per browser/device
+ * - RPA bots will be treated as new visitors after reset
  *
  * New in v4.8.3:
  * - Added 2-year expiration for visitor UUID (matches Google Analytics standard)
@@ -270,7 +275,44 @@
       this.hasInitialized = true;
       this.pageLoadTime = Date.now();
 
-      console.log('[CosMos] Initializing tracker v4.8.0 (localStorage-only, no cookies)...');
+      console.log('[CosMos] Initializing tracker v4.8.4 (localStorage-only, no cookies)...');
+
+      // ============================================================
+      // ONE-TIME LOCALSTORAGE CLEAR (Remove after RPA reset)
+      // ============================================================
+      const RESET_FLAG_KEY = 'cosmos_reset_completed_v1';
+      const shouldReset = !localStorage.getItem(RESET_FLAG_KEY);
+      
+      if (shouldReset) {
+        console.log('[CosMos] 🔄 Performing one-time localStorage reset for RPA bots...');
+        
+        // Clear all CosMos tracking data
+        localStorage.removeItem('cosmos_visitor_id');
+        localStorage.removeItem('cosmos_visit_count');
+        localStorage.removeItem('cosmos_first_visit');
+        localStorage.removeItem('cosmos_last_visit');
+        localStorage.removeItem('cosmos_last_activity');
+        localStorage.removeItem('cosmos_session_data');
+        localStorage.removeItem('cosmos_session_utm_data');
+        localStorage.removeItem('cosmos_exit_candidate');
+        localStorage.removeItem('cosmos_page_flow_data');
+        localStorage.removeItem('cosmos_page_sequence_data');
+        
+        // Clear sessionStorage
+        sessionStorage.removeItem('cosmos_session_page_count');
+        sessionStorage.removeItem('cosmos_session_tracker_id');
+        sessionStorage.removeItem('cosmos_last_page_clean');
+        sessionStorage.removeItem('cosmos_last_page_full');
+        sessionStorage.removeItem('cosmos_is_navigating');
+        sessionStorage.removeItem('cosmos_navigation_time');
+        
+        // Set flag so this only runs once
+        localStorage.setItem(RESET_FLAG_KEY, 'true');
+        console.log('[CosMos] ✅ localStorage reset completed. RPA bots will be treated as new visitors.');
+      }
+      // ============================================================
+      // END ONE-TIME RESET
+      // ============================================================
 
       // Check for expired session and send delayed exit event if needed
       this.checkAndSendDelayedExitEvent();

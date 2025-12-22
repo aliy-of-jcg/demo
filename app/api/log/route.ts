@@ -38,7 +38,7 @@ export async function OPTIONS(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
-  
+
   try {
     // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
     const { error, body } = await parseRequestBody(request);
@@ -58,9 +58,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract IP address from headers
-    const ip = request.headers.get('x-forwarded-for') || 
-                request.headers.get('x-real-ip') || 
-                'unknown';
+    const ip = request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
 
     // ✨ NEW: Link UTM parameters to campaign and course
     let campaign_id = 0;
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     if (body.utm_campaign || body.utm_source || body.utm_medium) {
       try {
         const pool = getPool();
-        
+
         // Build dynamic query based on available UTM parameters
         let query = `
           SELECT 
@@ -104,12 +104,12 @@ export async function POST(request: NextRequest) {
         query += ' LIMIT 1';
 
         const [rows] = await pool.execute(query, params);
-        
+
         if ((rows as any[]).length > 0) {
           const match = (rows as any[])[0];
           campaign_id = match.campaign_id;
           course_id = match.course_id || 0;
-          
+
           console.log(`✅ Linked pageview to campaign: ${match.campaign_name} (campaign_id: ${campaign_id}, course_id: ${course_id})`);
         } else {
           console.log('ℹ️  No campaign match found for UTM parameters:', {
@@ -137,6 +137,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Normalize utm_source: convert '(direct)' or empty to 'Direct' for consistency
+    const normalizedUtmSource = (body.utm_source === '(direct)' || body.utm_source === '') ? 'Direct' : (body.utm_source || 'Direct');
+
+    // Normalize utm_medium: convert empty to '(none)' for consistency with client-side script
+    const normalizedUtmMedium = body.utm_medium || '(none)';
+
     // Prepare data for ClickHouse
     const eventData = {
       timestamp: body.timestamp || Math.floor(Date.now() / 1000),
@@ -145,8 +151,8 @@ export async function POST(request: NextRequest) {
       page_url: body.page_url || '',
       page_title: body.page_title || '',
       referrer: body.referrer || '',
-      utm_source: body.utm_source || '',
-      utm_medium: body.utm_medium || '',
+      utm_source: normalizedUtmSource,
+      utm_medium: normalizedUtmMedium,
       utm_campaign: body.utm_campaign || '',
       utm_term: body.utm_term || '',
       utm_content: body.utm_content || '',
@@ -161,7 +167,7 @@ export async function POST(request: NextRequest) {
       is_new_visitor: body.is_new_visitor || 0,
       time_on_page: body.time_on_page || 0,
       event_type: body.event_type || 'pageview',
-      
+
       // Page Flow Tracking (Phase 1 Enhancement)
       page_sequence: body.page_sequence || 0,
       is_landing_page: body.is_landing_page || 0,
@@ -212,8 +218,8 @@ export async function POST(request: NextRequest) {
 
       console.error('[Tracking Log] ❌ Unknown error inserting event:', insertError);
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Failed to log event',
           message: insertError instanceof Error ? insertError.message : String(insertError)
         },
@@ -233,10 +239,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.error('[Tracking Log] ❌ Error logging event:', error);
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to log event',
         message: error instanceof Error ? error.message : String(error)
       },
