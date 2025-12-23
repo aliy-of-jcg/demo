@@ -181,7 +181,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
           // Get clicks for this UTM
           let utmClickWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
-          utmClickWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+          utmClickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
 
           const utmClickQuery = `
             SELECT COUNT(*) as total_clicks

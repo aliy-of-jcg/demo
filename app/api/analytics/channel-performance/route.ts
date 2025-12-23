@@ -227,7 +227,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             COUNT(*) as total_clicks
           FROM analytics.tracking_events_buffer
           WHERE tracking_code IN (${escapedCodes})
-            AND created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+            AND created_date BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           GROUP BY tracking_code
         `;
 
