@@ -77,7 +77,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
               domain(page_url))) as normalized_domain,
             uniqExact(session_id) as session_count
           FROM analytics.visit_logs_buffer
-          WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+          WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
             AND page_url != ''
             AND page_url IS NOT NULL
             AND domain(page_url) != ''
@@ -114,7 +114,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           event_type,
           timestamp
         FROM analytics.visit_logs_buffer
-        WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           AND page_url != ''
           AND page_url IS NOT NULL
           AND domain(page_url) != ''
@@ -169,7 +169,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       const totalVisitorsQuery = await queryWithMemoryLimit(`
           SELECT countDistinct(user_id) as unique_visitors
           FROM analytics.visit_logs_buffer
-          WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+          WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
             AND page_url != ''
             AND page_url IS NOT NULL
             AND domain(page_url) != ''

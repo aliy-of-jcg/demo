@@ -54,7 +54,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // Build WHERE clause for date filtering
-    const whereClause = `toDate(timestamp) >= '${startDate}' AND toDate(timestamp) <= '${endDate}'`;
+    const whereClause = `created_date_kst >= toDate('${startDate}') AND created_date_kst <= toDate('${endDate}')`;
 
     // UTM Source Breakdown with avg pageviews per session
     console.log('🔍 [Page Flow] Executing query 2: UTM Source Breakdown');

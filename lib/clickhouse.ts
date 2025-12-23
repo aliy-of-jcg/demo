@@ -217,6 +217,7 @@ export const initClickHouseSchema = async () => {
     query: `
      CREATE TABLE IF NOT EXISTS analytics.visit_logs (
       timestamp DateTime,
+      created_date_kst Date DEFAULT toDate(toTimeZone(timestamp, 'Asia/Seoul')),
       session_id String,
       user_id String,
       page_url String,
@@ -250,8 +251,8 @@ export const initClickHouseSchema = async () => {
       conversion_metadata String DEFAULT '',
       http_status Int32 DEFAULT 200
     ) ENGINE = MergeTree()
-    PARTITION BY toYYYYMM(toTimeZone(timestamp, 'Asia/Seoul'))
-    ORDER BY (toDate(toTimeZone(timestamp, 'Asia/Seoul')), session_id, user_id)
+    PARTITION BY toYYYYMM(created_date_kst)
+    ORDER BY (created_date_kst, session_id, user_id)
     SETTINGS index_granularity = 8192
     `,
   });

@@ -46,7 +46,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // Build WHERE clause
-    const whereConditions = [`toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')`];
+    const whereConditions = [`created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')`];
     whereConditions.push(`event_type = 'conversion'`);
 
     if (campaignId && campaignId !== 'all') {
@@ -129,7 +129,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion' AND conversion_type = 'trial_start') as trial_conversions,
         SUM(CASE WHEN event_type = 'conversion' THEN conversion_value ELSE 0 END) as total_revenue
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
       ${campaignId && campaignId !== 'all' ? `AND campaign_id = ${campaignId}` : ''}
     `;
 

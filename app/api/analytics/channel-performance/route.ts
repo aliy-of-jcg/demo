@@ -90,8 +90,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         uniqExact(user_id) as users,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+      WHERE created_date_kst >= toDate('${startDate}')
+        AND created_date_kst <= toDate('${endDate}')
         AND utm_source != ''
         AND utm_source != 'Direct'
         AND utm_source != '(direct)'
@@ -114,8 +114,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
       WHERE 
         (utm_source = 'Direct' OR utm_source = '(direct)' OR utm_source = '')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        AND created_date_kst >= toDate('${startDate}')
+        AND created_date_kst <= toDate('${endDate}')
     `;
 
     const directTrafficResult = await queryWithMemoryLimit(directTrafficQuery, {
@@ -227,7 +227,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             COUNT(*) as total_clicks
           FROM analytics.tracking_events_buffer
           WHERE tracking_code IN (${escapedCodes})
-            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+            AND created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           GROUP BY tracking_code
         `;
 

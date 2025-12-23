@@ -3,6 +3,7 @@ import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
 import { parseRequestBody } from '@/lib/utils/parse-request-body';
 import { isTransientInfraError, isLikelyBugOrSchemaError } from '@/lib/utils/db-error-handler';
+import { getCurrentDateKST } from '@/lib/utils/kst-date';
 
 /**
  * Internal Tracking API - For Local Testing Only
@@ -107,10 +108,14 @@ export async function POST(request: NextRequest) {
 
     // Insert into ClickHouse visit_logs table
     try {
+      const timestampUTC = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const createdDateKST = getCurrentDateKST();
+      
       await insertWithMemoryLimit({
         table: 'analytics.visit_logs',
         values: [{
-          timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          timestamp: timestampUTC,
+          created_date_kst: createdDateKST,
           session_id: session_id || '',
           user_id: user_id || '',
           page_url: page_url || '',

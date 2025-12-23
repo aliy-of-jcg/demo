@@ -89,7 +89,7 @@ export const GET = requirePermissionWithParams('analytics:read', async (
         MIN(timestamp) as first_seen,
         MAX(timestamp) as last_seen
       FROM analytics.visit_logs_buffer
-      WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+      WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
         AND page_url != ''
         AND page_url IS NOT NULL
         AND lower(if(startsWith(domain(page_url), 'www.'), 
@@ -147,7 +147,7 @@ export const GET = requirePermissionWithParams('analytics:read', async (
       const totalVisitorsQuery = await queryWithMemoryLimit(`
         SELECT countDistinct(user_id) as unique_visitors
         FROM analytics.visit_logs_buffer
-        WHERE toDate(timestamp) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           AND page_url != ''
           AND page_url IS NOT NULL
           AND lower(if(startsWith(domain(page_url), 'www.'), 

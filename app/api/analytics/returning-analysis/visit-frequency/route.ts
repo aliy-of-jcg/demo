@@ -43,7 +43,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       return NextResponse.json(cached);
     }
 
-    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
+    const whereClause = `created_date_kst >= toDate('${startDate}') AND created_date_kst <= toDate('${endDate}')`;
 
     const visitFrequencyQuery = `
       WITH per_user_visits AS (

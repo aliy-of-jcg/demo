@@ -54,7 +54,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // Build WHERE clause for date filtering
-    const whereClause = `toDate(timestamp) >= '${startDate}' AND toDate(timestamp) <= '${endDate}'`;
+    const whereClause = `created_date_kst >= toDate('${startDate}') AND created_date_kst <= toDate('${endDate}')`;
 
     // 1. Total Pageviews
     console.log('🔍 [Page Flow] Executing query 1: Total Pageviews');
