@@ -168,7 +168,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     if (validTrackingCodes.length > 0) {
       const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
       let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
-      clickWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+      clickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
 
       const clickQuery = `
         SELECT COUNT(*) as total_clicks
@@ -191,7 +191,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         const activeTrackingCodesSet = new Set(validTrackingCodes);
 
         let legacyClickWhereClause = `utm_campaign IN (${utmCampaignsList}) AND tracking_code != '' AND tracking_code IS NOT NULL`;
-        legacyClickWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+        legacyClickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
 
         const legacyClicksQuery = await queryWithMemoryLimit(`
             SELECT 

@@ -95,7 +95,6 @@ export const GET = requirePermissionWithParams('analytics:read', async (
         AND lower(if(startsWith(domain(page_url), 'www.'), 
           substring(domain(page_url), 5), 
           domain(page_url))) = '${normalizedDomain}'
-        AND utm_source != ''
       GROUP BY page_url
       ORDER BY unique_visitors DESC
       LIMIT 500
@@ -153,7 +152,6 @@ export const GET = requirePermissionWithParams('analytics:read', async (
           AND lower(if(startsWith(domain(page_url), 'www.'), 
             substring(domain(page_url), 5), 
             domain(page_url))) = '${normalizedDomain}'
-          AND utm_source != ''
       `, { format: 'JSONEachRow' });
 
       const totalVisitorsResult = await totalVisitorsQuery.json() as Array<{ unique_visitors: number }>;
