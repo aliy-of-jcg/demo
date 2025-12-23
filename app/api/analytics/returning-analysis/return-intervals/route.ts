@@ -46,7 +46,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // GA-style return interval requires lookback so the first in-range session can still have a previous session.
     // Align lookback with other returning-analysis endpoints (new-vs-returning uses 365 days).
     const LOOKBACK_DAYS = 365;
-    const lookbackWhereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL ${LOOKBACK_DAYS} DAY AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
+    const lookbackWhereClause = `created_date_kst >= toDate('${startDate}') - INTERVAL ${LOOKBACK_DAYS} DAY AND created_date_kst <= toDate('${endDate}')`;
 
     // IMPORTANT:
     // - Do NOT filter out `is_new_visitor = 1` rows before computing lag(); that breaks the visit(1)->visit(2) interval.

@@ -42,8 +42,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       finalStartDate = clampedStart.toISOString().split('T')[0];
     }
 
-    // Build WHERE clause - use direct date comparison without timezone conversion in JOINs for better performance
-    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
+    // Build WHERE clause - use created_date_kst for partition pruning
+    const whereClause = `created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
     // Fetch all sessions with their complete page journeys
     // TWO-PHASE PATTERN (GA-style): Optimize for LIMIT performance

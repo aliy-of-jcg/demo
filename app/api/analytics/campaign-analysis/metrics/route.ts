@@ -134,7 +134,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       whereClause = `(campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesList}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))`;
     }
 
-    whereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
+    whereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
     if (platform && platform !== 'all') {
       const escapedPlatform = platform.replace(/'/g, "\\'");
@@ -168,7 +168,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     if (validTrackingCodes.length > 0) {
       const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
       let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
-      clickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
+      clickWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
       const clickQuery = `
         SELECT COUNT(*) as total_clicks
@@ -191,7 +191,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         const activeTrackingCodesSet = new Set(validTrackingCodes);
 
         let legacyClickWhereClause = `utm_campaign IN (${utmCampaignsList}) AND tracking_code != '' AND tracking_code IS NOT NULL`;
-        legacyClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
+        legacyClickWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
         const legacyClicksQuery = await queryWithMemoryLimit(`
             SELECT 

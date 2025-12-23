@@ -43,7 +43,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       return NextResponse.json(cached);
     }
 
-    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
+    const whereClause = `created_date_kst >= toDate('${startDate}') AND created_date_kst <= toDate('${endDate}')`;
 
     const dailyTrendQuery = `
       WITH user_first_sessions AS (
@@ -51,8 +51,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             user_id,
             toDate(MIN(toTimeZone(timestamp, '${timezone}'))) as first_session_date
         FROM analytics.visit_logs_buffer
-        WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') - INTERVAL 365 DAY
-          AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        WHERE created_date_kst >= toDate('${startDate}') - INTERVAL 365 DAY
+          AND created_date_kst <= toDate('${endDate}')
           AND utm_source != ''
           GROUP BY user_id
       )

@@ -47,8 +47,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       return NextResponse.json(cached);
     }
 
-    // Build WHERE clause for date filtering (using system default timezone)
-    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
+    // Build WHERE clause for date filtering (using created_date_kst for partition pruning)
+    const whereClause = `created_date_kst >= toDate('${startDate}') AND created_date_kst <= toDate('${endDate}')`;
 
     // Browser Breakdown
     const browserQuery = `

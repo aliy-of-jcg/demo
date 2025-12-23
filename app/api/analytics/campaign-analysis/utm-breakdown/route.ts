@@ -154,7 +154,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
           // Build WHERE clause for this specific UTM
           let utmWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
-          utmWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
+          utmWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
           // Platform filter
           if (platform && platform !== 'all') {
@@ -181,7 +181,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
           // Get clicks for this UTM
           let utmClickWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
-          utmClickWhereClause += ` AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
+          utmClickWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
           const utmClickQuery = `
             SELECT COUNT(*) as total_clicks

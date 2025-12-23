@@ -92,7 +92,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // Build WHERE clause for date filtering (always apply date filtering for memory safety)
-    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
+    // Use created_date_kst for partition pruning, timezone for display grouping
+    const whereClause = `created_date_kst >= toDate('${startDate}') AND created_date_kst <= toDate('${endDate}')`;
 
     // 1. Hourly Distribution (0-23 hours) - using system default timezone
     const hourlyQuery = `

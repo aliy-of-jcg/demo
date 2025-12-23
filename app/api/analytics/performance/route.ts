@@ -68,8 +68,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           uniqExact(user_id) as total_visitors,
           SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
         FROM analytics.visit_logs_buffer
-        WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-          AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        WHERE created_date_kst >= toDate('${startDate}')
+          AND created_date_kst <= toDate('${endDate}')
           AND utm_source != ''
       `;
 
@@ -108,8 +108,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         uniqExact(user_id) as visitors,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+      WHERE created_date_kst >= toDate('${startDate}')
+        AND created_date_kst <= toDate('${endDate}')
         AND utm_source != ''
       GROUP BY channel
       ORDER BY visitors DESC
@@ -161,8 +161,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
         uniqExact(user_id) as visitors
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+      WHERE created_date_kst >= toDate('${startDate}')
+        AND created_date_kst <= toDate('${endDate}')
         AND utm_source != ''
       GROUP BY date
       ORDER BY date ASC
@@ -184,8 +184,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
         uniqExact(user_id) as visitors
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${comparisonStart}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${comparisonEnd}')
+      WHERE created_date_kst >= toDate('${comparisonStart}')
+        AND created_date_kst <= toDate('${comparisonEnd}')
         AND utm_source != ''
       GROUP BY date
       ORDER BY date ASC
