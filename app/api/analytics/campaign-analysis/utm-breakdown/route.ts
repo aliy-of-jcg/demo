@@ -144,9 +144,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const trackingCode = tc.tracking_code;
           const utmCampaign = tc.utm_campaign || '';
 
-          // Build WHERE clause with fallback matching (same logic as metrics API)
-          // This handles cases where tracking_code is missing, empty, or incorrect (e.g., domain names)
-          let utmWhereClause = `(campaign_id = ${campaignId} OR tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
+          // Build WHERE clause for this specific UTM (not entire campaign)
+          // Match by tracking_code or utm_campaign when tracking_code is empty/incorrect
+          let utmWhereClause = `(tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
           utmWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
           // Platform filter
@@ -172,8 +172,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
           const utmConversions = utmVisitData[0]?.conversions || 0;
 
-          // Get clicks for this UTM with same fallback logic
-          let utmClickWhereClause = `(campaign_id = ${campaignId} OR tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
+          // Get clicks for this UTM with fallback logic
+          // Note: tracking_events_buffer doesn't have campaign_id, only tracking_code, utm_campaign, and campaign_name
+          let utmClickWhereClause = `(tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
           utmClickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
 
           const utmClickQuery = `
