@@ -5,6 +5,7 @@ import { RowDataPacket } from 'mysql2';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 import { getCache, setCache } from '@/lib/cache/cache';
+import { resolveAnalyticsDates } from '@/lib/utils/kst-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,26 +67,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // Add date filtering with default and max enforcement
     const MAX_RANGE_DAYS = 90;
-    let finalEndDate = endDate || new Date().toISOString().split('T')[0];
-    let finalStartDate = startDate;
 
-    if (!finalStartDate) {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      finalStartDate = date.toISOString().split('T')[0];
-    }
+    const dates = resolveAnalyticsDates(searchParams, {
+      endParam: 'end_date',
+      startParam: 'start_date',
+      defaultRangeDays: 30,
+      maxRangeDays: MAX_RANGE_DAYS
+    });
 
-    // Enforce maximum date window
-    const startObj = new Date(finalStartDate);
-    const endObj = new Date(finalEndDate);
-    const diffMs = endObj.getTime() - startObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays > MAX_RANGE_DAYS) {
-      const clampedStart = new Date(endObj);
-      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
-      finalStartDate = clampedStart.toISOString().split('T')[0];
-    }
+    const finalStartDate = dates.startDate;
+    const finalEndDate = dates.endDate;
 
     // Check cache (30 seconds TTL)
     const cacheTtlMs = 30_000;
@@ -151,9 +142,11 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         .filter(tc => tc.status !== 'hidden')
         .map(async (tc) => {
           const trackingCode = tc.tracking_code;
+          const utmCampaign = tc.utm_campaign || '';
 
-          // Build WHERE clause for this specific UTM
-          let utmWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
+          // Build WHERE clause with fallback matching (same logic as metrics API)
+          // This handles cases where tracking_code is missing, empty, or incorrect (e.g., domain names)
+          let utmWhereClause = `(campaign_id = ${campaignId} OR tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
           utmWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
           // Platform filter
@@ -179,8 +172,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
           const utmConversions = utmVisitData[0]?.conversions || 0;
 
-          // Get clicks for this UTM
-          let utmClickWhereClause = `tracking_code = '${trackingCode.replace(/'/g, "\\'")}'`;
+          // Get clicks for this UTM with same fallback logic
+          let utmClickWhereClause = `(campaign_id = ${campaignId} OR tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
           utmClickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
 
           const utmClickQuery = `

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
-import { getDefaultTimezone } from '@/lib/system-settings';
+import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
 import { getCache, setCache } from '@/lib/cache/cache';
+import { resolveAnalyticsDates } from '@/lib/utils/kst-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,29 +36,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const searchParams = request.nextUrl.searchParams;
     const MAX_RANGE_DAYS = 90;
 
-    // Get date range from query parameters (default: last 30 days)
-    let endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
-    let startDate = searchParams.get('start');
+    const settings = await getSettingsWithDefaults();
+    const defaultDays = settings.default_date_range ?? 30;
 
-    if (!startDate) {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      startDate = date.toISOString().split('T')[0];
-    }
+    const { startDate, endDate } = resolveAnalyticsDates(searchParams, {
+      endParam: 'end',
+      startParam: 'start',
+      defaultRangeDays: defaultDays,
+      maxRangeDays: MAX_RANGE_DAYS
+    });
 
-    // Enforce maximum date window (server-side safety net)
-    const startObj = new Date(startDate);
-    const endObj = new Date(endDate);
-    const diffMs = endObj.getTime() - startObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays > MAX_RANGE_DAYS) {
-      const clampedStart = new Date(endObj);
-      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
-      startDate = clampedStart.toISOString().split('T')[0];
-    }
-
-    // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();
 
     console.log(`📊 Channel Performance Analysis API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);

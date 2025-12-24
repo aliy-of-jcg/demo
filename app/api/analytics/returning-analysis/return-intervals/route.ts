@@ -3,6 +3,7 @@ import { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 import { getCache, setCache } from '@/lib/cache/cache';
+import { resolveAnalyticsDates } from '@/lib/utils/kst-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,25 +13,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const MAX_RANGE_DAYS = 90;
     const sectionName = 'return-intervals';
 
-    let endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
-    let startDate = searchParams.get('start_date');
-
-    if (!startDate) {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      startDate = date.toISOString().split('T')[0];
-    }
-
-    const startObj = new Date(startDate);
-    const endObj = new Date(endDate);
-    const diffMs = endObj.getTime() - startObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays > MAX_RANGE_DAYS) {
-      const clampedStart = new Date(endObj);
-      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
-      startDate = clampedStart.toISOString().split('T')[0];
-    }
+    const { startDate, endDate } = resolveAnalyticsDates(searchParams, {
+      defaultRangeDays: 30,
+      maxRangeDays: MAX_RANGE_DAYS
+    });
 
     const timezone = await getDefaultTimezone();
 
