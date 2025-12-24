@@ -181,26 +181,27 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
           const utmConversions = utmVisitData[0]?.conversions || 0;
 
-          // Get clicks for this UTM - match by exact UTM parameters
-          // tracking_events table has utm_content, utm_campaign, utm_source, utm_medium
-          let utmClickWhereClause = `utm_campaign = '${escapedCampaign}'`;
-          utmClickWhereClause += ` AND utm_source = '${escapedSource}'`;
-          utmClickWhereClause += ` AND utm_medium = '${escapedMedium}'`;
-          utmClickWhereClause += ` AND utm_content = '${escapedContent}'`;
-          utmClickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
+          // Get clicks for this UTM - use tracking_code (like campaign details page)
+          // This ensures accurate per-UTM clicks, especially when utm_content is empty
+          // tracking_events table has tracking_code which uniquely identifies each UTM
+          let utmClicks = 0;
+          if (trackingCode && trackingCode !== '') {
+            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
+            const utmClickQuery = `
+              SELECT COUNT(*) as total_clicks
+              FROM analytics.tracking_events_buffer
+              WHERE tracking_code = '${escapedTrackingCode}'
+                AND created_date >= toDate('${finalStartDate}')
+                AND created_date <= toDate('${finalEndDate}')
+            `;
 
-          const utmClickQuery = `
-            SELECT COUNT(*) as total_clicks
-            FROM analytics.tracking_events_buffer
-            WHERE ${utmClickWhereClause}
-          `;
+            const utmClickResult = await queryWithMemoryLimit(utmClickQuery, {
+              format: 'JSONEachRow',
+            });
 
-          const utmClickResult = await queryWithMemoryLimit(utmClickQuery, {
-            format: 'JSONEachRow',
-          });
-
-          const utmClickData = await utmClickResult.json() as Array<{ total_clicks: number }>;
-          const utmClicks = utmClickData[0]?.total_clicks || 0;
+            const utmClickData = await utmClickResult.json() as Array<{ total_clicks: number }>;
+            utmClicks = utmClickData[0]?.total_clicks || 0;
+          }
 
           // Get daily data for this UTM
           const utmDailyQuery = `

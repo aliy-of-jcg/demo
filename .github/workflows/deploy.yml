@@ -43,7 +43,7 @@ jobs:
               echo "branch=main" >> $GITHUB_OUTPUT
               echo "image_tag_suffix=prod-latest" >> $GITHUB_OUTPUT
             else
-              echo "branch=dev" >> $GITHUB_OUTPUT
+              echo "branch=hotfix/ISSUE-38" >> $GITHUB_OUTPUT
               echo "image_tag_suffix=latest" >> $GITHUB_OUTPUT
             fi
           fi
