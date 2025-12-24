@@ -144,9 +144,18 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const trackingCode = tc.tracking_code;
           const utmCampaign = tc.utm_campaign || '';
 
-          // Build WHERE clause for this specific UTM (not entire campaign)
-          // Match by tracking_code or utm_campaign when tracking_code is empty/incorrect
-          let utmWhereClause = `(tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
+          // Build WHERE clause for this specific UTM
+          // Match by exact UTM parameter combination (source + medium + campaign + content)
+          // This is more reliable than tracking_code which may be empty or contain domains
+          const escapedSource = (tc.utm_source || '').replace(/'/g, "\\'");
+          const escapedMedium = (tc.utm_medium || '').replace(/'/g, "\\'");
+          const escapedCampaign = utmCampaign.replace(/'/g, "\\'");
+          const escapedContent = (tc.utm_content || '').replace(/'/g, "\\'");
+          
+          let utmWhereClause = `utm_campaign = '${escapedCampaign}'`;
+          utmWhereClause += ` AND utm_source = '${escapedSource}'`;
+          utmWhereClause += ` AND utm_medium = '${escapedMedium}'`;
+          utmWhereClause += ` AND utm_content = '${escapedContent}'`;
           utmWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
           // Platform filter
@@ -231,7 +240,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
               visitors: utmVisitors,
               conversions: utmConversions,
               conversionRate: utmVisitors > 0 ? ((utmConversions / utmVisitors) * 100).toFixed(2) : '0.00',
-              ctr: utmClicks > 0 ? ((utmVisitors / utmClicks) * 100).toFixed(2) : '0.00',
+              ctr: utmClicks > 0 ? ((utmClicks / utmVisitors) * 100).toFixed(2) : '0.00',
             },
             dailyData: utmDailyJson.map(row => ({
               date: row.date,
@@ -260,7 +269,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       ? ((nonLegacyMetrics.conversions / nonLegacyMetrics.visitors) * 100).toFixed(2)
       : '0.00';
     const nonLegacyCtr = nonLegacyMetrics.clicks > 0
-      ? ((nonLegacyMetrics.visitors / nonLegacyMetrics.clicks) * 100).toFixed(2)
+      ? ((nonLegacyMetrics.clicks / nonLegacyMetrics.visitors) * 100).toFixed(2)
       : '0.00';
 
     const response = {
