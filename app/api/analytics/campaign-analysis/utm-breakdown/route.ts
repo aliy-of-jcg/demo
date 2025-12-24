@@ -144,33 +144,52 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const trackingCode = tc.tracking_code;
           const utmCampaign = tc.utm_campaign || '';
 
-          // Build WHERE clause for this specific UTM
-          // Match by exact UTM parameter combination (source + medium + campaign + content)
-          // This is more reliable than tracking_code which may be empty or contain domains
+          // Get visitors and conversions for this UTM
+          // Query BOTH: records with matching tracking_code AND legacy records with matching UTM parameters
+          // This ensures we capture all visitors, including legacy data with empty tracking_code
           const escapedSource = (tc.utm_source || '').replace(/'/g, "\\'");
           const escapedMedium = (tc.utm_medium || '').replace(/'/g, "\\'");
           const escapedCampaign = utmCampaign.replace(/'/g, "\\'");
           const escapedContent = (tc.utm_content || '').replace(/'/g, "\\'");
           
-          let utmWhereClause = `utm_campaign = '${escapedCampaign}'`;
-          utmWhereClause += ` AND utm_source = '${escapedSource}'`;
-          utmWhereClause += ` AND utm_medium = '${escapedMedium}'`;
-          utmWhereClause += ` AND utm_content = '${escapedContent}'`;
-          utmWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+          // Build WHERE clause that matches EITHER:
+          // 1. Records with matching tracking_code (if tracking_code exists)
+          // 2. Records with matching UTM parameters AND empty tracking_code (legacy data)
+          let visitWhereClause = '';
+          
+          if (trackingCode && trackingCode !== '') {
+            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
+            // Match by tracking_code OR (UTM params with empty tracking_code)
+            visitWhereClause = `(tracking_code = '${escapedTrackingCode}' OR (`;
+            visitWhereClause += `utm_campaign = '${escapedCampaign}'`;
+            visitWhereClause += ` AND utm_source = '${escapedSource}'`;
+            visitWhereClause += ` AND utm_medium = '${escapedMedium}'`;
+            visitWhereClause += ` AND utm_content = '${escapedContent}'`;
+            visitWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
+            visitWhereClause += `))`;
+          } else {
+            // No tracking_code in MySQL: only match by UTM parameters with empty tracking_code
+            visitWhereClause = `utm_campaign = '${escapedCampaign}'`;
+            visitWhereClause += ` AND utm_source = '${escapedSource}'`;
+            visitWhereClause += ` AND utm_medium = '${escapedMedium}'`;
+            visitWhereClause += ` AND utm_content = '${escapedContent}'`;
+            visitWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
+          }
+          
+          visitWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
           // Platform filter
           if (platform && platform !== 'all') {
             const escapedPlatform = platform.replace(/'/g, "\\'");
-            utmWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
+            visitWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
           }
 
-          // Get visitors and conversions for this UTM
           const utmVisitQuery = `
             SELECT 
               countDistinct(user_id) as unique_visitors,
               countIf(event_type = 'conversion') as conversions
             FROM analytics.visit_logs_buffer
-            WHERE ${utmWhereClause}
+            WHERE ${visitWhereClause}
           `;
 
           const utmVisitResult = await queryWithMemoryLimit(utmVisitQuery, {
@@ -181,35 +200,65 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
           const utmConversions = utmVisitData[0]?.conversions || 0;
 
-          // Get clicks for this UTM - match by exact UTM parameters
-          // tracking_events table has utm_content, utm_campaign, utm_source, utm_medium
-          let utmClickWhereClause = `utm_campaign = '${escapedCampaign}'`;
-          utmClickWhereClause += ` AND utm_source = '${escapedSource}'`;
-          utmClickWhereClause += ` AND utm_medium = '${escapedMedium}'`;
-          utmClickWhereClause += ` AND utm_content = '${escapedContent}'`;
-          utmClickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
+          // Get clicks for this UTM - use tracking_code (like campaign details page)
+          // This ensures accurate per-UTM clicks, especially when utm_content is empty
+          // tracking_events table has tracking_code which uniquely identifies each UTM
+          let utmClicks = 0;
+          if (trackingCode && trackingCode !== '') {
+            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
+            const utmClickQuery = `
+              SELECT COUNT(*) as total_clicks
+              FROM analytics.tracking_events_buffer
+              WHERE tracking_code = '${escapedTrackingCode}'
+                AND created_date >= toDate('${finalStartDate}')
+                AND created_date <= toDate('${finalEndDate}')
+            `;
 
-          const utmClickQuery = `
-            SELECT COUNT(*) as total_clicks
-            FROM analytics.tracking_events_buffer
-            WHERE ${utmClickWhereClause}
-          `;
+            const utmClickResult = await queryWithMemoryLimit(utmClickQuery, {
+              format: 'JSONEachRow',
+            });
 
-          const utmClickResult = await queryWithMemoryLimit(utmClickQuery, {
-            format: 'JSONEachRow',
-          });
+            const utmClickData = await utmClickResult.json() as Array<{ total_clicks: number }>;
+            utmClicks = utmClickData[0]?.total_clicks || 0;
+          }
 
-          const utmClickData = await utmClickResult.json() as Array<{ total_clicks: number }>;
-          const utmClicks = utmClickData[0]?.total_clicks || 0;
+          // Get daily data for this UTM - use same logic as visitors query (tracking_code OR legacy UTM params)
+          let dailyWhereClause = '';
+          
+          if (trackingCode && trackingCode !== '') {
+            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
+            // Match by tracking_code OR (UTM params with empty tracking_code)
+            dailyWhereClause = `(tracking_code = '${escapedTrackingCode}' OR (`;
+            dailyWhereClause += `utm_campaign = '${escapedCampaign}'`;
+            dailyWhereClause += ` AND utm_source = '${escapedSource}'`;
+            dailyWhereClause += ` AND utm_medium = '${escapedMedium}'`;
+            dailyWhereClause += ` AND utm_content = '${escapedContent}'`;
+            dailyWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
+            dailyWhereClause += `))`;
+          } else {
+            // No tracking_code in MySQL: only match by UTM parameters with empty tracking_code
+            dailyWhereClause = `utm_campaign = '${escapedCampaign}'`;
+            dailyWhereClause += ` AND utm_source = '${escapedSource}'`;
+            dailyWhereClause += ` AND utm_medium = '${escapedMedium}'`;
+            dailyWhereClause += ` AND utm_content = '${escapedContent}'`;
+            dailyWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
+          }
+          
+          dailyWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
-          // Get daily data for this UTM
+          // Platform filter
+          if (platform && platform !== 'all') {
+            const escapedPlatform = platform.replace(/'/g, "\\'");
+            dailyWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
+          }
+
           const utmDailyQuery = `
             SELECT 
               toDate(toTimeZone(timestamp, '${timezone}')) as date,
               countDistinct(user_id) as visitors,
               countIf(event_type = 'conversion') as conversions
             FROM analytics.visit_logs_buffer
-            WHERE ${utmWhereClause}
+            WHERE ${dailyWhereClause}
             GROUP BY date
             ORDER BY date ASC
           `;

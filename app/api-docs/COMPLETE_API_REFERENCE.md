@@ -260,14 +260,6 @@ All authentication endpoints include comprehensive error handling and security m
   - Used for testing before production deployment
 - **Console Log:** `[CosMos Internal] Tracking internal test event`
 
-#### POST `/api/log`
-- **Purpose:** Log client-side tracking events
-- **Features:**
-  - Receives data from cosmos-track.js script
-  - Page sequence tracking
-  - Landing/exit page detection
-  - Time on page tracking
-
 #### POST `/api/tracking/generate`
 - **Purpose:** Generate tracking link with UTM parameters
 - **Features:**

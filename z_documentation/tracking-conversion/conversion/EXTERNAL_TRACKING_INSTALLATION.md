@@ -89,7 +89,7 @@ If your CosMos AI is deployed at `https://cosmos.yourdomain.com`:
    - [ ] Click the tracking link
    - [ ] Land on your external site
    - [ ] Open browser DevTools → Network tab
-   - [ ] Look for POST request to `/api/log` ✅
+   - [ ] Look for POST request to `/api/track` ✅
    - [ ] Check campaign stats → Visitors should increment ✅
 
 ---
@@ -107,18 +107,7 @@ I've already configured CORS to allow requests from:
 
 ### Adding More Domains
 
-If you need to track other domains, edit `app/api/log/route.ts`:
-
-```typescript
-const ALLOWED_ORIGINS = [
-  'http://aptdecor.uz',
-  'https://aptdecor.uz',
-  'http://jcg.asia',
-  'https://jcg.asia',
-  'https://yournewdomain.com', // Add here
-  // ... more domains
-];
-```
+If you need to track other domains, CORS is already configured to allow all origins. The `/api/track` endpoint accepts requests from any domain by default (Google Analytics-style tracking).
 
 ---
 
@@ -132,10 +121,11 @@ const ALLOWED_ORIGINS = [
 - Test the URL directly in browser
 
 ### Issue 2: "CORS policy: No 'Access-Control-Allow-Origin' header"
-**Problem:** Your domain is not in the ALLOWED_ORIGINS list  
+**Problem:** CORS configuration issue (should not occur as all origins are allowed)  
 **Solution:** 
-- Add your domain to `ALLOWED_ORIGINS` in `/app/api/log/route.ts`
-- Redeploy CosMos AI
+- Check Nginx configuration for CORS headers
+- Verify `/api/track` endpoint is accessible
+- Check browser console for specific CORS error details
 
 ### Issue 3: Tracking works but URL stays messy
 **Problem:** Script might not be loading completely  
@@ -149,7 +139,7 @@ const ALLOWED_ORIGINS = [
 **Solution:**
 - Open DevTools → Network tab
 - Visit the tracking link
-- Look for POST request to `/api/log`
+- Look for POST request to `/api/track`
 - Check if request succeeds (status 200)
 - If request fails, check CORS configuration
 
@@ -211,7 +201,7 @@ Before going live:
 4. Landing page loads cosmos-track.js
    → Script reads UTM parameters
    → Reads/creates UUID cookie
-   → Sends data to /api/log
+   → Sends data to /api/track
    
 5. CosMos AI logs the visit
    → visit_logs table ✅

@@ -1325,59 +1325,6 @@ export const apiSpec = {
       },
     },
 
-    "/api/log": {
-      post: {
-        security: [],
-        tags: ["Tracking"],
-        summary: "Log client-side tracking event",
-        description: "Receives pageview events from cosmos-track.js client-side script with UTM parameters, device info, and page flow data",
-        requestBody: {
-          required: true,
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                required: ["user_id", "session_id", "page_url", "event_type"],
-                properties: {
-                  user_id: { type: "string", example: "uuid-visitor-123" },
-                  session_id: { type: "string", example: "uuid-session-456" },
-                  page_url: { type: "string", example: "https://example.com/page" },
-                  referrer: { type: "string" },
-                  utm_source: { type: "string", example: "google" },
-                  utm_medium: { type: "string", example: "cpc" },
-                  utm_campaign: { type: "string", example: "spring_sale" },
-                  event_type: { type: "string", example: "pageview" },
-                  device_type: { type: "string", example: "desktop" },
-                  browser: { type: "string", example: "Chrome" },
-                  os: { type: "string", example: "Windows" },
-                  screen_resolution: { type: "string", example: "1920x1080" },
-                  visit_count: { type: "number", example: 3 },
-                  page_sequence: { type: "number", example: 2 },
-                  is_landing_page: { type: "number", example: 0 },
-                  previous_page_url: { type: "string" },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          200: {
-            description: "Event logged successfully",
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    success: { type: "boolean", example: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-
     "/api/tracking/generate": {
       post: {
         tags: ["Tracking"],
