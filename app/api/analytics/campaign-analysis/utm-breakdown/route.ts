@@ -172,8 +172,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
           const utmConversions = utmVisitData[0]?.conversions || 0;
 
-          // Get clicks for this UTM with same fallback logic
-          let utmClickWhereClause = `(campaign_id = ${campaignId} OR tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
+          // Get clicks for this UTM with fallback logic
+          // Note: tracking_events_buffer doesn't have campaign_id, only tracking_code, utm_campaign, and campaign_name
+          let utmClickWhereClause = `(tracking_code = '${trackingCode.replace(/'/g, "\\'")}' OR (tracking_code = '' AND utm_campaign = '${utmCampaign.replace(/'/g, "\\'")}'))`;
           utmClickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
 
           const utmClickQuery = `
