@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
+import { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getCache, setCache } from '@/lib/cache/cache';
@@ -14,8 +14,8 @@ interface WebsiteData {
   unique_visitors: number;
   total_pageviews: number;
   total_conversions: number;
-  first_seen: string;
-  last_seen: string;
+  first_seen: string | null;
+  last_seen: string | null;
   is_active: boolean;
   is_enabled: boolean;
   status: 'Active' | 'Inactive' | 'Disabled';
@@ -45,105 +45,179 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       return NextResponse.json(cached);
     }
 
-    // Query to extract domains from page_url and aggregate metrics
-    // OPTIMIZED: Avoid JOIN by using a single pass with WHERE IN (top domains)
-    // Normalize domains: remove www. prefix, convert to lowercase, ignore protocol/port
-    const query = `
-      WITH top_domains AS (
-        -- Phase 1: Lightweight - just get top domain list
-        SELECT 
-          normalized_domain
-        FROM (
-          SELECT 
-            lower(if(startsWith(domain(page_url), 'www.'), 
-              substring(domain(page_url), 5), 
-              domain(page_url))) as normalized_domain,
-            uniqExact(session_id) as session_count
-          FROM analytics.visit_logs_buffer
-          WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
-            AND page_url != ''
-            AND page_url IS NOT NULL
-            AND domain(page_url) != ''
-          GROUP BY normalized_domain
-          HAVING normalized_domain NOT IN (
-            'dev.cosmosai.co.kr',
-            'cosmosai.co.kr',
-            'localhost',
-            '127.0.0.1',
-            '0.0.0.0'
-          )
-          ORDER BY session_count DESC
-          LIMIT 200
-        )
-      )
-      -- Phase 2: Single-pass aggregation on filtered domains (no JOIN)
+    // Step 1: Get all tracked websites from MySQL (source of truth)
+    const pool = getPool();
+    const [mysqlRows] = await pool.execute(
+      'SELECT domain, is_enabled, first_seen, last_seen FROM tracked_websites ORDER BY domain'
+    ) as [any[], any];
+
+    const trackedDomains = mysqlRows as Array<{
+      domain: string;
+      is_enabled: number;
+      first_seen: Date | null;
+      last_seen: Date | null;
+    }>;
+
+    if (trackedDomains.length === 0) {
+      const responsePayload = {
+        success: true,
+        dateRange: { start: startDate, end: endDate },
+        websites: [],
+        summary: {
+          total_websites: 0,
+          active_websites: 0,
+          inactive_websites: 0,
+          disabled_websites: 0,
+          total_sessions: 0,
+          total_visitors: 0,
+          total_pageviews: 0,
+          total_conversions: 0,
+        }
+      };
+      await setCache(cacheKey, responsePayload, cacheTtlMs);
+      return NextResponse.json(responsePayload);
+    }
+
+    // Step 2: Query ClickHouse for metrics in date range for all tracked domains
+    // Build domain list for ClickHouse WHERE clause (domains are normalized in query, so only normalized needed)
+    const domainList = trackedDomains
+      .map(d => {
+        const escaped = d.domain.replace(/'/g, "\\'");
+        return `'${escaped}'`;
+      })
+      .join(', ');
+
+    // Exclude internal domains
+    const excludedDomains = [
+      'dev.cosmosai.co.kr',
+      'cosmosai.co.kr',
+      'localhost',
+      '127.0.0.1',
+      '0.0.0.0'
+    ].map(d => `'${d}'`).join(', ');
+
+    const clickhouseQuery = `
       SELECT 
-        normalized_domain as domain,
+        lower(if(startsWith(domain(page_url), 'www.'), 
+          substring(domain(page_url), 5), 
+          domain(page_url))) as normalized_domain,
         uniqExact(session_id) as total_sessions,
         uniqExact(user_id) as unique_visitors,
         countIf(event_type = 'pageview') as total_pageviews,
         countIf(event_type = 'conversion') as total_conversions,
-        MIN(timestamp) as first_seen,
-        MAX(timestamp) as last_seen,
-        CASE WHEN MAX(timestamp) >= now() - INTERVAL 7 DAY THEN 1 ELSE 0 END as is_active
-      FROM (
-        SELECT 
-          lower(if(startsWith(domain(page_url), 'www.'), 
-            substring(domain(page_url), 5), 
-            domain(page_url))) as normalized_domain,
-          session_id,
-          user_id,
-          event_type,
-          timestamp
-        FROM analytics.visit_logs_buffer
-        WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
-          AND page_url != ''
-          AND page_url IS NOT NULL
-          AND domain(page_url) != ''
-      )
-      WHERE normalized_domain IN (SELECT normalized_domain FROM top_domains)
+        MIN(timestamp) as range_first_seen,
+        MAX(timestamp) as range_last_seen
+      FROM analytics.visit_logs_buffer
+      WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+        AND page_url != ''
+        AND page_url IS NOT NULL
+        AND domain(page_url) != ''
+        AND lower(if(startsWith(domain(page_url), 'www.'), 
+          substring(domain(page_url), 5), 
+          domain(page_url))) IN (${domainList})
+        AND lower(if(startsWith(domain(page_url), 'www.'), 
+          substring(domain(page_url), 5), 
+          domain(page_url))) NOT IN (${excludedDomains})
       GROUP BY normalized_domain
-      ORDER BY total_sessions DESC
     `;
 
-    const result = await queryWithMemoryLimit(query, {
-      format: 'JSONEachRow'
-    });
+    let clickhouseMetrics = new Map<string, {
+      total_sessions: number;
+      unique_visitors: number;
+      total_pageviews: number;
+      total_conversions: number;
+      range_first_seen: string | null;
+      range_last_seen: string | null;
+    }>();
 
-    const websites = await result.json() as WebsiteData[];
+    try {
+      const result = await queryWithMemoryLimit(clickhouseQuery, {
+        format: 'JSONEachRow'
+      });
+      const metrics = await result.json() as Array<{
+        normalized_domain: string;
+        total_sessions: number;
+        unique_visitors: number;
+        total_pageviews: number;
+        total_conversions: number;
+        range_first_seen: string | null;
+        range_last_seen: string | null;
+      }>;
 
-    // Get enabled/disabled status from MySQL
-    const pool = getPool();
-    const [mysqlRows] = await pool.execute(
-      'SELECT domain, is_enabled FROM tracked_websites'
-    );
-    const domainStatusMap = new Map<string, boolean>();
-    (mysqlRows as any[]).forEach(row => {
-      domainStatusMap.set(row.domain, row.is_enabled === 1);
-    });
+      metrics.forEach(m => {
+        clickhouseMetrics.set(m.normalized_domain, {
+          total_sessions: m.total_sessions,
+          unique_visitors: m.unique_visitors,
+          total_pageviews: m.total_pageviews,
+          total_conversions: m.total_conversions,
+          range_first_seen: m.range_first_seen,
+          range_last_seen: m.range_last_seen
+        });
+      });
+    } catch (error) {
+      console.error('Failed to query ClickHouse metrics:', error);
+      // Continue with empty metrics - websites will show 0 values
+    }
 
-    // Enrich websites with is_enabled and calculate status
-    const enrichedWebsites = websites.map(website => {
-      const isEnabled = domainStatusMap.get(website.domain) ?? true; // Default to enabled if not in MySQL
+    // Step 3: Combine MySQL metadata with ClickHouse metrics
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const enrichedWebsites = trackedDomains.map(mysqlRow => {
+      const domain = mysqlRow.domain;
+      const metrics = clickhouseMetrics.get(domain) || {
+        total_sessions: 0,
+        unique_visitors: 0,
+        total_pageviews: 0,
+        total_conversions: 0,
+        range_first_seen: null,
+        range_last_seen: null
+      };
+
+      const isEnabled = mysqlRow.is_enabled === 1;
+
+      // Determine if active: has traffic in last 7 days (from ClickHouse or MySQL last_seen)
+      let isActive = false;
+      if (metrics.range_last_seen) {
+        const lastSeen = new Date(metrics.range_last_seen);
+        isActive = lastSeen >= sevenDaysAgo;
+      } else if (mysqlRow.last_seen) {
+        const lastSeen = new Date(mysqlRow.last_seen);
+        isActive = lastSeen >= sevenDaysAgo;
+      }
+
       let status: 'Active' | 'Inactive' | 'Disabled';
-
       if (!isEnabled) {
         status = 'Disabled';
-      } else if (website.is_active) {
+      } else if (isActive) {
         status = 'Active';
       } else {
         status = 'Inactive';
       }
 
+      // Use MySQL's first_seen/last_seen for historical metadata
+      // Use ClickHouse range_last_seen for date range last seen if available
+      const lastSeen = metrics.range_last_seen || (mysqlRow.last_seen ? mysqlRow.last_seen.toISOString() : null);
+
       return {
-        ...website,
+        domain,
+        total_sessions: metrics.total_sessions,
+        unique_visitors: metrics.unique_visitors,
+        total_pageviews: metrics.total_pageviews,
+        total_conversions: metrics.total_conversions,
+        first_seen: mysqlRow.first_seen ? mysqlRow.first_seen.toISOString() : null,
+        last_seen: lastSeen,
+        is_active: isActive,
         is_enabled: isEnabled,
         status
       };
     });
 
+    // Sort by total_sessions descending (websites with 0 traffic will appear at the bottom)
+    enrichedWebsites.sort((a, b) => b.total_sessions - a.total_sessions);
+
     // Calculate summary stats
-    // IMPORTANT: total_visitors must count distinct users across ALL domains, not sum per-domain counts
+    // IMPORTANT: total_visitors must count distinct users across ALL tracked domains, not sum per-domain counts
     // (Summing would double-count users who visit multiple domains)
     let total_visitors = 0;
     try {
@@ -156,19 +230,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             AND domain(page_url) != ''
             AND lower(if(startsWith(domain(page_url), 'www.'), 
               substring(domain(page_url), 5), 
-              domain(page_url))) NOT IN (
-              'dev.cosmosai.co.kr',
-              'cosmosai.co.kr',
-              'localhost',
-              '127.0.0.1',
-              '0.0.0.0'
-            )
+              domain(page_url))) IN (${domainList})
+            AND lower(if(startsWith(domain(page_url), 'www.'), 
+              substring(domain(page_url), 5), 
+              domain(page_url))) NOT IN (${excludedDomains})
         `, { format: 'JSONEachRow' });
 
       const totalVisitorsResult = await totalVisitorsQuery.json() as Array<{ unique_visitors: number }>;
       total_visitors = totalVisitorsResult[0]?.unique_visitors || 0;
     } catch (error) {
-      console.warn('Failed to calculate total visitors across all domains:', error);
+      console.warn('Failed to calculate total visitors across tracked domains:', error);
       // Fallback to sum (less accurate but won't break)
       total_visitors = enrichedWebsites.reduce((sum, w) => sum + parseInt(w.unique_visitors.toString()), 0);
     }
