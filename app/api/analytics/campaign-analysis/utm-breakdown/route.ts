@@ -144,42 +144,75 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const trackingCode = tc.tracking_code;
           const utmCampaign = tc.utm_campaign || '';
 
-          // Build WHERE clause for this specific UTM
-          // Match by exact UTM parameter combination (source + medium + campaign + content)
-          // This is more reliable than tracking_code which may be empty or contain domains
-          const escapedSource = (tc.utm_source || '').replace(/'/g, "\\'");
-          const escapedMedium = (tc.utm_medium || '').replace(/'/g, "\\'");
-          const escapedCampaign = utmCampaign.replace(/'/g, "\\'");
-          const escapedContent = (tc.utm_content || '').replace(/'/g, "\\'");
+          // Get visitors and conversions for this UTM - use tracking_code (like clicks query)
+          // This ensures accurate per-UTM visitors, especially when utm_content is empty
+          // Fallback to UTM parameters only if tracking_code is empty (legacy data)
+          let utmVisitors = 0;
+          let utmConversions = 0;
           
-          let utmWhereClause = `utm_campaign = '${escapedCampaign}'`;
-          utmWhereClause += ` AND utm_source = '${escapedSource}'`;
-          utmWhereClause += ` AND utm_medium = '${escapedMedium}'`;
-          utmWhereClause += ` AND utm_content = '${escapedContent}'`;
-          utmWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+          if (trackingCode && trackingCode !== '') {
+            // Primary method: Use tracking_code for accurate per-UTM data
+            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
+            let visitWhereClause = `tracking_code = '${escapedTrackingCode}'`;
+            visitWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
-          // Platform filter
-          if (platform && platform !== 'all') {
-            const escapedPlatform = platform.replace(/'/g, "\\'");
-            utmWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
+            // Platform filter
+            if (platform && platform !== 'all') {
+              const escapedPlatform = platform.replace(/'/g, "\\'");
+              visitWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
+            }
+
+            const utmVisitQuery = `
+              SELECT 
+                countDistinct(user_id) as unique_visitors,
+                countIf(event_type = 'conversion') as conversions
+              FROM analytics.visit_logs_buffer
+              WHERE ${visitWhereClause}
+            `;
+
+            const utmVisitResult = await queryWithMemoryLimit(utmVisitQuery, {
+              format: 'JSONEachRow',
+            });
+
+            const utmVisitData = await utmVisitResult.json() as Array<{ unique_visitors: number; conversions: number }>;
+            utmVisitors = utmVisitData[0]?.unique_visitors || 0;
+            utmConversions = utmVisitData[0]?.conversions || 0;
+          } else {
+            // Fallback: Use UTM parameters for legacy data (when tracking_code is empty)
+            const escapedSource = (tc.utm_source || '').replace(/'/g, "\\'");
+            const escapedMedium = (tc.utm_medium || '').replace(/'/g, "\\'");
+            const escapedCampaign = utmCampaign.replace(/'/g, "\\'");
+            const escapedContent = (tc.utm_content || '').replace(/'/g, "\\'");
+            
+            let utmWhereClause = `utm_campaign = '${escapedCampaign}'`;
+            utmWhereClause += ` AND utm_source = '${escapedSource}'`;
+            utmWhereClause += ` AND utm_medium = '${escapedMedium}'`;
+            utmWhereClause += ` AND utm_content = '${escapedContent}'`;
+            utmWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
+            utmWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+
+            // Platform filter
+            if (platform && platform !== 'all') {
+              const escapedPlatform = platform.replace(/'/g, "\\'");
+              utmWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
+            }
+
+            const utmVisitQuery = `
+              SELECT 
+                countDistinct(user_id) as unique_visitors,
+                countIf(event_type = 'conversion') as conversions
+              FROM analytics.visit_logs_buffer
+              WHERE ${utmWhereClause}
+            `;
+
+            const utmVisitResult = await queryWithMemoryLimit(utmVisitQuery, {
+              format: 'JSONEachRow',
+            });
+
+            const utmVisitData = await utmVisitResult.json() as Array<{ unique_visitors: number; conversions: number }>;
+            utmVisitors = utmVisitData[0]?.unique_visitors || 0;
+            utmConversions = utmVisitData[0]?.conversions || 0;
           }
-
-          // Get visitors and conversions for this UTM
-          const utmVisitQuery = `
-            SELECT 
-              countDistinct(user_id) as unique_visitors,
-              countIf(event_type = 'conversion') as conversions
-            FROM analytics.visit_logs_buffer
-            WHERE ${utmWhereClause}
-          `;
-
-          const utmVisitResult = await queryWithMemoryLimit(utmVisitQuery, {
-            format: 'JSONEachRow',
-          });
-
-          const utmVisitData = await utmVisitResult.json() as Array<{ unique_visitors: number; conversions: number }>;
-          const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
-          const utmConversions = utmVisitData[0]?.conversions || 0;
 
           // Get clicks for this UTM - use tracking_code (like campaign details page)
           // This ensures accurate per-UTM clicks, especially when utm_content is empty
@@ -203,17 +236,60 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             utmClicks = utmClickData[0]?.total_clicks || 0;
           }
 
-          // Get daily data for this UTM
-          const utmDailyQuery = `
-            SELECT 
-              toDate(toTimeZone(timestamp, '${timezone}')) as date,
-              countDistinct(user_id) as visitors,
-              countIf(event_type = 'conversion') as conversions
-            FROM analytics.visit_logs_buffer
-            WHERE ${utmWhereClause}
-            GROUP BY date
-            ORDER BY date ASC
-          `;
+          // Get daily data for this UTM - use tracking_code (consistent with visitors query)
+          let utmDailyQuery: string;
+          if (trackingCode && trackingCode !== '') {
+            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
+            let dailyWhereClause = `tracking_code = '${escapedTrackingCode}'`;
+            dailyWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+
+            // Platform filter
+            if (platform && platform !== 'all') {
+              const escapedPlatform = platform.replace(/'/g, "\\'");
+              dailyWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
+            }
+
+            utmDailyQuery = `
+              SELECT 
+                toDate(toTimeZone(timestamp, '${timezone}')) as date,
+                countDistinct(user_id) as visitors,
+                countIf(event_type = 'conversion') as conversions
+              FROM analytics.visit_logs_buffer
+              WHERE ${dailyWhereClause}
+              GROUP BY date
+              ORDER BY date ASC
+            `;
+          } else {
+            // Fallback: Use UTM parameters for legacy data
+            const escapedSource = (tc.utm_source || '').replace(/'/g, "\\'");
+            const escapedMedium = (tc.utm_medium || '').replace(/'/g, "\\'");
+            const escapedCampaign = utmCampaign.replace(/'/g, "\\'");
+            const escapedContent = (tc.utm_content || '').replace(/'/g, "\\'");
+            
+            let dailyWhereClause = `utm_campaign = '${escapedCampaign}'`;
+            dailyWhereClause += ` AND utm_source = '${escapedSource}'`;
+            dailyWhereClause += ` AND utm_medium = '${escapedMedium}'`;
+            dailyWhereClause += ` AND utm_content = '${escapedContent}'`;
+            dailyWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
+            dailyWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+
+            // Platform filter
+            if (platform && platform !== 'all') {
+              const escapedPlatform = platform.replace(/'/g, "\\'");
+              dailyWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
+            }
+
+            utmDailyQuery = `
+              SELECT 
+                toDate(toTimeZone(timestamp, '${timezone}')) as date,
+                countDistinct(user_id) as visitors,
+                countIf(event_type = 'conversion') as conversions
+              FROM analytics.visit_logs_buffer
+              WHERE ${dailyWhereClause}
+              GROUP BY date
+              ORDER BY date ASC
+            `;
+          }
 
           const utmDailyResult = await queryWithMemoryLimit(utmDailyQuery, {
             format: 'JSONEachRow',
