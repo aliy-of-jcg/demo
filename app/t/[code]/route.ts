@@ -181,7 +181,9 @@ export async function GET(
       }, { status: 500 });
     }
     // CRITICAL: Pass tracking_code as URL parameter for reliable CTR tracking
+    // Use both _tc (short form for tracker.js) and tracking_code (explicit form)
     redirectUrl.searchParams.set('_tc', trackingCode);
+    redirectUrl.searchParams.set('tracking_code', trackingCode);
     if (utmCampaign) redirectUrl.searchParams.set('utm_campaign', utmCampaign);
     if (utmSource) redirectUrl.searchParams.set('utm_source', utmSource);
     if (utmMedium) redirectUrl.searchParams.set('utm_medium', utmMedium);
