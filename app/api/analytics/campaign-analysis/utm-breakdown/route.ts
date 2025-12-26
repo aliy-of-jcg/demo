@@ -292,7 +292,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
               visitors: utmVisitors,
               conversions: utmConversions,
               conversionRate: utmVisitors > 0 ? ((utmConversions / utmVisitors) * 100).toFixed(2) : '0.00',
-              ctr: utmClicks > 0 ? ((utmClicks / utmVisitors) * 100).toFixed(2) : '0.00',
+              ctr: utmClicks > 0 ? ((utmVisitors / utmClicks) * 100).toFixed(2) : '0.00',
             },
             dailyData: utmDailyJson.map(row => ({
               date: row.date,
