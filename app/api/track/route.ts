@@ -171,32 +171,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if domain is enabled (with caching and auto-registration)
-    const domain = normalizeDomain(page_url);
-    const enabled = await isDomainEnabled(domain);
-
-    if (!enabled) {
-      console.log(`🚫 Tracking blocked for disabled domain: ${domain}`);
-      // Return 200 OK to avoid client errors, but don't track
-      return NextResponse.json({ success: true, message: 'Domain disabled' });
-    }
-
-    // Lookup campaign_id and course_id from MySQL to preserve legacy data even after hard deletion
+    // Lookup campaign_id, course_id, and landing_url from MySQL
     let campaign_id = 0;
     let course_id = 0;
+    let landing_url = '';
 
     const pool = getPool();
     try {
       if (tracking_code && tracking_code !== '') {
-        // Primary method: lookup by tracking_code
+        // Primary method: lookup by tracking_code to get campaign info AND landing_url
         const [utmRows] = await pool.execute(
-          'SELECT campaign_id, c.course_id FROM utm_codes u LEFT JOIN campaigns c ON u.campaign_id = c.id WHERE u.tracking_code = ? LIMIT 1',
+          'SELECT u.campaign_id, u.landing_url, c.course_id FROM utm_codes u LEFT JOIN campaigns c ON u.campaign_id = c.id WHERE u.tracking_code = ? LIMIT 1',
           [tracking_code]
         );
 
         if ((utmRows as any[]).length > 0) {
           campaign_id = (utmRows as any[])[0].campaign_id || 0;
           course_id = (utmRows as any[])[0].course_id || 0;
+          landing_url = (utmRows as any[])[0].landing_url || '';
+
+          // CRITICAL: Check if landing_url domain is enabled/tracked
+          // This ensures visits from disabled/untracked landing URLs are blocked
+          // regardless of where the user navigates afterward
+          if (landing_url) {
+            const landingDomain = normalizeDomain(landing_url);
+            if (landingDomain) {
+              const landingEnabled = await isDomainEnabled(landingDomain);
+              if (!landingEnabled) {
+                console.log(`🚫 Tracking blocked: landing_url domain ${landingDomain} is disabled/not tracked (tracking_code: ${tracking_code})`);
+                // Return 200 OK to avoid client errors, but don't track
+                return NextResponse.json({ success: true, message: 'Landing domain disabled' });
+              }
+            }
+          }
         }
       }
 
@@ -215,6 +222,17 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       // If lookup fails, continue with 0 values (for direct traffic or unmatched UTMs)
       console.error('Error looking up campaign/course ID:', error);
+    }
+
+    // Check if current page_url domain is enabled (with caching and auto-registration)
+    // This is a secondary check for direct traffic or pages visited after landing
+    const domain = normalizeDomain(page_url);
+    const enabled = await isDomainEnabled(domain);
+
+    if (!enabled) {
+      console.log(`🚫 Tracking blocked for disabled domain: ${domain}`);
+      // Return 200 OK to avoid client errors, but don't track
+      return NextResponse.json({ success: true, message: 'Domain disabled' });
     }
 
     // Normalize utm_source: convert '(direct)' to 'Direct' for consistency
