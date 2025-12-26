@@ -175,20 +175,34 @@ export async function POST(request: NextRequest) {
     let campaign_id = 0;
     let course_id = 0;
     let landing_url = '';
+    let immutableUtmSource = '';
+    let immutableUtmMedium = '';
+    let immutableUtmCampaign = '';
+    let immutableUtmContent = '';
+    let immutableUtmTerm = '';
 
     const pool = getPool();
     try {
       if (tracking_code && tracking_code !== '') {
         // Primary method: lookup by tracking_code to get campaign info AND landing_url
+        // CRITICAL: Capture ALL attribution fields at event time for immutable attribution
         const [utmRows] = await pool.execute(
-          'SELECT u.campaign_id, u.landing_url, c.course_id FROM utm_codes u LEFT JOIN campaigns c ON u.campaign_id = c.id WHERE u.tracking_code = ? LIMIT 1',
+          'SELECT u.campaign_id, u.landing_url, u.utm_source, u.utm_medium, u.utm_campaign, u.utm_content, u.utm_term, c.course_id FROM utm_codes u LEFT JOIN campaigns c ON u.campaign_id = c.id WHERE u.tracking_code = ? LIMIT 1',
           [tracking_code]
         );
 
         if ((utmRows as any[]).length > 0) {
-          campaign_id = (utmRows as any[])[0].campaign_id || 0;
-          course_id = (utmRows as any[])[0].course_id || 0;
-          landing_url = (utmRows as any[])[0].landing_url || '';
+          const utmRow = (utmRows as any[])[0];
+          campaign_id = utmRow.campaign_id || 0;
+          course_id = utmRow.course_id || 0;
+          landing_url = utmRow.landing_url || '';
+          
+          // Capture immutable attribution from MySQL (normalize NULL to '')
+          immutableUtmSource = utmRow.utm_source || '';
+          immutableUtmMedium = utmRow.utm_medium || '';
+          immutableUtmCampaign = utmRow.utm_campaign || '';
+          immutableUtmContent = utmRow.utm_content || '';
+          immutableUtmTerm = utmRow.utm_term || '';
 
           // CRITICAL: Check if landing_url domain is enabled/tracked
           // This ensures visits from disabled/untracked landing URLs are blocked
@@ -236,9 +250,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Normalize utm_source: convert '(direct)' to 'Direct' for consistency
-    const normalizedUtmSource = (utm_source === '(direct)' || utm_source === '') ? 'Direct' : (utm_source || '');
+    // BUT: If tracking_code exists, use immutable attribution from MySQL (not URL params)
+    let finalUtmSource: string;
+    let finalUtmMedium: string;
+    let finalUtmCampaign: string;
+    let finalUtmContent: string;
+    let finalUtmTerm: string;
+    
+    if (tracking_code && tracking_code !== '' && immutableUtmCampaign) {
+      // Use immutable attribution captured from MySQL (for accurate historical attribution)
+      finalUtmSource = immutableUtmSource || 'Direct';
+      finalUtmMedium = immutableUtmMedium || '';
+      finalUtmCampaign = immutableUtmCampaign || '';
+      finalUtmContent = immutableUtmContent || '';
+      finalUtmTerm = immutableUtmTerm || '';
+    } else {
+      // Direct traffic or no tracking_code: use URL params (legacy behavior)
+      finalUtmSource = (utm_source === '(direct)' || utm_source === '') ? 'Direct' : (utm_source || '');
+      finalUtmMedium = utm_medium || '';
+      finalUtmCampaign = utm_campaign || '';
+      finalUtmContent = utm_content || '';
+      finalUtmTerm = utm_term || '';
+    }
 
     // Insert into ClickHouse visit_logs table
+    // CRITICAL: Store landing_url and all UTM params at event time for immutable attribution
     try {
       const timestampUTC = new Date().toISOString().slice(0, 19).replace('T', ' ');
       const createdDateKST = getCurrentDateKST();
@@ -255,11 +291,12 @@ export async function POST(request: NextRequest) {
           referrer: referrer || '',
           referrer_domain: referrer_domain || '',
           tracking_code: tracking_code || '',
-          utm_source: normalizedUtmSource,
-          utm_medium: utm_medium || '',
-          utm_campaign: utm_campaign || '',
-          utm_term: utm_term || '',
-          utm_content: utm_content || '',
+          landing_url: landing_url || '', // Immutable: captured from MySQL at event time
+          utm_source: finalUtmSource,
+          utm_medium: finalUtmMedium,
+          utm_campaign: finalUtmCampaign,
+          utm_term: finalUtmTerm,
+          utm_content: finalUtmContent,
           campaign_id: campaign_id, // Now populated from MySQL lookup
           course_id: course_id, // Now populated from MySQL lookup
           user_agent: user_agent || '',

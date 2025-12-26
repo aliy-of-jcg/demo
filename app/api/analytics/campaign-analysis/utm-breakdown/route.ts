@@ -6,6 +6,7 @@ import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 import { getCache, setCache } from '@/lib/cache/cache';
 import { resolveAnalyticsDates } from '@/lib/utils/kst-date';
+import { normalizeUtmAttribution, buildAttributionWhereClause } from '@/lib/utils/utm-normalization';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,45 +138,28 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // Get per-UTM breakdown with metrics and daily data
+    // CRITICAL: Use exact attribution matching to prevent historical data inheritance
     const utmBreakdown = await Promise.all(
       trackingCodes
         .filter(tc => tc.status !== 'hidden')
         .map(async (tc) => {
-          const trackingCode = tc.tracking_code;
-          const utmCampaign = tc.utm_campaign || '';
+          const trackingCode = tc.tracking_code || '';
+          
+          // Step 1: Get current attribution from MySQL and normalize
+          // This is the source of truth for "what attribution should this UTM have"
+          const currentAttribution = normalizeUtmAttribution({
+            utm_source: tc.utm_source,
+            utm_medium: tc.utm_medium,
+            utm_campaign: tc.utm_campaign,
+            utm_content: tc.utm_content,
+            utm_term: tc.utm_term,
+            landing_url: tc.landing_url,
+          });
 
-          // Get visitors and conversions for this UTM
-          // Query BOTH: records with matching tracking_code AND legacy records with matching UTM parameters
-          // This ensures we capture all visitors, including legacy data with empty tracking_code
-          const escapedSource = (tc.utm_source || '').replace(/'/g, "\\'");
-          const escapedMedium = (tc.utm_medium || '').replace(/'/g, "\\'");
-          const escapedCampaign = utmCampaign.replace(/'/g, "\\'");
-          const escapedContent = (tc.utm_content || '').replace(/'/g, "\\'");
-          
-          // Build WHERE clause that matches EITHER:
-          // 1. Records with matching tracking_code (if tracking_code exists)
-          // 2. Records with matching UTM parameters AND empty tracking_code (legacy data)
-          let visitWhereClause = '';
-          
-          if (trackingCode && trackingCode !== '') {
-            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
-            // Match by tracking_code OR (UTM params with empty tracking_code)
-            visitWhereClause = `(tracking_code = '${escapedTrackingCode}' OR (`;
-            visitWhereClause += `utm_campaign = '${escapedCampaign}'`;
-            visitWhereClause += ` AND utm_source = '${escapedSource}'`;
-            visitWhereClause += ` AND utm_medium = '${escapedMedium}'`;
-            visitWhereClause += ` AND utm_content = '${escapedContent}'`;
-            visitWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
-            visitWhereClause += `))`;
-          } else {
-            // No tracking_code in MySQL: only match by UTM parameters with empty tracking_code
-            visitWhereClause = `utm_campaign = '${escapedCampaign}'`;
-            visitWhereClause += ` AND utm_source = '${escapedSource}'`;
-            visitWhereClause += ` AND utm_medium = '${escapedMedium}'`;
-            visitWhereClause += ` AND utm_content = '${escapedContent}'`;
-            visitWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
-          }
-          
+          // Step 2: Build WHERE clause matching exact attribution
+          // Match by tracking_code + landing_url + all UTM params (immutable at event time)
+          // This prevents historical events from being attributed to changed UTMs
+          let visitWhereClause = buildAttributionWhereClause(currentAttribution, trackingCode);
           visitWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
           // Platform filter
@@ -200,16 +184,17 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
           const utmConversions = utmVisitData[0]?.conversions || 0;
 
-          // Get clicks for this UTM - use tracking_code (like campaign details page)
-          // This ensures accurate per-UTM clicks, especially when utm_content is empty
-          // tracking_events table has tracking_code which uniquely identifies each UTM
+          // Get clicks for this UTM - match by exact attribution
+          // CRITICAL: Match by tracking_code + landing_url + all UTM params
+          // This ensures clicks are only counted if they match current attribution exactly
           let utmClicks = 0;
           if (trackingCode && trackingCode !== '') {
-            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
+            // Build WHERE clause for clicks matching exact attribution
+            const clickWhereClause = buildAttributionWhereClause(currentAttribution, trackingCode);
             const utmClickQuery = `
               SELECT COUNT(*) as total_clicks
               FROM analytics.tracking_events_buffer
-              WHERE tracking_code = '${escapedTrackingCode}'
+              WHERE ${clickWhereClause}
                 AND created_date >= toDate('${finalStartDate}')
                 AND created_date <= toDate('${finalEndDate}')
             `;
@@ -222,28 +207,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             utmClicks = utmClickData[0]?.total_clicks || 0;
           }
 
-          // Get daily data for this UTM - use same logic as visitors query (tracking_code OR legacy UTM params)
-          let dailyWhereClause = '';
-          
-          if (trackingCode && trackingCode !== '') {
-            const escapedTrackingCode = trackingCode.replace(/'/g, "\\'");
-            // Match by tracking_code OR (UTM params with empty tracking_code)
-            dailyWhereClause = `(tracking_code = '${escapedTrackingCode}' OR (`;
-            dailyWhereClause += `utm_campaign = '${escapedCampaign}'`;
-            dailyWhereClause += ` AND utm_source = '${escapedSource}'`;
-            dailyWhereClause += ` AND utm_medium = '${escapedMedium}'`;
-            dailyWhereClause += ` AND utm_content = '${escapedContent}'`;
-            dailyWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
-            dailyWhereClause += `))`;
-          } else {
-            // No tracking_code in MySQL: only match by UTM parameters with empty tracking_code
-            dailyWhereClause = `utm_campaign = '${escapedCampaign}'`;
-            dailyWhereClause += ` AND utm_source = '${escapedSource}'`;
-            dailyWhereClause += ` AND utm_medium = '${escapedMedium}'`;
-            dailyWhereClause += ` AND utm_content = '${escapedContent}'`;
-            dailyWhereClause += ` AND (tracking_code = '' OR tracking_code IS NULL)`;
-          }
-          
+          // Get daily data for this UTM - use exact attribution matching
+          let dailyWhereClause = buildAttributionWhereClause(currentAttribution, trackingCode);
           dailyWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
           // Platform filter
@@ -280,9 +245,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             id: tc.id,
             name: tc.name,
             tracking_code: trackingCode,
-            utm_source: tc.utm_source,
-            utm_medium: tc.utm_medium,
-            utm_content: tc.utm_content,
+            utm_source: currentAttribution.utm_source,
+            utm_medium: currentAttribution.utm_medium,
+            utm_content: currentAttribution.utm_content,
             status: tc.status,
             budget: parseFloat(tc.budget) || 0,
             spent: parseFloat(tc.spent) || 0,

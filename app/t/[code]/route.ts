@@ -205,19 +205,21 @@ export async function GET(
         const geoLocation = getGeoLocation(ip);
         
         // 1. Log click event to tracking_events
+        // CRITICAL: Capture landing_url at click time for immutable attribution
         await insertWithMemoryLimit({
           table: "analytics.tracking_events",
           values: [{
             id: nanoid(),
             tracking_code: trackingCode,
+            landing_url: targetUrl, // Immutable: captured at click time
             campaign_name: campaignName || "Unknown",
             
-            // UTM Parameters
-            utm_source: utmSource,
-            utm_medium: utmMedium,
-            utm_campaign: utmCampaign,
-            utm_content: utmContent,
-            utm_term: utmTerm,
+            // UTM Parameters (immutable at click time)
+            utm_source: utmSource || '',
+            utm_medium: utmMedium || '',
+            utm_campaign: utmCampaign || '',
+            utm_content: utmContent || '',
+            utm_term: utmTerm || '',
             
             // Referrer Data
             referrer,
