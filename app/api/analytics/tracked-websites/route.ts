@@ -22,7 +22,8 @@ interface WebsiteData {
 }
 
 // Helper function to check if a domain should be filtered out (invalid domains)
-function isInvalidDomain(domain: string, lastSeen: Date | null): boolean {
+// Note: With strict domain registration, domains with NULL last_seen are valid if explicitly registered
+function isInvalidDomain(domain: string, lastSeen: Date | null, firstSeen: Date | null): boolean {
   // 1. IP addresses (raw IPs like 121.65.26.2)
   const ipRegex = /^\d{1,3}(\.\d{1,3}){3}$/;
   if (ipRegex.test(domain)) {
@@ -41,6 +42,7 @@ function isInvalidDomain(domain: string, lastSeen: Date | null): boolean {
   }
 
   // 4. Never-seen websites (last_seen is NULL or epoch date Jan 1, 1970)
+  // BUT: With strict domain registration, NULL last_seen is OK if domain was explicitly registered (has first_seen)
   if (lastSeen) {
     const epochDate = new Date('1970-01-01T00:00:00.000Z');
     // Allow small timestamp differences (timezone issues)
@@ -49,17 +51,22 @@ function isInvalidDomain(domain: string, lastSeen: Date | null): boolean {
       return true;
     }
   } else {
-    // NULL last_seen = never seen
-    return true;
+    // NULL last_seen = never seen traffic
+    // If domain has first_seen, it was explicitly registered (valid - just no traffic yet)
+    // If no first_seen either, it's invalid (shouldn't happen with strict registration)
+    if (!firstSeen) {
+      return true; // No first_seen and no last_seen = invalid
+    }
+    // Otherwise, it's a newly registered domain waiting for traffic (valid)
   }
 
   return false;
 }
 
 // Get list of invalid domains to exclude from analytics queries
-function getInvalidDomainFilters(trackedDomains: Array<{ domain: string; last_seen: Date | null }>): string {
+function getInvalidDomainFilters(trackedDomains: Array<{ domain: string; last_seen: Date | null; first_seen: Date | null }>): string {
   const invalidDomains = trackedDomains
-    .filter(d => isInvalidDomain(d.domain, d.last_seen))
+    .filter(d => isInvalidDomain(d.domain, d.last_seen, d.first_seen))
     .map(d => {
       const escaped = d.domain.replace(/'/g, "\\'");
       return `'${escaped}'`;
@@ -105,8 +112,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       last_seen: Date | null;
     }>;
 
-    // Filter out invalid domains (IPs, localhost, never-seen, etc.)
-    const trackedDomains = allTrackedDomains.filter(d => !isInvalidDomain(d.domain, d.last_seen));
+    // Filter out invalid domains (IPs, localhost, never-seen without registration, etc.)
+    // Note: Domains with NULL last_seen but valid first_seen are OK (newly registered, no traffic yet)
+    const trackedDomains = allTrackedDomains.filter(d => !isInvalidDomain(d.domain, d.last_seen, d.first_seen));
 
     // Get list of invalid domains for analytics query exclusion
     const invalidDomainFilters = getInvalidDomainFilters(allTrackedDomains);
