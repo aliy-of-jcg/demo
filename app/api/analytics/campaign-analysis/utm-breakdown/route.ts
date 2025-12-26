@@ -88,8 +88,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // Get all tracking codes for this campaign
+    // CRITICAL: Include utm_term in SELECT - was missing!
     const [trackingCodes] = await pool.query<RowDataPacket[]>(
-      'SELECT id, name, tracking_code, utm_campaign, utm_source, utm_medium, utm_content, status, budget, spent, landing_url FROM utm_codes WHERE campaign_id = ?',
+      'SELECT id, name, tracking_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, status, budget, spent, landing_url FROM utm_codes WHERE campaign_id = ?',
       [campaignId]
     );
 

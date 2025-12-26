@@ -206,11 +206,21 @@ export async function GET(
         
         // 1. Log click event to tracking_events
         // CRITICAL: Capture landing_url at click time for immutable attribution
+        const clickEventId = nanoid();
+        
+        // Format timestamp for ClickHouse: 'YYYY-MM-DD HH:mm:ss' (ClickHouse DateTime format)
+        const now = new Date();
+        const timestampUTC = now.toISOString().slice(0, 19).replace('T', ' ');
+        // Explicitly compute created_date from timestamp (Date format: 'YYYY-MM-DD')
+        const createdDate = now.toISOString().slice(0, 10);
+        
         await insertWithMemoryLimit({
           table: "analytics.tracking_events",
           values: [{
-            id: nanoid(),
+            id: clickEventId,
             tracking_code: trackingCode,
+            timestamp: timestampUTC, // Format: 'YYYY-MM-DD HH:mm:ss'
+            created_date: createdDate, // Explicitly set: 'YYYY-MM-DD'
             landing_url: targetUrl, // Immutable: captured at click time
             campaign_name: campaignName || "Unknown",
             
@@ -266,7 +276,10 @@ export async function GET(
         // with the real UUID cookie after redirect, ensuring accurate unique visitor tracking
         
       } catch (e) {
-        // Silently fail - don't log to console
+        // Log errors for debugging - click tracking should always work
+        console.error('❌ Error inserting click event:', e);
+        console.error('Tracking code:', trackingCode);
+        console.error('Target URL:', targetUrl);
       }
     });
     
