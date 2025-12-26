@@ -74,7 +74,7 @@ export async function parseRequestBody(req: NextRequest) {
       url,
       timestamp: new Date().toISOString()
     });
-
+    
     return {
       error: NextResponse.json(
         { success: false, error: 'Invalid JSON body' },
