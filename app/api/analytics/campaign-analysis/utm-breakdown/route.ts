@@ -321,7 +321,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       ? ((nonLegacyMetrics.conversions / nonLegacyMetrics.visitors) * 100).toFixed(2)
       : '0.00';
     const nonLegacyCtr = nonLegacyMetrics.clicks > 0
-      ? ((nonLegacyMetrics.clicks / nonLegacyMetrics.visitors) * 100).toFixed(2)
+      ? ((nonLegacyMetrics.visitors / nonLegacyMetrics.clicks) * 100).toFixed(2)
       : '0.00';
 
     const response = {
