@@ -13,11 +13,6 @@
  * - Client-side navigation tracking (SPA/Next.js router support)
  * - 2-year UUID expiration (Google Analytics standard)
  *
- * New in v4.8.4:
- * - Added one-time localStorage reset for RPA bot session cleanup
- * - Reset flag ensures localStorage is cleared once per browser/device
- * - RPA bots will be treated as new visitors after reset
- *
  * New in v4.8.3:
  * - Added 2-year expiration for visitor UUID (matches Google Analytics standard)
  * - UUIDs older than 2 years are automatically reset, treating user as new visitor
@@ -276,43 +271,6 @@
       this.pageLoadTime = Date.now();
 
       console.log('[CosMos] Initializing tracker v4.8.4 (localStorage-only, no cookies)...');
-
-      // ============================================================
-      // ONE-TIME LOCALSTORAGE CLEAR (Remove after RPA reset)
-      // ============================================================
-      const RESET_FLAG_KEY = 'cosmos_reset_completed_v1';
-      const shouldReset = !localStorage.getItem(RESET_FLAG_KEY);
-      
-      if (shouldReset) {
-        console.log('[CosMos] 🔄 Performing one-time localStorage reset for RPA bots...');
-        
-        // Clear all CosMos tracking data
-        localStorage.removeItem('cosmos_visitor_id');
-        localStorage.removeItem('cosmos_visit_count');
-        localStorage.removeItem('cosmos_first_visit');
-        localStorage.removeItem('cosmos_last_visit');
-        localStorage.removeItem('cosmos_last_activity');
-        localStorage.removeItem('cosmos_session_data');
-        localStorage.removeItem('cosmos_session_utm_data');
-        localStorage.removeItem('cosmos_exit_candidate');
-        localStorage.removeItem('cosmos_page_flow_data');
-        localStorage.removeItem('cosmos_page_sequence_data');
-        
-        // Clear sessionStorage
-        sessionStorage.removeItem('cosmos_session_page_count');
-        sessionStorage.removeItem('cosmos_session_tracker_id');
-        sessionStorage.removeItem('cosmos_last_page_clean');
-        sessionStorage.removeItem('cosmos_last_page_full');
-        sessionStorage.removeItem('cosmos_is_navigating');
-        sessionStorage.removeItem('cosmos_navigation_time');
-        
-        // Set flag so this only runs once
-        localStorage.setItem(RESET_FLAG_KEY, 'true');
-        console.log('[CosMos] ✅ localStorage reset completed. RPA bots will be treated as new visitors.');
-      }
-      // ============================================================
-      // END ONE-TIME RESET
-      // ============================================================
 
       // Check for expired session and send delayed exit event if needed
       this.checkAndSendDelayedExitEvent();
@@ -615,8 +573,8 @@
         // NEW SESSION: Set UTM parameters from current URL or mark as direct
         const hasUTMParams = urlParams.utm_campaign || urlParams.utm_source || urlParams.utm_medium;
 
-        // Extract tracking_code from URL parameter _tc (most reliable method)
-        let trackingCode = urlParams._tc || '';
+        // Extract tracking_code from URL parameter _tc or tracking_code (most reliable method)
+        let trackingCode = urlParams._tc || urlParams.tracking_code || '';
 
         // FALLBACK: Extract tracking_code from referrer if user came from /t/{code}
         // This is less reliable due to Safari/browser referrer stripping
