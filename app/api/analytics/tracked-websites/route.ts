@@ -21,6 +21,53 @@ interface WebsiteData {
   status: 'Active' | 'Inactive' | 'Disabled';
 }
 
+// Helper function to check if a domain should be filtered out (invalid domains)
+function isInvalidDomain(domain: string, lastSeen: Date | null): boolean {
+  // 1. IP addresses (raw IPs like 121.65.26.2)
+  const ipRegex = /^\d{1,3}(\.\d{1,3}){3}$/;
+  if (ipRegex.test(domain)) {
+    return true;
+  }
+
+  // 2. Localhost / local domains
+  const localDomains = ['localhost', '127.0.0.1', '0.0.0.0'];
+  if (localDomains.includes(domain.toLowerCase())) {
+    return true;
+  }
+
+  // 3. *.local domains (e.g., rewardi-v2.local)
+  if (domain.toLowerCase().endsWith('.local')) {
+    return true;
+  }
+
+  // 4. Never-seen websites (last_seen is NULL or epoch date Jan 1, 1970)
+  if (lastSeen) {
+    const epochDate = new Date('1970-01-01T00:00:00.000Z');
+    // Allow small timestamp differences (timezone issues)
+    const timeDiff = Math.abs(lastSeen.getTime() - epochDate.getTime());
+    if (timeDiff < 1000) { // Less than 1 second difference
+      return true;
+    }
+  } else {
+    // NULL last_seen = never seen
+    return true;
+  }
+
+  return false;
+}
+
+// Get list of invalid domains to exclude from analytics queries
+function getInvalidDomainFilters(trackedDomains: Array<{ domain: string; last_seen: Date | null }>): string {
+  const invalidDomains = trackedDomains
+    .filter(d => isInvalidDomain(d.domain, d.last_seen))
+    .map(d => {
+      const escaped = d.domain.replace(/'/g, "\\'");
+      return `'${escaped}'`;
+    });
+
+  return invalidDomains.length > 0 ? invalidDomains.join(', ') : "''"; // Empty string if none, to avoid SQL errors
+}
+
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   const cacheTtlMs = 300_000; // 5 minutes
   try {
@@ -51,12 +98,18 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       'SELECT domain, is_enabled, first_seen, last_seen FROM tracked_websites ORDER BY domain'
     ) as [any[], any];
 
-    const trackedDomains = mysqlRows as Array<{
+    const allTrackedDomains = mysqlRows as Array<{
       domain: string;
       is_enabled: number;
       first_seen: Date | null;
       last_seen: Date | null;
     }>;
+
+    // Filter out invalid domains (IPs, localhost, never-seen, etc.)
+    const trackedDomains = allTrackedDomains.filter(d => !isInvalidDomain(d.domain, d.last_seen));
+
+    // Get list of invalid domains for analytics query exclusion
+    const invalidDomainFilters = getInvalidDomainFilters(allTrackedDomains);
 
     if (trackedDomains.length === 0) {
       const responsePayload = {
@@ -87,14 +140,21 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       })
       .join(', ');
 
-    // Exclude internal domains
-    const excludedDomains = [
+    // Exclude internal domains (always exclude these)
+    const internalDomains = [
       'dev.cosmosai.co.kr',
-      'cosmosai.co.kr',
-      'localhost',
-      '127.0.0.1',
-      '0.0.0.0'
+      'cosmosai.co.kr'
     ].map(d => `'${d}'`).join(', ');
+
+    // Combine internal domains with invalid domains for query exclusion
+    const excludedDomainsList: string[] = [];
+    if (internalDomains) {
+      excludedDomainsList.push(internalDomains);
+    }
+    if (invalidDomainFilters && invalidDomainFilters !== "''") {
+      excludedDomainsList.push(invalidDomainFilters);
+    }
+    const excludedDomains = excludedDomainsList.length > 0 ? excludedDomainsList.join(', ') : "''";
 
     const clickhouseQuery = `
       SELECT 
