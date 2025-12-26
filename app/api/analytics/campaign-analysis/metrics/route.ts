@@ -3,7 +3,8 @@ import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { RowDataPacket } from 'mysql2';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
-import { getDefaultTimezone } from '@/lib/system-settings';
+import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
+import { normalizeUtmAttribution, buildAttributionWhereClause } from '@/lib/utils/utm-normalization';
 import { getCache, setCache } from '@/lib/cache/cache';
 
 export const dynamic = 'force-dynamic';
@@ -117,21 +118,37 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // 3. Extract unique platforms
     const allPlatforms = Array.from(new Set(trackingCodes.map(tc => tc.utm_medium || tc.utm_source))).filter(Boolean);
 
-    // Build WHERE clause using tracking_code
+    // CRITICAL: Build WHERE clause using exact attribution matching for each UTM
+    // Match events by tracking_code + landing_url + all UTM params (immutable at event time)
     const validTrackingCodes = trackingCodes
       .map(tc => tc.tracking_code)
       .filter(code => code && code !== '');
 
-    const utmCampaigns = Array.from(new Set(trackingCodes.map(tc => tc.utm_campaign))).filter(Boolean);
+    // Build exact attribution WHERE clauses for each UTM
+    const attributionWhereClauses: string[] = [];
+    trackingCodes.forEach(tc => {
+      if (tc.tracking_code && tc.tracking_code !== '') {
+        const attribution = normalizeUtmAttribution({
+          utm_source: tc.utm_source,
+          utm_medium: tc.utm_medium,
+          utm_campaign: tc.utm_campaign,
+          utm_content: tc.utm_content,
+          utm_term: tc.utm_term,
+          landing_url: tc.landing_url,
+        });
+        attributionWhereClauses.push(`(${buildAttributionWhereClause(attribution, tc.tracking_code)})`);
+      }
+    });
 
     let whereClause: string;
-    if (validTrackingCodes.length === 0) {
+    if (attributionWhereClauses.length > 0) {
+      // Match by exact attribution for each tracking code
+      whereClause = `(${attributionWhereClauses.join(' OR ')})`;
+    } else {
+      // Fallback for legacy data without tracking codes
+      const utmCampaigns = Array.from(new Set(trackingCodes.map(tc => tc.utm_campaign))).filter(Boolean);
       const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
       whereClause = `(campaign_id = ${campaignId} OR utm_campaign IN (${utmCampaignsList}))`;
-    } else {
-      const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-      const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
-      whereClause = `(campaign_id = ${campaignId} OR tracking_code IN (${trackingCodesList}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))`;
     }
 
     whereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
@@ -161,13 +178,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const conversions = visitData[0]?.conversions || 0;
     const conversionRate = visitors > 0 ? ((conversions / visitors) * 100).toFixed(2) : '0.00';
 
-    // 5. Get click metrics
+    // 5. Get click metrics - use exact attribution matching
     let clicks = 0;
     let clicksFromLegacyData = 0;
 
-    if (validTrackingCodes.length > 0) {
-      const trackingCodesList = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-      let clickWhereClause = `tracking_code IN (${trackingCodesList})`;
+    if (attributionWhereClauses.length > 0) {
+      // Build click WHERE clause using exact attribution for each UTM
+      // Use same attribution clauses for clicks (tracking_events has same schema)
+      const clickAttributionClauses = attributionWhereClauses;
+      
+      let clickWhereClause = `(${clickAttributionClauses.join(' OR ')})`;
       clickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
 
       const clickQuery = `
@@ -184,38 +204,12 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       clicks = clickData[0]?.total_clicks || 0;
     }
 
-    // Get clicks from legacy data
-    if (utmCampaigns.length > 0) {
-      try {
-        const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
-        const activeTrackingCodesSet = new Set(validTrackingCodes);
-
-        let legacyClickWhereClause = `utm_campaign IN (${utmCampaignsList}) AND tracking_code != '' AND tracking_code IS NOT NULL`;
-        legacyClickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
-
-        const legacyClicksQuery = await queryWithMemoryLimit(`
-            SELECT 
-              tracking_code,
-              COUNT(*) as total_clicks
-            FROM analytics.tracking_events_buffer
-            WHERE ${legacyClickWhereClause}
-            GROUP BY tracking_code
-          `, { format: 'JSONEachRow' });
-
-        const legacyClicksData = await legacyClicksQuery.json() as any[];
-
-        legacyClicksData.forEach((result: any) => {
-          const code = result.tracking_code;
-          const legacyClicks = parseInt(result.total_clicks || '0');
-          if (code && !activeTrackingCodesSet.has(code)) {
-            clicksFromLegacyData += legacyClicks;
-            clicks += legacyClicks;
-          }
-        });
-      } catch (error) {
-        console.error('Error fetching legacy clicks:', error);
-      }
-    }
+    // Legacy data clicks - now deprecated with exact attribution matching
+    // Historical clicks with old attribution are no longer counted (correct behavior)
+    // This ensures metrics reset to 0 when attribution changes
+    clicksFromLegacyData = 0;
+    
+    // Old legacy clicks query removed - exact attribution eliminates legacy mismatch
 
     const ctr = clicks > 0 ? ((visitors / clicks) * 100).toFixed(2) : '0.00';
 

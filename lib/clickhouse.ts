@@ -176,6 +176,7 @@ export const initClickHouseSchema = async () => {
       CREATE TABLE IF NOT EXISTS analytics.tracking_events (
       id String,
       tracking_code String,
+      landing_url String DEFAULT '',
       campaign_name String,
       utm_source String,
       utm_medium String,
@@ -216,7 +217,7 @@ export const initClickHouseSchema = async () => {
   await clickhouse.command({
     query: `
      CREATE TABLE IF NOT EXISTS analytics.visit_logs (
-      timestamp DateTime,
+      timestamp DateTime DEFAULT now(),
       created_date_kst Date DEFAULT toDate(toTimeZone(timestamp, 'Asia/Seoul')),
       session_id String,
       user_id String,
@@ -225,6 +226,7 @@ export const initClickHouseSchema = async () => {
       referrer String,
       referrer_domain String,
       tracking_code String DEFAULT '',
+      landing_url String DEFAULT '',
       utm_source String,
       utm_medium String,
       utm_campaign String,
@@ -263,6 +265,7 @@ export const initClickHouseSchema = async () => {
 export interface TrackingEvent {
   id: string;
   tracking_code: string;
+  landing_url: string; // Immutable attribution: captured at click time
   campaign_name: string;
 
   // UTM Parameters
