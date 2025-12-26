@@ -28,15 +28,13 @@ function normalizeDomain(url: string): string {
   }
 }
 
-// Check if domain is enabled (with caching and auto-registration)
-async function isDomainEnabled(domain: string): Promise<boolean> {
-  if (!domain) return true; // Allow if domain can't be extracted
+// Check if domain is registered and enabled (strict registration - no auto-registration)
+async function isDomainRegisteredAndEnabled(domain: string): Promise<{ registered: boolean; enabled: boolean }> {
+  if (!domain) return { registered: false, enabled: false };
 
   const now = Date.now();
   const cached = domainCache.get(domain);
 
-  // Always check database to get the latest updated_at timestamp
-  // This ensures immediate effect when a domain is disabled/enabled
   const pool = getPool();
   try {
     const [rows] = await pool.execute(
@@ -56,64 +54,53 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
         if (dbUpdatedAt > cached.updated_at || cached.is_enabled !== isEnabled) {
           console.log(`🔄 Cache invalidated for ${domain}: DB updated at ${new Date(dbUpdatedAt).toISOString()}, cache from ${new Date(cached.updated_at).toISOString()}`);
           domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-
-          return isEnabled;
+          return { registered: true, enabled: isEnabled };
         }
 
         // Cache is still valid (DB hasn't been updated since cache refresh)
         // Return cached value if it's still fresh
         if ((now - cached.last_refresh) < CACHE_TTL) {
-          return cached.is_enabled;
+          return { registered: true, enabled: cached.is_enabled };
         }
 
         // Cache is stale, refresh it
         domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-
-        return isEnabled;
+        return { registered: true, enabled: isEnabled };
       } else {
         // No cache entry, create one
         domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-
-        return isEnabled;
+        return { registered: true, enabled: isEnabled };
       }
     } else {
-      // Domain doesn't exist, auto-register as enabled
-      await pool.execute(
-        'INSERT INTO tracked_websites (domain, is_enabled, first_seen) VALUES (?, TRUE, NOW())',
-        [domain]
-      );
-
-      // Add to cache (use current timestamp as updated_at)
-      domainCache.set(domain, { is_enabled: true, last_refresh: now, updated_at: now });
-
-      console.log(`✅ Auto-registered new domain: ${domain}`);
-      return true;
+      // Domain doesn't exist - NOT registered
+      return { registered: false, enabled: false };
     }
   } catch (error: any) {
-    const now = Date.now();
+    console.error('Error checking domain registration status', error);
+    // On error, fail closed (don't track)
+    return { registered: false, enabled: false };
+  }
+}
 
-    if (isTransientInfraError(error)) {
-      console.warn('⚠️ DB/infra transient error; using cache/fail-open', {
-        code: error?.code,
-        errno: error?.errno,
-        sqlState: error?.sqlState
-      });
-      return cachedOrFailOpen(cached, now, CACHE_TTL);
-    }
+// Log detection attempt for unregistered domains
+async function logDomainDetection(domain: string, page_url: string): Promise<void> {
+  if (!domain) return;
 
-    if (isLikelyBugOrSchemaError(error)) {
-      console.error('🚨 DB bug/schema/auth error; investigate', {
-        code: error?.code,
-        errno: error?.errno,
-        sqlState: error?.sqlState,
-        message: error?.message
-      });
-      // Still fail open if that's the product choice, but log loudly
-      return cachedOrFailOpen(cached, now, CACHE_TTL);
-    }
-
-    console.error('❗ Unknown error checking domain status', error);
-    return cachedOrFailOpen(cached, now, CACHE_TTL);
+  const pool = getPool();
+  try {
+    // Upsert: update if exists, insert if not
+    await pool.execute(
+      `INSERT INTO detected_domains (domain, first_detected_at, last_detected_at, detection_count, sample_page_url)
+       VALUES (?, NOW(), NOW(), 1, ?)
+       ON DUPLICATE KEY UPDATE
+         last_detected_at = NOW(),
+         detection_count = detection_count + 1,
+         sample_page_url = ?`,
+      [domain, page_url, page_url]
+    );
+  } catch (error: any) {
+    // Silently fail - detection logging should not block tracking
+    console.error('Error logging domain detection:', error);
   }
 }
 
@@ -204,17 +191,22 @@ export async function POST(request: NextRequest) {
           immutableUtmContent = utmRow.utm_content || '';
           immutableUtmTerm = utmRow.utm_term || '';
 
-          // CRITICAL: Check if landing_url domain is enabled/tracked
-          // This ensures visits from disabled/untracked landing URLs are blocked
+          // CRITICAL: Check if landing_url domain is registered and enabled
+          // This ensures visits from unregistered/disabled landing URLs are blocked
           // regardless of where the user navigates afterward
           if (landing_url) {
             const landingDomain = normalizeDomain(landing_url);
             if (landingDomain) {
-              const landingEnabled = await isDomainEnabled(landingDomain);
-              if (!landingEnabled) {
-                console.log(`🚫 Tracking blocked: landing_url domain ${landingDomain} is disabled/not tracked (tracking_code: ${tracking_code})`);
-                // Return 200 OK to avoid client errors, but don't track
-                return NextResponse.json({ success: true, message: 'Landing domain disabled' });
+              const landingStatus = await isDomainRegisteredAndEnabled(landingDomain);
+              if (!landingStatus.registered) {
+                // Log detection attempt for unregistered domain
+                await logDomainDetection(landingDomain, landing_url);
+                console.log(`🚫 Tracking blocked: landing_url domain ${landingDomain} is not registered (tracking_code: ${tracking_code})`);
+                return NextResponse.json({ success: false, message: 'Landing domain not registered' });
+              }
+              if (!landingStatus.enabled) {
+                console.log(`🚫 Tracking blocked: landing_url domain ${landingDomain} is disabled (tracking_code: ${tracking_code})`);
+                return NextResponse.json({ success: false, message: 'Landing domain disabled' });
               }
             }
           }
@@ -238,15 +230,21 @@ export async function POST(request: NextRequest) {
       console.error('Error looking up campaign/course ID:', error);
     }
 
-    // Check if current page_url domain is enabled (with caching and auto-registration)
-    // This is a secondary check for direct traffic or pages visited after landing
+    // Check if current page_url domain is registered and enabled (strict registration)
+    // Visits are recorded only for explicitly registered & enabled domains
     const domain = normalizeDomain(page_url);
-    const enabled = await isDomainEnabled(domain);
+    const domainStatus = await isDomainRegisteredAndEnabled(domain);
 
-    if (!enabled) {
-      console.log(`🚫 Tracking blocked for disabled domain: ${domain}`);
-      // Return 200 OK to avoid client errors, but don't track
-      return NextResponse.json({ success: true, message: 'Domain disabled' });
+    if (!domainStatus.registered) {
+      // Log detection attempt for unregistered domain
+      await logDomainDetection(domain, page_url);
+      console.log(`🚫 Tracking blocked: domain ${domain} is not registered`);
+      return NextResponse.json({ success: false, message: 'Domain not registered' });
+    }
+
+    if (!domainStatus.enabled) {
+      console.log(`🚫 Tracking blocked: domain ${domain} is disabled`);
+      return NextResponse.json({ success: false, message: 'Domain disabled' });
     }
 
     // Normalize utm_source: convert '(direct)' to 'Direct' for consistency

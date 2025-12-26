@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { Globe, Activity, Users, Eye, TrendingUp, Ban, CheckCircle, Info } from 'lucide-react';
+import { Globe, Activity, Users, Eye, TrendingUp, Ban, CheckCircle, Info, AlertTriangle, Clock, ExternalLink } from 'lucide-react';
 import { PageFooter } from '@/components/page-footer';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
@@ -58,6 +58,14 @@ interface ApiResponse {
   };
 }
 
+interface DetectedDomain {
+  domain: string;
+  first_detected_at: string;
+  last_detected_at: string;
+  detection_count: number;
+  sample_page_url: string;
+}
+
 function TrackedWebsitesPageContent() {
   const t = useTranslations('trackedWebsites');
   const { hasPermission } = usePermission();
@@ -92,6 +100,12 @@ function TrackedWebsitesPageContent() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showToggleDialog, setShowToggleDialog] = useState(false);
   const [toggleDialogData, setToggleDialogData] = useState<{ domain: string, currentStatus: boolean } | null>(null);
+  
+  // Detected domains state
+  const [detectedDomains, setDetectedDomains] = useState<DetectedDomain[]>([]);
+  const [loadingDetected, setLoadingDetected] = useState(false);
+  const [processingDetected, setProcessingDetected] = useState<string | null>(null);
+  const [showDetectedSection, setShowDetectedSection] = useState(false);
 
   // Helper to enforce max range and provide user feedback
   const clampDateRange = (startStr: string, endStr: string) => {
@@ -127,6 +141,84 @@ function TrackedWebsitesPageContent() {
       end: end.toISOString().split('T')[0],
       clamped: false,
     };
+  };
+
+  // Fetch detected domains
+  const fetchDetectedDomains = async () => {
+    if (!canManageWebsites) return; // Only fetch if user has permission
+    
+    setLoadingDetected(true);
+    try {
+      const response = await fetchWithAuth('/api/detected-domains');
+      const result = await response.json();
+      
+      if (result.success) {
+        setDetectedDomains(result.detected_domains || []);
+      }
+    } catch (err) {
+      console.error('Error fetching detected domains:', err);
+    } finally {
+      setLoadingDetected(false);
+    }
+  };
+
+  // Register detected domain
+  const handleRegisterDomain = async (domain: string) => {
+    setProcessingDetected(domain);
+    
+    const promise = (async () => {
+      const response = await fetchWithAuth('/api/detected-domains/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to register domain');
+      }
+      
+      // Refresh both lists
+      await Promise.all([fetchDetectedDomains(), fetchData()]);
+      return result;
+    })();
+    
+    toast.promise(promise, {
+      loading: `Registering ${domain}...`,
+      success: `${domain} registered and enabled`,
+      error: (err) => `Failed to register: ${err.message}`
+    });
+    
+    promise.finally(() => setProcessingDetected(null));
+  };
+
+  // Reject detected domain
+  const handleRejectDomain = async (domain: string) => {
+    setProcessingDetected(domain);
+    
+    const promise = (async () => {
+      const response = await fetchWithAuth(`/api/detected-domains/${encodeURIComponent(domain)}`, {
+        method: 'DELETE'
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to reject domain');
+      }
+      
+      await fetchDetectedDomains();
+      return result;
+    })();
+    
+    toast.promise(promise, {
+      loading: `Rejecting ${domain}...`,
+      success: `${domain} rejected`,
+      error: (err) => `Failed to reject: ${err.message}`
+    });
+    
+    promise.finally(() => setProcessingDetected(null));
   };
 
   // Toggle website status
@@ -233,6 +325,7 @@ function TrackedWebsitesPageContent() {
     }
 
     fetchData();
+    fetchDetectedDomains(); // Also fetch detected domains
   }, [dateRange, settingsLoading]);
 
   // Close tooltip when clicking outside
@@ -382,6 +475,130 @@ function TrackedWebsitesPageContent() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <p className="text-red-800">{t('errors.loadFailed')}: {error}</p>
           <p className="text-red-600 text-sm mt-1">{t('errors.tryAgain')}</p>
+        </div>
+      )}
+
+      {/* Detected Domains Section */}
+      {canManageWebsites && detectedDomains.length > 0 && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowDetectedSection(!showDetectedSection)}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-yellow-100 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <span className="font-medium text-yellow-900">
+                {detectedDomains.length} Unregistered Domain{detectedDomains.length !== 1 ? 's' : ''} Detected
+              </span>
+            </div>
+            <span className="text-yellow-700 text-sm">
+              {showDetectedSection ? 'Hide' : 'Show'}
+            </span>
+          </button>
+          
+          {showDetectedSection && (
+            <div className="border-t border-yellow-200 bg-white">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Domain
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Detection Count
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        First / Last Detected
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Sample URL
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {detectedDomains.map((detected, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm font-medium text-gray-900">
+                              {detected.domain}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            {detected.detection_count} attempt{detected.detection_count !== 1 ? 's' : ''}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span className="text-xs">
+                              {new Date(detected.first_detected_at).toLocaleDateString()} / {new Date(detected.last_detected_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <a
+                            href={detected.sample_page_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline max-w-xs truncate"
+                          >
+                            <span className="truncate">{detected.sample_page_url}</span>
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleRegisterDomain(detected.domain)}
+                              disabled={processingDetected === detected.domain}
+                              className="px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {processingDetected === detected.domain ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-3 h-3" />
+                                  Enable & Register
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleRejectDomain(detected.domain)}
+                              disabled={processingDetected === detected.domain}
+                              className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {processingDetected === detected.domain ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <Ban className="w-3 h-3" />
+                                  Reject
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
