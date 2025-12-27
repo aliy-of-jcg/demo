@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
-import clickhouse from '@/lib/clickhouse';
+import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 
 // Type definitions for the courses data
@@ -196,10 +196,8 @@ export const GET = requirePermission('courses:read', async (request: NextRequest
           GROUP BY course_id
         `;
 
-        const directResult = await clickhouse.query({
-          query: directCourseVisitsQuery,
+        const directResult = await queryWithMemoryLimit(directCourseVisitsQuery, {
           format: 'JSONEachRow'
-
         });
 
         const directVisitsData = await directResult.json() as Array<{ course_id: number; total_visits: number }>;
@@ -222,8 +220,7 @@ export const GET = requirePermission('courses:read', async (request: NextRequest
         GROUP BY tracking_code
       `;
 
-      const visitsResult = await clickhouse.query({
-        query: visitsQuery,
+      const visitsResult = await queryWithMemoryLimit(visitsQuery, {
         format: 'JSONEachRow'
       });
 
@@ -282,8 +279,7 @@ export const GET = requirePermission('courses:read', async (request: NextRequest
           `;
 
           try {
-            const utmVisitsResult = await clickhouse.query({
-              query: utmVisitsQuery,
+            const utmVisitsResult = await queryWithMemoryLimit(utmVisitsQuery, {
               format: 'JSONEachRow'
             });
 

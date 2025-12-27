@@ -202,7 +202,7 @@ function DomainPagesPageContent() {
           className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-3"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Tracked Websites
+          {t('domainPages.backToTrackedWebsites')}
         </Link>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
@@ -211,7 +211,7 @@ function DomainPagesPageContent() {
               {domain}
             </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">
-              Page-by-page analytics breakdown
+              {t('domainPages.subtitle')}
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
@@ -295,8 +295,8 @@ function DomainPagesPageContent() {
       {/* Error State */}
       {error && !loading && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-800">Error: {error}</p>
-          <p className="text-red-600 text-sm mt-1">Please try again or go back to the tracked websites list.</p>
+          <p className="text-red-800">{t('domainPages.errors.error')}: {error}</p>
+          <p className="text-red-600 text-sm mt-1">{t('domainPages.errors.tryAgain')}</p>
         </div>
       )}
 
@@ -308,7 +308,7 @@ function DomainPagesPageContent() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Total Pages</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('domainPages.summary.totalPages')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_pages}
                   </p>
@@ -320,7 +320,7 @@ function DomainPagesPageContent() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Unique Visitors</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('domainPages.summary.uniqueVisitors')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_unique_visitors.toLocaleString()}
                   </p>
@@ -332,7 +332,7 @@ function DomainPagesPageContent() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Total Visits</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('domainPages.summary.totalVisits')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_visits.toLocaleString()}
                   </p>
@@ -344,7 +344,7 @@ function DomainPagesPageContent() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Total Pageviews</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('domainPages.summary.totalPageviews')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_pageviews.toLocaleString()}
                   </p>
@@ -356,7 +356,7 @@ function DomainPagesPageContent() {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm text-gray-600">Conversions</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('domainPages.summary.conversions')}</p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
                     {data.summary.total_conversions.toLocaleString()}
                   </p>
@@ -370,9 +370,9 @@ function DomainPagesPageContent() {
           {data.pages.length === 0 && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500">No pages found for this domain in the selected date range.</p>
+              <p className="text-gray-500">{t('domainPages.empty.noPages')}</p>
               <p className="text-xs sm:text-sm text-gray-400 mt-1">
-                Try adjusting the date range or check if tracking is enabled for this domain.
+                {t('domainPages.empty.hint')}
               </p>
             </div>
           )}
@@ -385,28 +385,28 @@ function DomainPagesPageContent() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Page
+                        {t('domainPages.table.page')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Unique Visitors
+                        {t('domainPages.table.uniqueVisitors')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Visits
+                        {t('domainPages.table.visits')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Pageviews
+                        {t('domainPages.table.pageviews')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Conversions
+                        {t('domainPages.table.conversions')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Conv. Rate
+                        {t('domainPages.table.convRate')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Avg. Time
+                        {t('domainPages.table.avgTime')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Last Seen
+                        {t('domainPages.table.lastSeen')}
                       </th>
                     </tr>
                   </thead>
@@ -472,33 +472,33 @@ function DomainPagesPageContent() {
                         <p className="text-xs text-gray-500 mb-2">{page.page_title}</p>
                       )}
                       <div className="text-xs text-gray-500">
-                        Last seen: {formatDate(page.last_seen)}
+                        {t('domainPages.mobile.lastSeen')} {formatDate(page.last_seen)}
                       </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <span className="text-gray-500 text-xs">Unique Visitors</span>
+                      <span className="text-gray-500 text-xs">{t('domainPages.mobile.uniqueVisitors')}</span>
                       <p className="font-medium text-gray-900">{page.unique_visitors.toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 text-xs">Visits</span>
+                      <span className="text-gray-500 text-xs">{t('domainPages.mobile.visits')}</span>
                       <p className="font-medium text-gray-900">{page.visits.toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 text-xs">Pageviews</span>
+                      <span className="text-gray-500 text-xs">{t('domainPages.mobile.pageviews')}</span>
                       <p className="font-medium text-gray-900">{page.pageviews.toLocaleString()}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 text-xs">Conversions</span>
+                      <span className="text-gray-500 text-xs">{t('domainPages.mobile.conversions')}</span>
                       <p className="font-medium text-orange-600">{page.conversions}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 text-xs">Conv. Rate</span>
+                      <span className="text-gray-500 text-xs">{t('domainPages.mobile.convRate')}</span>
                       <p className="font-medium text-gray-900">{page.conversion_rate.toFixed(2)}%</p>
                     </div>
                     <div>
-                      <span className="text-gray-500 text-xs">Avg. Time</span>
+                      <span className="text-gray-500 text-xs">{t('domainPages.mobile.avgTime')}</span>
                       <p className="font-medium text-gray-900">{formatTime(page.avg_time_on_page)}</p>
                     </div>
                   </div>

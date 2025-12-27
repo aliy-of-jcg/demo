@@ -1212,6 +1212,44 @@
     "export": {
       "filename": "추적-웹사이트-{start}-{end}.pdf",
       "title": "추적 웹사이트 - {start} ~ {end}"
+    },
+    "domainPages": {
+      "backToTrackedWebsites": "추적 웹사이트로 돌아가기",
+      "subtitle": "페이지별 분석 세부 정보",
+      "summary": {
+        "totalPages": "총 페이지",
+        "uniqueVisitors": "고유 방문자",
+        "totalVisits": "총 방문",
+        "totalPageviews": "총 페이지뷰",
+        "conversions": "전환"
+      },
+      "table": {
+        "page": "페이지",
+        "uniqueVisitors": "고유 방문자",
+        "visits": "방문",
+        "pageviews": "페이지뷰",
+        "conversions": "전환",
+        "convRate": "전환율",
+        "avgTime": "평균 시간",
+        "lastSeen": "최근 확인"
+      },
+      "mobile": {
+        "lastSeen": "최근 확인:",
+        "uniqueVisitors": "고유 방문자",
+        "visits": "방문",
+        "pageviews": "페이지뷰",
+        "conversions": "전환",
+        "convRate": "전환율",
+        "avgTime": "평균 시간"
+      },
+      "empty": {
+        "noPages": "선택한 날짜 범위에서 이 도메인에 대한 페이지를 찾을 수 없습니다.",
+        "hint": "날짜 범위를 조정하거나 이 도메인에 대한 추적이 활성화되어 있는지 확인하세요."
+      },
+      "errors": {
+        "error": "오류",
+        "tryAgain": "다시 시도하거나 추적 웹사이트 목록으로 돌아가세요."
+      }
     }
   },
   "trackingBadge": {
