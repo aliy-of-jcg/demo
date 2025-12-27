@@ -61,7 +61,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 90);
       const startDateStr = startDate.toISOString().split('T')[0];
-      
+
       // Query buffer table directly for real-time data
       const clicksQuery = await queryWithMemoryLimit(`
           SELECT 
@@ -123,56 +123,36 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
       }
     }
 
-    // Get unique visitors from visit_logs (include both tracking codes AND legacy data)
-    // Use campaign_id (denormalized) as primary method, with fallbacks for legacy data
-    // Match campaign-analysis API approach
-    let visitorsQuery: string;
-
-    if (trackingCodesList.length === 0 && utmCampaigns.length > 0) {
-      // Fallback: only legacy data available (use campaign_id OR utm_campaign)
-      const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
-      visitorsQuery = `
-        SELECT 
-          countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs_buffer
-        WHERE (campaign_id = ${id} OR (utm_campaign IN (${utmCampaignsList}) AND (tracking_code = '' OR tracking_code IS NULL)))
-          AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-      `;
-    } else if (trackingCodesList.length > 0 && utmCampaigns.length > 0) {
-      // Both tracking codes and legacy data (use campaign_id OR tracking_code OR utm_campaign)
+    // Get unique visitors from visit_logs using tracking_code or campaign_id
+    // Simplified query without fallback logic - all data now has tracking_code
+    if (trackingCodesList.length > 0) {
       const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-      const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
-
-      visitorsQuery = `
-        SELECT 
-          countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs_buffer
-        WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}) OR (tracking_code = '' AND utm_campaign IN (${utmCampaignsList})))
-          AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-      `;
-    } else if (trackingCodesList.length > 0) {
-      // Only tracking codes (use campaign_id OR tracking_code)
-      const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-
-      visitorsQuery = `
+      const visitorsQuery = `
         SELECT 
           countDistinct(user_id) as unique_visitors
         FROM analytics.visit_logs_buffer
         WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}))
           AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
+      const visitorsResult = await clickhouse.query({
+        query: visitorsQuery,
+        format: 'JSONEachRow'
+      });
+
+      const visitorsData = await visitorsResult.json() as any[];
+      if (visitorsData.length > 0) {
+        visitors = parseInt((visitorsData[0] as any).unique_visitors || '0');
+      }
     } else {
-      // No tracking codes, try campaign_id only
-      visitorsQuery = `
+      // No tracking codes, use campaign_id only
+      const visitorsQuery = `
         SELECT 
           countDistinct(user_id) as unique_visitors
         FROM analytics.visit_logs_buffer
         WHERE campaign_id = ${id}
           AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       `;
-    }
 
-    if (visitorsQuery) {
       const visitorsResult = await clickhouse.query({
         query: visitorsQuery,
         format: 'JSONEachRow'
