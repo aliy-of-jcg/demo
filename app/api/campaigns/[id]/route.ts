@@ -91,17 +91,16 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
         // but are NOT in the active tracking codes list (indicating hard-deleted UTMs)
         const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
 
-        const legacyClicksQuery = await clickhouse.query({
-          query: `
-            SELECT 
-              tracking_code,
-              COUNT(*) as total_clicks
-            FROM analytics.tracking_events_buffer
-            WHERE utm_campaign IN (${utmCampaignsList})
-              AND tracking_code != ''
-              AND tracking_code IS NOT NULL
-            GROUP BY tracking_code
-          `,
+        const legacyClicksQuery = await queryWithMemoryLimit(`
+          SELECT 
+            tracking_code,
+            COUNT(*) as total_clicks
+          FROM analytics.tracking_events_buffer
+          WHERE utm_campaign IN (${utmCampaignsList})
+            AND tracking_code != ''
+            AND tracking_code IS NOT NULL
+          GROUP BY tracking_code
+        `, {
           format: 'JSONEachRow'
         });
 
@@ -125,43 +124,46 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
 
     // Get unique visitors from visit_logs using tracking_code or campaign_id
     // Simplified query without fallback logic - all data now has tracking_code
-    if (trackingCodesList.length > 0) {
-      const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
-      const visitorsQuery = `
-        SELECT 
-          countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs_buffer
-        WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}))
-          AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-      `;
-      const visitorsResult = await clickhouse.query({
-        query: visitorsQuery,
-        format: 'JSONEachRow'
-      });
+    try {
+      if (trackingCodesList.length > 0) {
+        const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        const visitorsQuery = `
+          SELECT 
+            countDistinct(user_id) as unique_visitors
+          FROM analytics.visit_logs_buffer
+          WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}))
+            AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+        `;
+        const visitorsResult = await queryWithMemoryLimit(visitorsQuery, {
+          format: 'JSONEachRow'
+        });
 
-      const visitorsData = await visitorsResult.json() as any[];
-      if (visitorsData.length > 0) {
-        visitors = parseInt((visitorsData[0] as any).unique_visitors || '0');
+        const visitorsData = await visitorsResult.json() as any[];
+        if (visitorsData.length > 0) {
+          visitors = parseInt((visitorsData[0] as any).unique_visitors || '0');
+        }
+      } else {
+        // No tracking codes, use campaign_id only
+        const visitorsQuery = `
+          SELECT 
+            countDistinct(user_id) as unique_visitors
+          FROM analytics.visit_logs_buffer
+          WHERE campaign_id = ${id}
+            AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
+        `;
+
+        const visitorsResult = await queryWithMemoryLimit(visitorsQuery, {
+          format: 'JSONEachRow'
+        });
+
+        const visitorsData = await visitorsResult.json() as any[];
+        if (visitorsData.length > 0) {
+          visitors = parseInt((visitorsData[0] as any).unique_visitors || '0');
+        }
       }
-    } else {
-      // No tracking codes, use campaign_id only
-      const visitorsQuery = `
-        SELECT 
-          countDistinct(user_id) as unique_visitors
-        FROM analytics.visit_logs_buffer
-        WHERE campaign_id = ${id}
-          AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
-      `;
-
-      const visitorsResult = await clickhouse.query({
-        query: visitorsQuery,
-        format: 'JSONEachRow'
-      });
-
-      const visitorsData = await visitorsResult.json() as any[];
-      if (visitorsData.length > 0) {
-        visitors = parseInt((visitorsData[0] as any).unique_visitors || '0');
-      }
+    } catch (error) {
+      console.warn('⚠️ ClickHouse query failed, using 0 for visits:', error);
+      // Continue with 0 visitors if ClickHouse fails
     }
 
 
@@ -196,14 +198,13 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
       // This includes data from hard-deleted UTMs (campaign_id is stored in ClickHouse)
       const clickhouseTrackingCodesFromVisits = new Set<string>();
       try {
-        const clickhouseTrackingCodesQuery = await clickhouse.query({
-          query: `
-            SELECT DISTINCT tracking_code
-            FROM analytics.visit_logs_buffer
-            WHERE campaign_id = ${id}
-              AND tracking_code != ''
-              AND tracking_code IS NOT NULL
-          `,
+        const clickhouseTrackingCodesQuery = await queryWithMemoryLimit(`
+          SELECT DISTINCT tracking_code
+          FROM analytics.visit_logs_buffer
+          WHERE campaign_id = ${id}
+            AND tracking_code != ''
+            AND tracking_code IS NOT NULL
+        `, {
           format: 'JSONEachRow'
         });
 
@@ -222,14 +223,13 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
       if (utmCampaigns.length > 0) {
         try {
           const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
-          const clickhouseClicksQuery = await clickhouse.query({
-            query: `
-              SELECT DISTINCT tracking_code
-              FROM analytics.tracking_events_buffer
-              WHERE utm_campaign IN (${utmCampaignsList})
-                AND tracking_code != ''
-                AND tracking_code IS NOT NULL
-            `,
+          const clickhouseClicksQuery = await queryWithMemoryLimit(`
+            SELECT DISTINCT tracking_code
+            FROM analytics.tracking_events_buffer
+            WHERE utm_campaign IN (${utmCampaignsList})
+              AND tracking_code != ''
+              AND tracking_code IS NOT NULL
+          `, {
             format: 'JSONEachRow'
           });
 

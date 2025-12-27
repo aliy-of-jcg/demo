@@ -1212,6 +1212,44 @@
     "export": {
       "filename": "tracked-websites-{start}-to-{end}.pdf",
       "title": "Tracked Websites - {start} to {end}"
+    },
+    "domainPages": {
+      "backToTrackedWebsites": "Back to Tracked Websites",
+      "subtitle": "Page-by-page analytics breakdown",
+      "summary": {
+        "totalPages": "Total Pages",
+        "uniqueVisitors": "Unique Visitors",
+        "totalVisits": "Total Visits",
+        "totalPageviews": "Total Pageviews",
+        "conversions": "Conversions"
+      },
+      "table": {
+        "page": "Page",
+        "uniqueVisitors": "Unique Visitors",
+        "visits": "Visits",
+        "pageviews": "Pageviews",
+        "conversions": "Conversions",
+        "convRate": "Conv. Rate",
+        "avgTime": "Avg. Time",
+        "lastSeen": "Last Seen"
+      },
+      "mobile": {
+        "lastSeen": "Last seen:",
+        "uniqueVisitors": "Unique Visitors",
+        "visits": "Visits",
+        "pageviews": "Pageviews",
+        "conversions": "Conversions",
+        "convRate": "Conv. Rate",
+        "avgTime": "Avg. Time"
+      },
+      "empty": {
+        "noPages": "No pages found for this domain in the selected date range.",
+        "hint": "Try adjusting the date range or check if tracking is enabled for this domain."
+      },
+      "errors": {
+        "error": "Error",
+        "tryAgain": "Please try again or go back to the tracked websites list."
+      }
     }
   },
   "trackingBadge": {

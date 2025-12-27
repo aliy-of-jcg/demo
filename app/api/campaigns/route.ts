@@ -443,8 +443,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
             if (campaignNames.length > 0) {
               const campaignNamesList = campaignNames.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
 
-              const legacyClicksCheck = await clickhouse.query({
-                query: `
+              const legacyClicksCheck = await queryWithMemoryLimit(`
                 SELECT 
                   utm_campaign,
                   tracking_code,
@@ -454,7 +453,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
                   AND tracking_code != ''
                   AND tracking_code IS NOT NULL
                 GROUP BY utm_campaign, tracking_code
-              `,
+              `, {
                 format: 'JSONEachRow'
               });
 
@@ -487,14 +486,13 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
             // Check visit_logs for tracking codes that don't exist in MySQL (hard-deleted UTMs)
             if (campaignIds.length > 0) {
               const campaignIdsList = campaignIds.join(',');
-              const clickhouseTrackingCodesQuery = await clickhouse.query({
-                query: `
+              const clickhouseTrackingCodesQuery = await queryWithMemoryLimit(`
                 SELECT DISTINCT campaign_id, tracking_code
                 FROM analytics.visit_logs_buffer
                 WHERE campaign_id IN (${campaignIdsList})
                   AND tracking_code != ''
                   AND tracking_code IS NOT NULL
-              `,
+              `, {
                 format: 'JSONEachRow'
               });
 
