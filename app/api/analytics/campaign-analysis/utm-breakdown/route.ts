@@ -138,137 +138,261 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       }
     }
 
-    // Get per-UTM breakdown with metrics and daily data
+    // Batch fetch all clicks, visits, and daily data in 3 queries (instead of 3N queries)
     // CRITICAL: Use exact attribution matching to prevent historical data inheritance
-    const utmBreakdown = await Promise.all(
-      trackingCodes
-        .filter(tc => tc.status !== 'hidden')
-        .map(async (tc) => {
-          const trackingCode = tc.tracking_code || '';
-          
-          // Step 1: Get current attribution from MySQL and normalize
-          // This is the source of truth for "what attribution should this UTM have"
-          const currentAttribution = normalizeUtmAttribution({
-            utm_source: tc.utm_source,
-            utm_medium: tc.utm_medium,
-            utm_campaign: tc.utm_campaign,
-            utm_content: tc.utm_content,
-            utm_term: tc.utm_term,
-            landing_url: tc.landing_url,
+    /**
+     * Attribution identity is defined by:
+     * tracking_code + landing_url + all UTM params.
+     * Any change creates a new identity and resets metrics.
+     */
+
+    const activeTrackingCodes = trackingCodes.filter(tc => tc.status !== 'hidden');
+    const activeTrackingCodesList = activeTrackingCodes
+      .map(tc => tc.tracking_code)
+      .filter(code => code && code !== '');
+
+    // Build platform filter for WHERE clause
+    const platformFilter = platform && platform !== 'all'
+      ? ` AND (utm_medium = '${platform.replace(/'/g, "\\'")}' OR utm_source = '${platform.replace(/'/g, "\\'")}')`
+      : '';
+
+    // 1. Batch query for clicks - GROUP BY all attribution fields
+    const clicksMap = new Map<string, number>(); // compositeKey -> clicks
+    if (activeTrackingCodesList.length > 0) {
+      try {
+        const escapedCodes = activeTrackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        const clicksQuery = `
+          SELECT 
+            tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term,
+            COUNT(*) as total_clicks
+          FROM analytics.tracking_events_buffer
+          WHERE tracking_code IN (${escapedCodes})
+            AND created_date >= toDate('${finalStartDate}')
+            AND created_date <= toDate('${finalEndDate}')
+          GROUP BY 
+            tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term
+        `;
+
+        const clicksResult = await queryWithMemoryLimit(clicksQuery, {
+          format: 'JSONEachRow'
+        });
+
+        const clicksData = await clicksResult.json() as any[];
+        clicksData.forEach((row: any) => {
+          const normalizedAttribution = normalizeUtmAttribution({
+            landing_url: row.landing_url || '',
+            utm_source: row.utm_source || '',
+            utm_medium: row.utm_medium || '',
+            utm_campaign: row.utm_campaign || '',
+            utm_content: row.utm_content || '',
+            utm_term: row.utm_term || '',
           });
 
-          // Step 2: Build WHERE clause matching exact attribution
-          // Match by tracking_code + landing_url + all UTM params (immutable at event time)
-          // This prevents historical events from being attributed to changed UTMs
-          let visitWhereClause = buildAttributionWhereClause(currentAttribution, trackingCode);
-          visitWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
+          const compositeKey = `${row.tracking_code}::${normalizedAttribution.landing_url}::${normalizedAttribution.utm_source}::${normalizedAttribution.utm_medium}::${normalizedAttribution.utm_campaign}::${normalizedAttribution.utm_content}::${normalizedAttribution.utm_term}`;
+          clicksMap.set(compositeKey, parseInt(row.total_clicks) || 0);
+        });
+      } catch (error) {
+        console.error('Error fetching clicks:', error);
+      }
+    }
 
-          // Platform filter
-          if (platform && platform !== 'all') {
-            const escapedPlatform = platform.replace(/'/g, "\\'");
-            visitWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
-          }
+    // 2. Batch query for visits - GROUP BY all attribution fields
+    const visitsMap = new Map<string, { visitors: number; conversions: number }>(); // compositeKey -> {visitors, conversions}
+    if (activeTrackingCodesList.length > 0) {
+      try {
+        const escapedCodes = activeTrackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        const visitsQuery = `
+          SELECT 
+            tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term,
+            countDistinct(user_id) as unique_visitors,
+            countIf(event_type = 'conversion') as conversions
+          FROM analytics.visit_logs_buffer
+          WHERE tracking_code IN (${escapedCodes})
+            AND created_date_kst >= toDate('${finalStartDate}')
+            AND created_date_kst <= toDate('${finalEndDate}')
+            ${platformFilter}
+          GROUP BY 
+            tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term
+        `;
 
-          const utmVisitQuery = `
-            SELECT 
-              countDistinct(user_id) as unique_visitors,
-              countIf(event_type = 'conversion') as conversions
-            FROM analytics.visit_logs_buffer
-            WHERE ${visitWhereClause}
-          `;
+        const visitsResult = await queryWithMemoryLimit(visitsQuery, {
+          format: 'JSONEachRow'
+        });
 
-          const utmVisitResult = await queryWithMemoryLimit(utmVisitQuery, {
-            format: 'JSONEachRow',
+        const visitsData = await visitsResult.json() as any[];
+        visitsData.forEach((row: any) => {
+          const normalizedAttribution = normalizeUtmAttribution({
+            landing_url: row.landing_url || '',
+            utm_source: row.utm_source || '',
+            utm_medium: row.utm_medium || '',
+            utm_campaign: row.utm_campaign || '',
+            utm_content: row.utm_content || '',
+            utm_term: row.utm_term || '',
           });
 
-          const utmVisitData = await utmVisitResult.json() as Array<{ unique_visitors: number; conversions: number }>;
-          const utmVisitors = utmVisitData[0]?.unique_visitors || 0;
-          const utmConversions = utmVisitData[0]?.conversions || 0;
+          const compositeKey = `${row.tracking_code}::${normalizedAttribution.landing_url}::${normalizedAttribution.utm_source}::${normalizedAttribution.utm_medium}::${normalizedAttribution.utm_campaign}::${normalizedAttribution.utm_content}::${normalizedAttribution.utm_term}`;
+          visitsMap.set(compositeKey, {
+            visitors: parseInt(row.unique_visitors) || 0,
+            conversions: parseInt(row.conversions) || 0,
+          });
+        });
+      } catch (error) {
+        console.error('Error fetching visits:', error);
+      }
+    }
 
-          // Get clicks for this UTM - match by exact attribution
-          // CRITICAL: Match by tracking_code + landing_url + all UTM params
-          // This ensures clicks are only counted if they match current attribution exactly
-          let utmClicks = 0;
-          if (trackingCode && trackingCode !== '') {
-            // Build WHERE clause for clicks matching exact attribution
-            const clickWhereClause = buildAttributionWhereClause(currentAttribution, trackingCode);
-            const utmClickQuery = `
-              SELECT COUNT(*) as total_clicks
-              FROM analytics.tracking_events_buffer
-              WHERE ${clickWhereClause}
-                AND created_date >= toDate('${finalStartDate}')
-                AND created_date <= toDate('${finalEndDate}')
-            `;
+    // 3. Batch query for daily data - GROUP BY date + all attribution fields
+    const dailyDataMap = new Map<string, Array<{ date: string; visitors: number; conversions: number }>>(); // compositeKey -> daily data array
+    if (activeTrackingCodesList.length > 0) {
+      try {
+        const escapedCodes = activeTrackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        const dailyQuery = `
+          SELECT 
+            tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term,
+            toDate(toTimeZone(timestamp, '${timezone}')) as date,
+            countDistinct(user_id) as visitors,
+            countIf(event_type = 'conversion') as conversions
+          FROM analytics.visit_logs_buffer
+          WHERE tracking_code IN (${escapedCodes})
+            AND created_date_kst >= toDate('${finalStartDate}')
+            AND created_date_kst <= toDate('${finalEndDate}')
+            ${platformFilter}
+          GROUP BY 
+            tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term,
+            date
+          ORDER BY 
+            tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term,
+            date ASC
+        `;
 
-            const utmClickResult = await queryWithMemoryLimit(utmClickQuery, {
-              format: 'JSONEachRow',
-            });
+        const dailyResult = await queryWithMemoryLimit(dailyQuery, {
+          format: 'JSONEachRow'
+        });
 
-            const utmClickData = await utmClickResult.json() as Array<{ total_clicks: number }>;
-            utmClicks = utmClickData[0]?.total_clicks || 0;
-          }
-
-          // Get daily data for this UTM - use exact attribution matching
-          let dailyWhereClause = buildAttributionWhereClause(currentAttribution, trackingCode);
-          dailyWhereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
-
-          // Platform filter
-          if (platform && platform !== 'all') {
-            const escapedPlatform = platform.replace(/'/g, "\\'");
-            dailyWhereClause += ` AND (utm_medium = '${escapedPlatform}' OR utm_source = '${escapedPlatform}')`;
-          }
-
-          const utmDailyQuery = `
-            SELECT 
-              toDate(toTimeZone(timestamp, '${timezone}')) as date,
-              countDistinct(user_id) as visitors,
-              countIf(event_type = 'conversion') as conversions
-            FROM analytics.visit_logs_buffer
-            WHERE ${dailyWhereClause}
-            GROUP BY date
-            ORDER BY date ASC
-          `;
-
-          const utmDailyResult = await queryWithMemoryLimit(utmDailyQuery, {
-            format: 'JSONEachRow',
+        const dailyData = await dailyResult.json() as any[];
+        dailyData.forEach((row: any) => {
+          const normalizedAttribution = normalizeUtmAttribution({
+            landing_url: row.landing_url || '',
+            utm_source: row.utm_source || '',
+            utm_medium: row.utm_medium || '',
+            utm_campaign: row.utm_campaign || '',
+            utm_content: row.utm_content || '',
+            utm_term: row.utm_term || '',
           });
 
-          const utmDailyJson = await utmDailyResult.json() as Array<{ date: string; visitors: number; conversions: number }>;
+          const compositeKey = `${row.tracking_code}::${normalizedAttribution.landing_url}::${normalizedAttribution.utm_source}::${normalizedAttribution.utm_medium}::${normalizedAttribution.utm_campaign}::${normalizedAttribution.utm_content}::${normalizedAttribution.utm_term}`;
 
-          // Check if landing page is tracked
-          let landingPageTracked = true;
-          if (tc.landing_url) {
-            const domain = normalizeDomain(tc.landing_url);
-            landingPageTracked = domain ? trackedDomainsSet.has(domain) : false;
+          if (!dailyDataMap.has(compositeKey)) {
+            dailyDataMap.set(compositeKey, []);
           }
+          dailyDataMap.get(compositeKey)!.push({
+            date: row.date,
+            visitors: parseInt(row.visitors) || 0,
+            conversions: parseInt(row.conversions) || 0,
+          });
+        });
+      } catch (error) {
+        console.error('Error fetching daily data:', error);
+      }
+    }
 
-          return {
-            id: tc.id,
-            name: tc.name,
-            tracking_code: trackingCode,
-            utm_source: currentAttribution.utm_source,
-            utm_medium: currentAttribution.utm_medium,
-            utm_content: currentAttribution.utm_content,
-            status: tc.status,
-            budget: parseFloat(tc.budget) || 0,
-            spent: parseFloat(tc.spent) || 0,
-            landingPageTracked,
-            metrics: {
-              clicks: utmClicks,
-              visitors: utmVisitors,
-              conversions: utmConversions,
-              conversionRate: utmVisitors > 0 ? ((utmConversions / utmVisitors) * 100).toFixed(2) : '0.00',
-              ctr: utmClicks > 0 ? ((utmVisitors / utmClicks) * 100).toFixed(2) : '0.00',
-            },
-            dailyData: utmDailyJson.map(row => ({
-              date: row.date,
-              visitors: row.visitors || 0,
-              conversions: row.conversions || 0,
-              conversionRate: (row.visitors || 0) > 0 ? (((row.conversions || 0) / (row.visitors || 0)) * 100).toFixed(2) : '0.00',
-            })),
-          };
-        })
-    );
+    // Map results back to UTMs by matching exact attribution
+    const utmBreakdown = activeTrackingCodes.map(tc => {
+      const trackingCode = tc.tracking_code || '';
+
+      // Get current attribution from MySQL and normalize (source of truth)
+      const currentAttribution = normalizeUtmAttribution({
+        utm_source: tc.utm_source,
+        utm_medium: tc.utm_medium,
+        utm_campaign: tc.utm_campaign,
+        utm_content: tc.utm_content,
+        utm_term: tc.utm_term,
+        landing_url: tc.landing_url,
+      });
+
+      // Build composite key matching MySQL attribution (exact match)
+      const compositeKey = `${trackingCode}::${currentAttribution.landing_url}::${currentAttribution.utm_source}::${currentAttribution.utm_medium}::${currentAttribution.utm_campaign}::${currentAttribution.utm_content}::${currentAttribution.utm_term}`;
+
+      // Get metrics from maps
+      const clicks = clicksMap.get(compositeKey) || 0;
+      const visitsData = visitsMap.get(compositeKey) || { visitors: 0, conversions: 0 };
+      const dailyData = dailyDataMap.get(compositeKey) || [];
+
+      // Check if landing page is tracked
+      let landingPageTracked = true;
+      if (tc.landing_url) {
+        const domain = normalizeDomain(tc.landing_url);
+        landingPageTracked = domain ? trackedDomainsSet.has(domain) : false;
+      }
+
+      return {
+        id: tc.id,
+        name: tc.name,
+        tracking_code: trackingCode,
+        utm_source: currentAttribution.utm_source,
+        utm_medium: currentAttribution.utm_medium,
+        utm_content: currentAttribution.utm_content,
+        status: tc.status,
+        budget: parseFloat(tc.budget) || 0,
+        spent: parseFloat(tc.spent) || 0,
+        landingPageTracked,
+        metrics: {
+          clicks,
+          visitors: visitsData.visitors,
+          conversions: visitsData.conversions,
+          conversionRate: visitsData.visitors > 0 ? ((visitsData.conversions / visitsData.visitors) * 100).toFixed(2) : '0.00',
+          ctr: clicks > 0 ? ((visitsData.visitors / clicks) * 100).toFixed(2) : '0.00',
+        },
+        dailyData: dailyData.map(row => ({
+          date: row.date,
+          visitors: row.visitors,
+          conversions: row.conversions,
+          conversionRate: row.visitors > 0 ? ((row.conversions / row.visitors) * 100).toFixed(2) : '0.00',
+        })),
+      };
+    });
 
     // Calculate non-legacy metrics (only from active UTMs)
     const nonLegacyMetrics = {
