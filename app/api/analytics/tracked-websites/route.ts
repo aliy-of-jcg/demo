@@ -165,21 +165,21 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const excludedDomains = excludedDomainsList.length > 0 ? excludedDomainsList.join(', ') : "''";
 
     const clickhouseQuery = `
-      SELECT 
-        lower(if(startsWith(domain(page_url), 'www.'), 
-          substring(domain(page_url), 5), 
-          domain(page_url))) as normalized_domain,
+          SELECT 
+            lower(if(startsWith(domain(page_url), 'www.'), 
+              substring(domain(page_url), 5), 
+              domain(page_url))) as normalized_domain,
         uniqExact(session_id) as total_sessions,
         uniqExact(user_id) as unique_visitors,
         countIf(event_type = 'pageview') as total_pageviews,
         countIf(event_type = 'conversion') as total_conversions,
         MIN(timestamp) as range_first_seen,
         MAX(timestamp) as range_last_seen
-      FROM analytics.visit_logs_buffer
+        FROM analytics.visit_logs_buffer
       WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
-        AND page_url != ''
-        AND page_url IS NOT NULL
-        AND domain(page_url) != ''
+          AND page_url != ''
+          AND page_url IS NOT NULL
+          AND domain(page_url) != ''
         AND lower(if(startsWith(domain(page_url), 'www.'), 
           substring(domain(page_url), 5), 
           domain(page_url))) IN (${domainList})
@@ -200,8 +200,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     try {
       const result = await queryWithMemoryLimit(clickhouseQuery, {
-        format: 'JSONEachRow'
-      });
+      format: 'JSONEachRow'
+    });
       const metrics = await result.json() as Array<{
         normalized_domain: string;
         total_sessions: number;

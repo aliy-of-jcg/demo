@@ -6,6 +6,7 @@ import { getSettingsWithDefaults } from '@/lib/system-settings';
 import { parseRequestBody } from '@/lib/utils/parse-request-body';
 import { isTransientInfraError, isLikelyBugOrSchemaError, cachedOrFailOpen } from '@/lib/utils/db-error-handler';
 import { getCurrentDateKST } from '@/lib/utils/kst-date';
+import { sendTelegramNotification } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +89,13 @@ async function logDomainDetection(domain: string, page_url: string): Promise<voi
 
   const pool = getPool();
   try {
+    // Check if domain already exists (to determine if this is first detection)
+    const [existingRows] = await pool.execute(
+      'SELECT detection_count FROM detected_domains WHERE domain = ?',
+      [domain]
+    );
+    const isNewDomain = (existingRows as any[]).length === 0;
+
     // Upsert: update if exists, insert if not
     await pool.execute(
       `INSERT INTO detected_domains (domain, first_detected_at, last_detected_at, detection_count, sample_page_url)
@@ -98,6 +106,37 @@ async function logDomainDetection(domain: string, page_url: string): Promise<voi
          sample_page_url = ?`,
       [domain, page_url, page_url]
     );
+
+    // Send Telegram notification for new domain detections only
+    if (isNewDomain) {
+      // Use production URL for notifications (dev.cosmosai.co.kr for dev, app.cosmosai.co.kr for prod)
+      const rawUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const appUrl = rawUrl.includes('localhost') ? 'https://dev.cosmosai.co.kr' : rawUrl || 'https://app.cosmosai.co.kr';
+      const reviewUrl = `${appUrl}/tracked-websites`;
+
+      // Escape user-provided content for HTML
+      const escapedDomain = domain
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      const escapedUrl = page_url
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+      const message = `<b>🔔 New Domain Detected</b>\n\n` +
+        `Domain: <b>${escapedDomain}</b>\n` +
+        `Sample URL: ${escapedUrl}\n\n` +
+        `This domain has been detected but is not yet registered for tracking.\n\n` +
+        `<a href="${reviewUrl}">Review and Approve →</a>`;
+
+      // Send notification asynchronously (don't block tracking) with HTML formatting
+      sendTelegramNotification(message, 'HTML').catch(error => {
+        console.error('Error sending Telegram notification:', error);
+      });
+    }
   } catch (error: any) {
     // Silently fail - detection logging should not block tracking
     console.error('Error logging domain detection:', error);
@@ -183,7 +222,7 @@ export async function POST(request: NextRequest) {
           campaign_id = utmRow.campaign_id || 0;
           course_id = utmRow.course_id || 0;
           landing_url = utmRow.landing_url || '';
-          
+
           // Capture immutable attribution from MySQL (normalize NULL to '')
           immutableUtmSource = utmRow.utm_source || '';
           immutableUtmMedium = utmRow.utm_medium || '';
@@ -254,7 +293,7 @@ export async function POST(request: NextRequest) {
     let finalUtmCampaign: string;
     let finalUtmContent: string;
     let finalUtmTerm: string;
-    
+
     if (tracking_code && tracking_code !== '' && immutableUtmCampaign) {
       // Use immutable attribution captured from MySQL (for accurate historical attribution)
       finalUtmSource = immutableUtmSource || 'Direct';
@@ -276,7 +315,7 @@ export async function POST(request: NextRequest) {
     try {
       const timestampUTC = new Date().toISOString().slice(0, 19).replace('T', ' ');
       const createdDateKST = getCurrentDateKST();
-      
+
       await insertWithMemoryLimit({
         table: 'analytics.visit_logs',
         values: [{
