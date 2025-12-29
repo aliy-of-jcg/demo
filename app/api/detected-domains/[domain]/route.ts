@@ -23,22 +23,22 @@ export const DELETE = requirePermissionWithParams('settings:update', async (
 
     const pool = getPool();
 
-    // Delete from detected_domains
+    // Set status to 'rejected' instead of deleting (allows admins to change mind later)
     const [result] = await pool.execute(
-      'DELETE FROM detected_domains WHERE domain = ?',
-      [domain]
+      'UPDATE detected_domains SET status = ? WHERE domain = ?',
+      ['rejected', domain]
     );
 
-    const deleteResult = result as any;
+    const updateResult = result as any;
 
-    if (deleteResult.affectedRows === 0) {
+    if (updateResult.affectedRows === 0) {
       return NextResponse.json(
         { success: false, error: 'Domain not found in detected domains' },
         { status: 404 }
       );
     }
 
-    console.log(`✅ Detected domain ${domain} rejected and deleted`);
+    console.log(`✅ Detected domain ${domain} rejected`);
 
     return NextResponse.json({
       success: true,
