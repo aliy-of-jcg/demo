@@ -59,13 +59,13 @@ export const GET = requirePermissionWithParams('analytics:read', async (
       SELECT 
         page_url,
         MAX(page_title) as page_title,
-        uniqExact(user_id) as unique_visitors,
-        uniqExact(session_id) as visits,
+        uniq(user_id) as unique_visitors,
+        uniq(session_id) as visits,
         countIf(event_type = 'pageview') as pageviews,
         countIf(event_type = 'conversion') as conversions,
         CASE 
-          WHEN uniqExact(user_id) > 0 
-          THEN round((countIf(event_type = 'conversion') / uniqExact(user_id)) * 100, 2)
+          WHEN uniq(user_id) > 0 
+          THEN round((countIf(event_type = 'conversion') / uniq(user_id)) * 100, 2)
           ELSE 0
         END as conversion_rate,
         round(AVG(time_on_page), 0) as avg_time_on_page,
