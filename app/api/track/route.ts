@@ -109,20 +109,31 @@ async function logDomainDetection(domain: string, page_url: string): Promise<voi
 
     // Send Telegram notification for new domain detections only
     if (isNewDomain) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.cosmosai.co.kr';
-      // Escape user-provided content to prevent markdown injection
-      // Only escape special chars that would break markdown formatting
-      const escapedDomain = domain.replace(/[\[\]()*_`]/g, '\\$&');
-      const escapedUrl = page_url.replace(/[\[\]()*_`]/g, '\\$&');
+      // Use production URL for notifications (dev.cosmosai.co.kr for dev, app.cosmosai.co.kr for prod)
+      const rawUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const appUrl = rawUrl.includes('localhost') ? 'https://dev.cosmosai.co.kr' : rawUrl || 'https://app.cosmosai.co.kr';
+      const reviewUrl = `${appUrl}/tracked-websites`;
 
-      const message = `🔔 *New Domain Detected*\n\n` +
-        `Domain: *${escapedDomain}*\n` +
+      // Escape user-provided content for HTML
+      const escapedDomain = domain
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      const escapedUrl = page_url
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+      const message = `<b>🔔 New Domain Detected</b>\n\n` +
+        `Domain: <b>${escapedDomain}</b>\n` +
         `Sample URL: ${escapedUrl}\n\n` +
-        `This domain has been detected but is not yet registered for tracking\\.\n\n` +
-        `[Review and Approve →](${appUrl}/tracked-websites)`;
+        `This domain has been detected but is not yet registered for tracking.\n\n` +
+        `<a href="${reviewUrl}">Review and Approve →</a>`;
 
-      // Send notification asynchronously (don't block tracking) with markdown enabled
-      sendTelegramNotification(message, true).catch(error => {
+      // Send notification asynchronously (don't block tracking) with HTML formatting
+      sendTelegramNotification(message, 'HTML').catch(error => {
         console.error('Error sending Telegram notification:', error);
       });
     }
