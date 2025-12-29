@@ -281,8 +281,19 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       };
     });
 
-    // Sort by total_sessions descending (websites with 0 traffic will appear at the bottom)
-    enrichedWebsites.sort((a, b) => b.total_sessions - a.total_sessions);
+    // Sort by: Active domains first (by last_seen DESC), then inactive/disabled by last_seen DESC
+    // Active domains should appear at the top of the list
+    enrichedWebsites.sort((a, b) => {
+      // Primary sort: Active status (Active > Inactive/Disabled)
+      if (a.is_active !== b.is_active) {
+        return b.is_active ? 1 : -1;
+      }
+      
+      // Secondary sort: last_seen date (most recent first)
+      const aLastSeen = a.last_seen ? new Date(a.last_seen).getTime() : 0;
+      const bLastSeen = b.last_seen ? new Date(b.last_seen).getTime() : 0;
+      return bLastSeen - aLastSeen;
+    });
 
     // Calculate summary stats
     // IMPORTANT: total_visitors must count distinct users across ALL tracked domains, not sum per-domain counts

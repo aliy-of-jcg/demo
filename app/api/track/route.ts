@@ -89,21 +89,29 @@ async function logDomainDetection(domain: string, page_url: string): Promise<voi
 
   const pool = getPool();
   try {
-    // Check if domain already exists (to determine if this is first detection)
+    // Check if domain already exists and its status
     const [existingRows] = await pool.execute(
-      'SELECT detection_count FROM detected_domains WHERE domain = ?',
+      'SELECT detection_count, status FROM detected_domains WHERE domain = ?',
       [domain]
     );
-    const isNewDomain = (existingRows as any[]).length === 0;
+    const existing = (existingRows as any[])[0];
+    const isNewDomain = !existing;
+
+    // Skip logging if domain was previously rejected (no spam notifications)
+    if (existing && existing.status === 'rejected') {
+      return;
+    }
 
     // Upsert: update if exists, insert if not
+    // Set status='pending' for new domains or if updating existing (unless it's rejected)
     await pool.execute(
-      `INSERT INTO detected_domains (domain, first_detected_at, last_detected_at, detection_count, sample_page_url)
-       VALUES (?, NOW(), NOW(), 1, ?)
+      `INSERT INTO detected_domains (domain, first_detected_at, last_detected_at, detection_count, sample_page_url, status)
+       VALUES (?, NOW(), NOW(), 1, ?, 'pending')
        ON DUPLICATE KEY UPDATE
          last_detected_at = NOW(),
          detection_count = detection_count + 1,
-         sample_page_url = ?`,
+         sample_page_url = ?,
+         status = IF(status = 'rejected', status, 'pending')`,
       [domain, page_url, page_url]
     );
 

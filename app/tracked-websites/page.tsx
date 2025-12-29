@@ -64,6 +64,7 @@ interface DetectedDomain {
   last_detected_at: string;
   detection_count: number;
   sample_page_url: string;
+  status?: 'pending' | 'rejected';
 }
 
 function TrackedWebsitesPageContent() {
@@ -103,9 +104,11 @@ function TrackedWebsitesPageContent() {
   
   // Detected domains state
   const [detectedDomains, setDetectedDomains] = useState<DetectedDomain[]>([]);
+  const [rejectedDomains, setRejectedDomains] = useState<DetectedDomain[]>([]);
   const [loadingDetected, setLoadingDetected] = useState(false);
   const [processingDetected, setProcessingDetected] = useState<string | null>(null);
   const [showDetectedSection, setShowDetectedSection] = useState(false);
+  const [showRejectedSection, setShowRejectedSection] = useState(false);
 
   // Helper to enforce max range and provide user feedback
   const clampDateRange = (startStr: string, endStr: string) => {
@@ -143,17 +146,26 @@ function TrackedWebsitesPageContent() {
     };
   };
 
-  // Fetch detected domains
+  // Fetch detected domains (pending)
   const fetchDetectedDomains = async () => {
     if (!canManageWebsites) return; // Only fetch if user has permission
     
     setLoadingDetected(true);
     try {
-      const response = await fetchWithAuth('/api/detected-domains');
-      const result = await response.json();
+      const [pendingResponse, rejectedResponse] = await Promise.all([
+        fetchWithAuth('/api/detected-domains?status=pending'),
+        fetchWithAuth('/api/detected-domains?status=rejected')
+      ]);
       
-      if (result.success) {
-        setDetectedDomains(result.detected_domains || []);
+      const pendingResult = await pendingResponse.json();
+      const rejectedResult = await rejectedResponse.json();
+      
+      if (pendingResult.success) {
+        setDetectedDomains(pendingResult.detected_domains || []);
+      }
+      
+      if (rejectedResult.success) {
+        setRejectedDomains(rejectedResult.detected_domains || []);
       }
     } catch (err) {
       console.error('Error fetching detected domains:', err);
@@ -179,7 +191,7 @@ function TrackedWebsitesPageContent() {
         throw new Error(result.error || 'Failed to register domain');
       }
       
-      // Refresh both lists
+      // Refresh all lists (pending, rejected, and tracked websites)
       await Promise.all([fetchDetectedDomains(), fetchData()]);
       return result;
     })();
@@ -591,6 +603,112 @@ function TrackedWebsitesPageContent() {
                               )}
                             </button>
                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Rejected Domains Section */}
+      {canManageWebsites && rejectedDomains.length > 0 && (
+        <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowRejectedSection(!showRejectedSection)}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Ban className="w-5 h-5 text-gray-600" />
+              <span className="font-medium text-gray-900">
+                {rejectedDomains.length} Rejected Domain{rejectedDomains.length !== 1 ? 's' : ''}
+              </span>
+              <span className="text-xs text-gray-500">(Can be approved later)</span>
+            </div>
+            <span className="text-gray-700 text-sm">
+              {showRejectedSection ? 'Hide' : 'Show'}
+            </span>
+          </button>
+          
+          {showRejectedSection && (
+            <div className="border-t border-gray-200 bg-white">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Domain
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Detection Count
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        First / Last Detected
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Sample URL
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {rejectedDomains.map((rejected, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-gray-400" />
+                            <span className="text-sm font-medium text-gray-900">
+                              {rejected.domain}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {rejected.detection_count} attempt{rejected.detection_count !== 1 ? 's' : ''}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span className="text-xs">
+                              {new Date(rejected.first_detected_at).toLocaleDateString()} / {new Date(rejected.last_detected_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <a
+                            href={rejected.sample_page_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline max-w-xs truncate"
+                          >
+                            <span className="truncate">{rejected.sample_page_url}</span>
+                            <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                          </a>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handleRegisterDomain(rejected.domain)}
+                            disabled={processingDetected === rejected.domain}
+                            className="px-3 py-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {processingDetected === rejected.domain ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-3 h-3" />
+                                Approve & Register
+                              </>
+                            )}
+                          </button>
                         </td>
                       </tr>
                     ))}
