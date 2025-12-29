@@ -359,11 +359,17 @@ export async function POST(request: NextRequest) {
       });
 
       // Update last_seen timestamp for the domain in tracked_websites
+      // Throttle updates to every 5 minutes to prevent cache invalidation spam
+      // Also ensure last_seen >= first_seen to prevent UX confusion
       // This is done asynchronously to not block the tracking response
       if (domain) {
         const updatePool = getPool();
         updatePool.execute(
-          'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
+          `UPDATE tracked_websites 
+           SET last_seen = NOW() 
+           WHERE domain = ? 
+             AND (last_seen IS NULL OR last_seen < DATE_SUB(NOW(), INTERVAL 5 MINUTE))
+             AND (first_seen IS NULL OR NOW() >= first_seen)`,
           [domain]
         ).catch(error => {
           // Silently fail - last_seen update should not block tracking
