@@ -51,9 +51,12 @@ export const POST = requirePermission('settings:update', async (request: NextReq
 
       // Use first_detected_at for both first_seen and last_seen initially
       // last_seen will be updated when actual traffic is recorded
+      // Ensure last_seen >= first_seen to prevent UX confusion
       const timestamp = firstDetectedAt || new Date();
 
       // 3. Insert into tracked_websites (enabled by default)
+      // Set both first_seen and last_seen to the same timestamp initially
+      // This ensures last_seen >= first_seen even if domain was deleted/re-registered
       await connection.execute(
         `INSERT INTO tracked_websites (domain, is_enabled, first_seen, last_seen, created_at)
          VALUES (?, TRUE, ?, ?, NOW())`,
