@@ -49,11 +49,15 @@ export const POST = requirePermission('settings:update', async (request: NextReq
         ? (detectedRows as any[])[0].first_detected_at 
         : null;
 
+      // Use first_detected_at for both first_seen and last_seen initially
+      // last_seen will be updated when actual traffic is recorded
+      const timestamp = firstDetectedAt || new Date();
+
       // 3. Insert into tracked_websites (enabled by default)
       await connection.execute(
-        `INSERT INTO tracked_websites (domain, is_enabled, first_seen, created_at)
-         VALUES (?, TRUE, ?, NOW())`,
-        [domain, firstDetectedAt || new Date()]
+        `INSERT INTO tracked_websites (domain, is_enabled, first_seen, last_seen, created_at)
+         VALUES (?, TRUE, ?, ?, NOW())`,
+        [domain, timestamp, timestamp]
       );
 
       // 4. Delete from detected_domains (no longer needs to be detected)

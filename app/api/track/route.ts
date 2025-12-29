@@ -358,6 +358,19 @@ export async function POST(request: NextRequest) {
         format: 'JSONEachRow'
       });
 
+      // Update last_seen timestamp for the domain in tracked_websites
+      // This is done asynchronously to not block the tracking response
+      if (domain) {
+        const updatePool = getPool();
+        updatePool.execute(
+          'UPDATE tracked_websites SET last_seen = NOW() WHERE domain = ?',
+          [domain]
+        ).catch(error => {
+          // Silently fail - last_seen update should not block tracking
+          console.error('Error updating last_seen for domain:', domain, error);
+        });
+      }
+
       return NextResponse.json({ success: true });
     } catch (error: any) {
       if (isTransientInfraError(error)) {
