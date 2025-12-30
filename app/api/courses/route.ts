@@ -190,7 +190,7 @@ export const GET = requirePermission('courses:read', async (request: NextRequest
         const directCourseVisitsQuery = `
           SELECT 
             course_id,
-            countDistinct(user_id) as total_visits
+            uniq(user_id) as total_visits
           FROM analytics.visit_logs_buffer
           WHERE course_id > 0
           GROUP BY course_id
@@ -214,7 +214,7 @@ export const GET = requirePermission('courses:read', async (request: NextRequest
       const visitsQuery = `
         SELECT 
           tracking_code,
-          countDistinct(user_id) as total_visits
+          uniq(user_id) as total_visits
         FROM analytics.visit_logs_buffer
         WHERE tracking_code != ''
         GROUP BY tracking_code
@@ -271,7 +271,7 @@ export const GET = requirePermission('courses:read', async (request: NextRequest
               utm_campaign,
               utm_source,
               utm_medium,
-              countDistinct(user_id) as total_visits
+              uniq(user_id) as total_visits
             FROM analytics.visit_logs_buffer
             WHERE utm_campaign != '' AND tracking_code = ''
               AND utm_source != ''

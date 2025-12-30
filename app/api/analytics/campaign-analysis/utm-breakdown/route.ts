@@ -222,7 +222,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             utm_campaign,
             utm_content,
             utm_term,
-            countDistinct(user_id) as unique_visitors,
+            uniq(user_id) as unique_visitors,
             countIf(event_type = 'conversion') as conversions
           FROM analytics.visit_logs_buffer
           WHERE tracking_code IN (${escapedCodes})
@@ -280,7 +280,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             utm_content,
             utm_term,
             toDate(toTimeZone(timestamp, '${timezone}')) as date,
-            countDistinct(user_id) as visitors,
+            uniq(user_id) as visitors,
             countIf(event_type = 'conversion') as conversions
           FROM analytics.visit_logs_buffer
           WHERE tracking_code IN (${escapedCodes})

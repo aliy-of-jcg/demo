@@ -127,7 +127,7 @@ export const GET = requirePermissionWithParams('analytics:read', async (
     // Get total unique visitors across all pages (distinct users who visited any page in this domain)
     try {
       const totalVisitorsQuery = await queryWithMemoryLimit(`
-        SELECT countDistinct(user_id) as unique_visitors
+        SELECT uniq(user_id) as unique_visitors
         FROM analytics.visit_logs_buffer
         WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           AND page_url != ''

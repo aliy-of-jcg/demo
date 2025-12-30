@@ -129,7 +129,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
         const trackingCodesListEscaped = trackingCodesList.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
         const visitorsQuery = `
           SELECT 
-            countDistinct(user_id) as unique_visitors
+            uniq(user_id) as unique_visitors
           FROM analytics.visit_logs_buffer
           WHERE (campaign_id = ${id} OR tracking_code IN (${trackingCodesListEscaped}))
             AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -146,7 +146,7 @@ export const GET = requirePermissionWithParams('campaigns:read', async (
         // No tracking codes, use campaign_id only
         const visitorsQuery = `
           SELECT 
-            countDistinct(user_id) as unique_visitors
+            uniq(user_id) as unique_visitors
           FROM analytics.visit_logs_buffer
           WHERE campaign_id = ${id}
             AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'

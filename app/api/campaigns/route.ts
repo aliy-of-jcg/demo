@@ -307,7 +307,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
             // If no codes, fall back to campaign_id only query
             if (campaignCodePairs.length === 0) {
               const visitorsByCampaignId = await queryWithMemoryLimit(`
-                  SELECT campaign_id, countDistinct(user_id) as unique_visitors
+                  SELECT campaign_id, uniq(user_id) as unique_visitors
                   FROM analytics.visit_logs_buffer
                   WHERE campaign_id IN (${campaignIdList})
                     AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -353,7 +353,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
                   )` : ''}
                 SELECT
                   campaign_id,
-                  countDistinct(user_id) AS unique_visitors
+                  uniq(user_id) AS unique_visitors
                 FROM (
                   SELECT user_id, campaign_id
                   FROM analytics.visit_logs_buffer
@@ -590,7 +590,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
                       utm_campaign,
                       utm_source,
                       utm_medium,
-                      countDistinct(user_id) as unique_visitors
+                      uniq(user_id) as unique_visitors
                     FROM analytics.visit_logs_buffer
                     WHERE utm_campaign != '' AND (tracking_code = '' OR tracking_code IS NULL)
                     GROUP BY utm_campaign, utm_source, utm_medium
@@ -727,7 +727,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
           try {
             const allCampaignIdList = allMatchingCampaignIds.join(',');
             const visitorsAllCampaigns = await queryWithMemoryLimit(`
-                SELECT campaign_id, countDistinct(user_id) as unique_visitors
+                SELECT campaign_id, uniq(user_id) as unique_visitors
                 FROM analytics.visit_logs_buffer
                 WHERE campaign_id IN (${allCampaignIdList})
                   AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
@@ -825,7 +825,7 @@ export const GET = requirePermission('campaigns:read', async (request: NextReque
       let total_visitors_all_channels = 0;
       try {
         const allChannelVisitorsQuery = await queryWithMemoryLimit(`
-        SELECT countDistinct(user_id) as unique_visitors
+        SELECT uniq(user_id) as unique_visitors
         FROM analytics.visit_logs_buffer
         WHERE utm_source != ''
         `, { format: 'JSONEachRow' });
