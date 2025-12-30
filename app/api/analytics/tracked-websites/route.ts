@@ -200,8 +200,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     try {
       const result = await queryWithMemoryLimit(clickhouseQuery, {
-      format: 'JSONEachRow'
-    });
+        format: 'JSONEachRow'
+      });
       const metrics = await result.json() as Array<{
         normalized_domain: string;
         total_sessions: number;
@@ -288,7 +288,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       if (a.is_active !== b.is_active) {
         return b.is_active ? 1 : -1;
       }
-      
+
       // Secondary sort: last_seen date (most recent first)
       const aLastSeen = a.last_seen ? new Date(a.last_seen).getTime() : 0;
       const bLastSeen = b.last_seen ? new Date(b.last_seen).getTime() : 0;
@@ -301,7 +301,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     let total_visitors = 0;
     try {
       const totalVisitorsQuery = await queryWithMemoryLimit(`
-          SELECT countDistinct(user_id) as unique_visitors
+          SELECT uniq(user_id) as unique_visitors
           FROM analytics.visit_logs_buffer
           WHERE created_date_kst BETWEEN toDate('${startDate}') AND toDate('${endDate}')
             AND page_url != ''
