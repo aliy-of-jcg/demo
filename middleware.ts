@@ -4,6 +4,15 @@ import { isPublicRoute, isApiRoute } from '@/lib/auth/route-guard';
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // 🔒 Block POST requests to App Router pages (non-API routes)
+  // This prevents Server Action runtime from being triggered, eliminating:
+  // - "Failed to find Server Action" errors
+  // - "Multipart: Boundary not found" errors
+  // - Build mismatch issues from cached client bundles
+  if (request.method === 'POST' && !pathname.startsWith('/api')) {
+    return new NextResponse('Not Found', { status: 404 });
+  }
+
   // Handle CORS for tracking routes
   if (pathname.startsWith('/api/track')) {
     const origin = request.headers.get('origin') || '';

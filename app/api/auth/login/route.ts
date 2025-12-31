@@ -3,11 +3,16 @@ import { query } from '@/lib/mysql';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '@/lib/jwt';
 import type { LoginRequest, LoginResponse } from '@/lib/types';
+import { parseRequestBody } from '@/lib/utils/parse-request-body';
 
 export async function POST(req: NextRequest) {
   try {
-    const body: LoginRequest = await req.json();
-    const { email, password } = body;
+    // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
+    const { error, body } = await parseRequestBody(req);
+    if (error) return error;
+    
+    const bodyTyped = body as LoginRequest;
+    const { email, password } = bodyTyped;
 
     console.log(`🔐 Login API - Email: ${email}`);
 

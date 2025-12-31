@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
-import { getDefaultTimezone } from '@/lib/system-settings';
+import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
 import { getCache, setCache } from '@/lib/cache/cache';
+import { resolveAnalyticsDates } from '@/lib/utils/kst-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,29 +36,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const searchParams = request.nextUrl.searchParams;
     const MAX_RANGE_DAYS = 90;
 
-    // Get date range from query parameters (default: last 30 days)
-    let endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
-    let startDate = searchParams.get('start');
+    const settings = await getSettingsWithDefaults();
+    const defaultDays = settings.default_date_range ?? 30;
 
-    if (!startDate) {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      startDate = date.toISOString().split('T')[0];
-    }
+    const { startDate, endDate } = resolveAnalyticsDates(searchParams, {
+      endParam: 'end',
+      startParam: 'start',
+      defaultRangeDays: defaultDays,
+      maxRangeDays: MAX_RANGE_DAYS
+    });
 
-    // Enforce maximum date window (server-side safety net)
-    const startObj = new Date(startDate);
-    const endObj = new Date(endDate);
-    const diffMs = endObj.getTime() - startObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays > MAX_RANGE_DAYS) {
-      const clampedStart = new Date(endObj);
-      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
-      startDate = clampedStart.toISOString().split('T')[0];
-    }
-
-    // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();
 
     console.log(`📊 Channel Performance Analysis API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
@@ -90,8 +78,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         uniqExact(user_id) as users,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+      WHERE created_date_kst >= toDate('${startDate}')
+        AND created_date_kst <= toDate('${endDate}')
         AND utm_source != ''
         AND utm_source != 'Direct'
         AND utm_source != '(direct)'
@@ -114,8 +102,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       FROM analytics.visit_logs_buffer
       WHERE 
         (utm_source = 'Direct' OR utm_source = '(direct)' OR utm_source = '')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        AND created_date_kst >= toDate('${startDate}')
+        AND created_date_kst <= toDate('${endDate}')
     `;
 
     const directTrafficResult = await queryWithMemoryLimit(directTrafficQuery, {
@@ -144,7 +132,6 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       .filter(code => code && code !== '')));
 
     let campaignMap = new Map();
-    let campaignNameMap = new Map(); // Fallback: map by campaign name for legacy data
 
     if (trackingCodes.length > 0) {
       const placeholders = trackingCodes.map(() => '?').join(',');
@@ -168,48 +155,6 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           status: c.status,
           ad_cost: parseFloat(c.ad_cost) || 0
         });
-
-        // Also store by name for fallback matching
-        if (!campaignNameMap.has(c.campaign_name)) {
-          campaignNameMap.set(c.campaign_name, {
-            campaign_id: c.campaign_id,
-            name: c.campaign_name,
-            status: c.status,
-            ad_cost: parseFloat(c.ad_cost) || 0
-          });
-        }
-      });
-    }
-
-    // FALLBACK: For legacy data without tracking codes, get campaigns by name
-    // This handles visits logged before we added the _tc parameter
-    const campaignNamesWithoutCodes = Array.from(new Set(trafficData
-      .filter(t => !t.tracking_code || t.tracking_code === '')
-      .map(t => t.utm_campaign)
-      .filter(name => name && name !== '')));
-
-    if (campaignNamesWithoutCodes.length > 0) {
-      const namePlaceholders = campaignNamesWithoutCodes.map(() => '?').join(',');
-      const [campaignsByName] = await pool.execute(`
-        SELECT 
-          c.id as campaign_id,
-          c.name as campaign_name,
-          c.status,
-          c.budget,
-          c.spent as ad_cost
-        FROM campaigns c
-        WHERE c.name IN (${namePlaceholders})
-      `, campaignNamesWithoutCodes);
-
-      (campaignsByName as any[]).forEach(c => {
-        if (!campaignNameMap.has(c.campaign_name)) {
-          campaignNameMap.set(c.campaign_name, {
-            campaign_id: c.campaign_id,
-            name: c.campaign_name,
-            status: c.status,
-            ad_cost: parseFloat(c.ad_cost) || 0
-          });
-        }
       });
     }
 
@@ -227,7 +172,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
             COUNT(*) as total_clicks
           FROM analytics.tracking_events_buffer
           WHERE tracking_code IN (${escapedCodes})
-            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) BETWEEN toDate('${startDate}') AND toDate('${endDate}')
+            AND created_date BETWEEN toDate('${startDate}') AND toDate('${endDate}')
           GROUP BY tracking_code
         `;
 
@@ -247,16 +192,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
 
     // Step 4: Enrich traffic data with campaign metadata and clicks
     const enrichedData: CampaignData[] = trafficData.map(traffic => {
-      // Try to get campaign by tracking_code first (most reliable)
+      // Get campaign by tracking_code (all data now has tracking_code)
       let campaign = campaignMap.get(traffic.tracking_code);
 
-      // FALLBACK: If no tracking_code or not found, try matching by campaign name
-      // This handles legacy data logged before we added the _tc parameter
-      if (!campaign && traffic.utm_campaign) {
-        campaign = campaignNameMap.get(traffic.utm_campaign);
-      }
-
-      // If still not found, create unknown campaign entry
+      // If not found, create unknown campaign entry
       if (!campaign) {
         campaign = {
           campaign_id: 0,

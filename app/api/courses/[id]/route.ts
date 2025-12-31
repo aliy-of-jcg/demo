@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/mysql';
 import { requirePermissionWithParams, type AuthContext } from '@/lib/auth/api-middleware';
+import { parseRequestBody } from '@/lib/utils/parse-request-body';
 
 export async function GET(
   request: NextRequest,
@@ -39,7 +40,9 @@ export const PUT = requirePermissionWithParams('courses:update', async (request:
   const { params } = routeParams;
   try {
     const id = params.id;
-    const body = await request.json();
+    // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
+    const { error, body } = await parseRequestBody(request);
+    if (error) return error;
     const {
       name,
       code,

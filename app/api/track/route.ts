@@ -3,6 +3,10 @@ import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { nanoid } from 'nanoid';
 import { getPool } from '@/lib/mysql';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
+import { parseRequestBody } from '@/lib/utils/parse-request-body';
+import { isTransientInfraError, isLikelyBugOrSchemaError, cachedOrFailOpen } from '@/lib/utils/db-error-handler';
+import { getCurrentDateKST } from '@/lib/utils/kst-date';
+import { sendTelegramNotification } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,15 +29,13 @@ function normalizeDomain(url: string): string {
   }
 }
 
-// Check if domain is enabled (with caching and auto-registration)
-async function isDomainEnabled(domain: string): Promise<boolean> {
-  if (!domain) return true; // Allow if domain can't be extracted
+// Check if domain is registered and enabled (strict registration - no auto-registration)
+async function isDomainRegisteredAndEnabled(domain: string): Promise<{ registered: boolean; enabled: boolean }> {
+  if (!domain) return { registered: false, enabled: false };
 
   const now = Date.now();
   const cached = domainCache.get(domain);
 
-  // Always check database to get the latest updated_at timestamp
-  // This ensures immediate effect when a domain is disabled/enabled
   const pool = getPool();
   try {
     const [rows] = await pool.execute(
@@ -53,46 +55,99 @@ async function isDomainEnabled(domain: string): Promise<boolean> {
         if (dbUpdatedAt > cached.updated_at || cached.is_enabled !== isEnabled) {
           console.log(`🔄 Cache invalidated for ${domain}: DB updated at ${new Date(dbUpdatedAt).toISOString()}, cache from ${new Date(cached.updated_at).toISOString()}`);
           domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-
-          return isEnabled;
+          return { registered: true, enabled: isEnabled };
         }
 
         // Cache is still valid (DB hasn't been updated since cache refresh)
         // Return cached value if it's still fresh
         if ((now - cached.last_refresh) < CACHE_TTL) {
-          return cached.is_enabled;
+          return { registered: true, enabled: cached.is_enabled };
         }
 
         // Cache is stale, refresh it
         domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-
-        return isEnabled;
+        return { registered: true, enabled: isEnabled };
       } else {
         // No cache entry, create one
         domainCache.set(domain, { is_enabled: isEnabled, last_refresh: now, updated_at: dbUpdatedAt });
-
-        return isEnabled;
+        return { registered: true, enabled: isEnabled };
       }
     } else {
-      // Domain doesn't exist, auto-register as enabled
-      await pool.execute(
-        'INSERT INTO tracked_websites (domain, is_enabled, first_seen) VALUES (?, TRUE, NOW())',
-        [domain]
-      );
-
-      // Add to cache (use current timestamp as updated_at)
-      domainCache.set(domain, { is_enabled: true, last_refresh: now, updated_at: now });
-
-      console.log(`✅ Auto-registered new domain: ${domain}`);
-      return true;
+      // Domain doesn't exist - NOT registered
+      return { registered: false, enabled: false };
     }
-  } catch (error) {
-    console.error('Error checking domain status:', error);
-    // On error, check if we have cached value, otherwise fail open
-    if (cached && (now - cached.last_refresh) < CACHE_TTL) {
-      return cached.is_enabled;
+  } catch (error: any) {
+    console.error('Error checking domain registration status', error);
+    // On error, fail closed (don't track)
+    return { registered: false, enabled: false };
+  }
+}
+
+// Log detection attempt for unregistered domains
+async function logDomainDetection(domain: string, page_url: string): Promise<void> {
+  if (!domain) return;
+
+  const pool = getPool();
+  try {
+    // Check if domain already exists and its status
+    const [existingRows] = await pool.execute(
+      'SELECT detection_count, status FROM detected_domains WHERE domain = ?',
+      [domain]
+    );
+    const existing = (existingRows as any[])[0];
+    const isNewDomain = !existing;
+
+    // Skip logging if domain was previously rejected (no spam notifications)
+    if (existing && existing.status === 'rejected') {
+      return;
     }
-    return true; // Fail open if no cache
+
+    // Upsert: update if exists, insert if not
+    // Set status='pending' for new domains or if updating existing (unless it's rejected)
+    await pool.execute(
+      `INSERT INTO detected_domains (domain, first_detected_at, last_detected_at, detection_count, sample_page_url, status)
+       VALUES (?, NOW(), NOW(), 1, ?, 'pending')
+       ON DUPLICATE KEY UPDATE
+         last_detected_at = NOW(),
+         detection_count = detection_count + 1,
+         sample_page_url = ?,
+         status = IF(status = 'rejected', status, 'pending')`,
+      [domain, page_url, page_url]
+    );
+
+    // Send Telegram notification for new domain detections only
+    if (isNewDomain) {
+      // Use production URL for notifications (dev.cosmosai.co.kr for dev, app.cosmosai.co.kr for prod)
+      const rawUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+      const appUrl = rawUrl.includes('localhost') ? 'https://dev.cosmosai.co.kr' : rawUrl || 'https://app.cosmosai.co.kr';
+      const reviewUrl = `${appUrl}/tracked-websites`;
+
+      // Escape user-provided content for HTML
+      const escapedDomain = domain
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+      const escapedUrl = page_url
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+      const message = `<b>🔔 New Domain Detected</b>\n\n` +
+        `Domain: <b>${escapedDomain}</b>\n` +
+        `Sample URL: ${escapedUrl}\n\n` +
+        `This domain has been detected but is not yet registered for tracking.\n\n` +
+        `<a href="${reviewUrl}">Review and Approve →</a>`;
+
+      // Send notification asynchronously (don't block tracking) with HTML formatting
+      sendTelegramNotification(message, 'HTML').catch(error => {
+        console.error('Error sending Telegram notification:', error);
+      });
+    }
+  } catch (error: any) {
+    // Silently fail - detection logging should not block tracking
+    console.error('Error logging domain detection:', error);
   }
 }
 
@@ -107,7 +162,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await request.json();
+    // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
+    const { error, body: data } = await parseRequestBody(request);
+    if (error) return error;
 
     const {
       event_type,
@@ -148,61 +205,118 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if domain is enabled (with caching and auto-registration)
-    const domain = normalizeDomain(page_url);
-    const enabled = await isDomainEnabled(domain);
-
-    if (!enabled) {
-      console.log(`🚫 Tracking blocked for disabled domain: ${domain}`);
-      // Return 200 OK to avoid client errors, but don't track
-      return NextResponse.json({ success: true, message: 'Domain disabled' });
-    }
-
-    // Lookup campaign_id and course_id from MySQL to preserve legacy data even after hard deletion
+    // Lookup campaign_id, course_id, and landing_url from MySQL
     let campaign_id = 0;
     let course_id = 0;
+    let landing_url = '';
+    let immutableUtmSource = '';
+    let immutableUtmMedium = '';
+    let immutableUtmCampaign = '';
+    let immutableUtmContent = '';
+    let immutableUtmTerm = '';
 
     const pool = getPool();
     try {
       if (tracking_code && tracking_code !== '') {
-        // Primary method: lookup by tracking_code
+        // Primary method: lookup by tracking_code to get campaign info AND landing_url
+        // CRITICAL: Capture ALL attribution fields at event time for immutable attribution
         const [utmRows] = await pool.execute(
-          'SELECT campaign_id, c.course_id FROM utm_codes u LEFT JOIN campaigns c ON u.campaign_id = c.id WHERE u.tracking_code = ? LIMIT 1',
+          'SELECT u.campaign_id, u.landing_url, u.utm_source, u.utm_medium, u.utm_campaign, u.utm_content, u.utm_term, c.course_id FROM utm_codes u LEFT JOIN campaigns c ON u.campaign_id = c.id WHERE u.tracking_code = ? LIMIT 1',
           [tracking_code]
         );
 
         if ((utmRows as any[]).length > 0) {
-          campaign_id = (utmRows as any[])[0].campaign_id || 0;
-          course_id = (utmRows as any[])[0].course_id || 0;
+          const utmRow = (utmRows as any[])[0];
+          campaign_id = utmRow.campaign_id || 0;
+          course_id = utmRow.course_id || 0;
+          landing_url = utmRow.landing_url || '';
+
+          // Capture immutable attribution from MySQL (normalize NULL to '')
+          immutableUtmSource = utmRow.utm_source || '';
+          immutableUtmMedium = utmRow.utm_medium || '';
+          immutableUtmCampaign = utmRow.utm_campaign || '';
+          immutableUtmContent = utmRow.utm_content || '';
+          immutableUtmTerm = utmRow.utm_term || '';
+
+          // CRITICAL: Check if landing_url domain is registered and enabled
+          // This ensures visits from unregistered/disabled landing URLs are blocked
+          // regardless of where the user navigates afterward
+          if (landing_url) {
+            const landingDomain = normalizeDomain(landing_url);
+            if (landingDomain) {
+              const landingStatus = await isDomainRegisteredAndEnabled(landingDomain);
+              if (!landingStatus.registered) {
+                // Log detection attempt for unregistered domain
+                await logDomainDetection(landingDomain, landing_url);
+                console.log(`🚫 Tracking blocked: landing_url domain ${landingDomain} is not registered (tracking_code: ${tracking_code})`);
+                return NextResponse.json({ success: false, message: 'Landing domain not registered' });
+              }
+              if (!landingStatus.enabled) {
+                console.log(`🚫 Tracking blocked: landing_url domain ${landingDomain} is disabled (tracking_code: ${tracking_code})`);
+                return NextResponse.json({ success: false, message: 'Landing domain disabled' });
+              }
+            }
+          }
         }
       }
 
-      // Fallback: if no tracking_code match, try matching by utm_campaign name (legacy data)
-      if (campaign_id === 0 && utm_campaign && utm_campaign !== '') {
-        const [campaignRows] = await pool.execute(
-          'SELECT id, course_id FROM campaigns WHERE name = ? LIMIT 1',
-          [utm_campaign]
-        );
-
-        if ((campaignRows as any[]).length > 0) {
-          campaign_id = (campaignRows as any[])[0].id || 0;
-          course_id = (campaignRows as any[])[0].course_id || 0;
-        }
-      }
     } catch (error) {
       // If lookup fails, continue with 0 values (for direct traffic or unmatched UTMs)
       console.error('Error looking up campaign/course ID:', error);
     }
 
+    // Check if current page_url domain is registered and enabled (strict registration)
+    // Visits are recorded only for explicitly registered & enabled domains
+    const domain = normalizeDomain(page_url);
+    const domainStatus = await isDomainRegisteredAndEnabled(domain);
+
+    if (!domainStatus.registered) {
+      // Log detection attempt for unregistered domain
+      await logDomainDetection(domain, page_url);
+      console.log(`🚫 Tracking blocked: domain ${domain} is not registered`);
+      return NextResponse.json({ success: false, message: 'Domain not registered' });
+    }
+
+    if (!domainStatus.enabled) {
+      console.log(`🚫 Tracking blocked: domain ${domain} is disabled`);
+      return NextResponse.json({ success: false, message: 'Domain disabled' });
+    }
+
     // Normalize utm_source: convert '(direct)' to 'Direct' for consistency
-    const normalizedUtmSource = (utm_source === '(direct)' || utm_source === '') ? 'Direct' : (utm_source || '');
+    // BUT: If tracking_code exists, use immutable attribution from MySQL (not URL params)
+    let finalUtmSource: string;
+    let finalUtmMedium: string;
+    let finalUtmCampaign: string;
+    let finalUtmContent: string;
+    let finalUtmTerm: string;
+
+    if (tracking_code && tracking_code !== '' && immutableUtmCampaign) {
+      // Use immutable attribution captured from MySQL (for accurate historical attribution)
+      finalUtmSource = immutableUtmSource || 'Direct';
+      finalUtmMedium = immutableUtmMedium || '';
+      finalUtmCampaign = immutableUtmCampaign || '';
+      finalUtmContent = immutableUtmContent || '';
+      finalUtmTerm = immutableUtmTerm || '';
+    } else {
+      // Direct traffic or no tracking_code: use URL params (legacy behavior)
+      finalUtmSource = (utm_source === '(direct)' || utm_source === '') ? 'Direct' : (utm_source || '');
+      finalUtmMedium = utm_medium || '';
+      finalUtmCampaign = utm_campaign || '';
+      finalUtmContent = utm_content || '';
+      finalUtmTerm = utm_term || '';
+    }
 
     // Insert into ClickHouse visit_logs table
+    // CRITICAL: Store landing_url and all UTM params at event time for immutable attribution
     try {
+      const timestampUTC = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const createdDateKST = getCurrentDateKST();
+
       await insertWithMemoryLimit({
         table: 'analytics.visit_logs',
         values: [{
-          timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          timestamp: timestampUTC,
+          created_date_kst: createdDateKST,
           session_id: session_id || '',
           user_id: user_id || '',
           page_url: page_url || '',
@@ -210,11 +324,12 @@ export async function POST(request: NextRequest) {
           referrer: referrer || '',
           referrer_domain: referrer_domain || '',
           tracking_code: tracking_code || '',
-          utm_source: normalizedUtmSource,
-          utm_medium: utm_medium || '',
-          utm_campaign: utm_campaign || '',
-          utm_term: utm_term || '',
-          utm_content: utm_content || '',
+          landing_url: landing_url || '', // Immutable: captured from MySQL at event time
+          utm_source: finalUtmSource,
+          utm_medium: finalUtmMedium,
+          utm_campaign: finalUtmCampaign,
+          utm_term: finalUtmTerm,
+          utm_content: finalUtmContent,
           campaign_id: campaign_id, // Now populated from MySQL lookup
           course_id: course_id, // Now populated from MySQL lookup
           user_agent: user_agent || '',
@@ -239,9 +354,49 @@ export async function POST(request: NextRequest) {
         format: 'JSONEachRow'
       });
 
+      // Update last_seen timestamp for the domain in tracked_websites
+      // Throttle updates to every 5 minutes to prevent cache invalidation spam
+      // Also ensure last_seen >= first_seen to prevent UX confusion
+      // This is done asynchronously to not block the tracking response
+      if (domain) {
+        const updatePool = getPool();
+        updatePool.execute(
+          `UPDATE tracked_websites 
+           SET last_seen = NOW() 
+           WHERE domain = ? 
+             AND (last_seen IS NULL OR last_seen < DATE_SUB(NOW(), INTERVAL 5 MINUTE))
+             AND (first_seen IS NULL OR NOW() >= first_seen)`,
+          [domain]
+        ).catch(error => {
+          // Silently fail - last_seen update should not block tracking
+          console.error('Error updating last_seen for domain:', domain, error);
+        });
+      }
+
       return NextResponse.json({ success: true });
-    } catch (error) {
-      console.error('Failed to insert tracking data:', error);
+    } catch (error: any) {
+      if (isTransientInfraError(error)) {
+        console.warn('⚠️ DB/infra transient error; skipping insert', {
+          code: error?.code,
+          errno: error?.errno,
+          sqlState: error?.sqlState
+        });
+        // During shutdown, return success to avoid blocking user
+        return NextResponse.json({ success: true, message: 'Data may not have been recorded due to shutdown' });
+      }
+
+      if (isLikelyBugOrSchemaError(error)) {
+        console.error('🚨 DB bug/schema error during insert; investigate', {
+          code: error?.code,
+          errno: error?.errno,
+          sqlState: error?.sqlState,
+          message: error?.message
+        });
+        // Still return success to avoid blocking the user, but log loudly
+        return NextResponse.json({ success: true, message: 'Data may not have been recorded due to database error' });
+      }
+
+      console.error('❗ Unknown error inserting tracking data:', error);
       // Still return success to avoid blocking the user
       return NextResponse.json({ success: true });
     }

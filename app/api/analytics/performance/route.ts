@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
+import { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { getPool } from '@/lib/mysql';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone, getSettingsWithDefaults } from '@/lib/system-settings';
 import { getCache, setCache } from '@/lib/cache/cache';
+import { resolveAnalyticsDates } from '@/lib/utils/kst-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,35 +13,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const searchParams = request.nextUrl.searchParams;
     const MAX_RANGE_DAYS = 90;
 
-    // Get system defaults (GA-style global config)
     const settings = await getSettingsWithDefaults();
+    const defaultDays = settings.default_date_range ?? 7;
 
-    // Get raw date range from query parameters
-    let endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
-    let startDate = searchParams.get('start');
+    const { startDate, endDate } = resolveAnalyticsDates(searchParams, {
+      endParam: 'end',
+      startParam: 'start',
+      defaultRangeDays: defaultDays,
+      maxRangeDays: MAX_RANGE_DAYS
+    });
 
-    // If no explicit start provided, use system default_date_range
-    if (!startDate) {
-      const days = settings.default_date_range ?? 7;
-      const end = new Date(endDate);
-      const start = new Date(end);
-      start.setDate(start.getDate() - days);
-      startDate = start.toISOString().split('T')[0];
-    }
-
-    // Enforce maximum date window (server-side safety net)
-    const startObj = new Date(startDate);
-    const endObj = new Date(endDate);
-    const diffMs = endObj.getTime() - startObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays > MAX_RANGE_DAYS) {
-      const clampedStart = new Date(endObj);
-      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
-      startDate = clampedStart.toISOString().split('T')[0];
-    }
-
-    // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();
 
     console.log(`📊 Performance Dashboard API - Date Range: ${startDate} to ${endDate}, Timezone: ${timezone}`);
@@ -68,8 +50,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           uniqExact(user_id) as total_visitors,
           SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
         FROM analytics.visit_logs_buffer
-        WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-          AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+        WHERE created_date_kst >= toDate('${startDate}')
+          AND created_date_kst <= toDate('${endDate}')
+          AND utm_source != ''
       `;
 
       const metricsResult = await queryWithMemoryLimit(metricsQuery, {
@@ -82,7 +65,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       }>;
       const metrics = metricsData[0] || { total_visitors: 0, conversions: 0 };
       // Calculate conversion rate in application code to avoid double aggregation
-      const conversionRate = metrics.total_visitors > 0 
+      const conversionRate = metrics.total_visitors > 0
         ? (metrics.conversions * 100.0 / metrics.total_visitors).toFixed(2)
         : '0.00';
 
@@ -107,8 +90,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         uniqExact(user_id) as visitors,
         SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+      WHERE created_date_kst >= toDate('${startDate}')
+        AND created_date_kst <= toDate('${endDate}')
+        AND utm_source != ''
       GROUP BY channel
       ORDER BY visitors DESC
       LIMIT 10
@@ -137,7 +121,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
           const spent = (budgetResult as any[])[0]?.channel_spent || 0;
           const cpa = channel.conversions > 0 ? spent / channel.conversions : 0;
           // Calculate conversion rate in application code
-          const conversionRate = channel.visitors > 0 
+          const conversionRate = channel.visitors > 0
             ? (channel.conversions * 100.0 / channel.visitors).toFixed(2)
             : '0.00';
 
@@ -159,8 +143,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
         uniqExact(user_id) as visitors
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')
+      WHERE created_date_kst >= toDate('${startDate}')
+        AND created_date_kst <= toDate('${endDate}')
+        AND utm_source != ''
       GROUP BY date
       ORDER BY date ASC
     `;
@@ -181,8 +166,9 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
         uniqExact(user_id) as visitors
       FROM analytics.visit_logs_buffer
-      WHERE toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${comparisonStart}')
-        AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${comparisonEnd}')
+      WHERE created_date_kst >= toDate('${comparisonStart}')
+        AND created_date_kst <= toDate('${comparisonEnd}')
+        AND utm_source != ''
       GROUP BY date
       ORDER BY date ASC
     `;

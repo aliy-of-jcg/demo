@@ -3,6 +3,7 @@ import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
 import { getCache, setCache } from '@/lib/cache/cache';
+import { resolveAnalyticsDates } from '@/lib/utils/kst-date';
 
 // Type definitions for the analytics data
 interface TimeAnalysisData {
@@ -57,26 +58,10 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const MAX_RANGE_DAYS = 90;
 
     // Get date range from query parameters (default: last 30 days)
-    let endDate = searchParams.get('end_date') || new Date().toISOString().split('T')[0];
-    let startDate = searchParams.get('start_date');
-
-    if (!startDate) {
-      const date = new Date();
-      date.setDate(date.getDate() - 30);
-      startDate = date.toISOString().split('T')[0];
-    }
-
-    // Enforce maximum date window (server-side safety net)
-    const startObj = new Date(startDate);
-    const endObj = new Date(endDate);
-    const diffMs = endObj.getTime() - startObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays > MAX_RANGE_DAYS) {
-      const clampedStart = new Date(endObj);
-      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
-      startDate = clampedStart.toISOString().split('T')[0];
-    }
+    const { startDate, endDate } = resolveAnalyticsDates(searchParams, {
+      defaultRangeDays: 30,
+      maxRangeDays: MAX_RANGE_DAYS
+    });
 
     // Get timezone from system settings (GA behavior: use system default)
     const timezone = await getDefaultTimezone();
@@ -92,7 +77,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     }
 
     // Build WHERE clause for date filtering (always apply date filtering for memory safety)
-    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${startDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${endDate}')`;
+    // Use created_date_kst for partition pruning, timezone for display grouping
+    const whereClause = `created_date_kst >= toDate('${startDate}') AND created_date_kst <= toDate('${endDate}')`;
 
     // 1. Hourly Distribution (0-23 hours) - using system default timezone
     const hourlyQuery = `
@@ -103,6 +89,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
+        AND utm_source != ''
       GROUP BY hour
       ORDER BY hour ASC
     `;
@@ -136,6 +123,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
+        AND utm_source != ''
       GROUP BY day_of_week
       ORDER BY day_of_week ASC
     `;
@@ -173,6 +161,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
       WHERE ${whereClause}
+        AND utm_source != ''
       GROUP BY date
       ORDER BY date ASC
     `;

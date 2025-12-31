@@ -2,14 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { getDefaultTimezone } from '@/lib/system-settings';
+import { resolveAnalyticsDates } from '@/lib/utils/kst-date';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = requirePermission('analytics:read', async (request: NextRequest, context: AuthContext) => {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const startDate = searchParams.get('start_date');
-    const endDate = searchParams.get('end_date');
     const limit = parseInt(searchParams.get('limit') || '50');
 
     // Get timezone from system settings (GA behavior: use system default)
@@ -20,30 +19,16 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     // Build WHERE clause for date filtering (using system default timezone)
     // Default to last 90 days if no dates provided (prevents memory issues)
     const MAX_RANGE_DAYS = 90;
-    let finalStartDate = startDate;
-    let finalEndDate = endDate || new Date().toISOString().split('T')[0];
+    
+    const { startDate: finalStartDate, endDate: finalEndDate } = resolveAnalyticsDates(searchParams, {
+      endParam: 'end_date',
+      startParam: 'start_date',
+      defaultRangeDays: MAX_RANGE_DAYS,
+      maxRangeDays: MAX_RANGE_DAYS
+    });
 
-    if (!finalStartDate) {
-      const end = new Date(finalEndDate);
-      const start = new Date(end);
-      start.setDate(start.getDate() - MAX_RANGE_DAYS);
-      finalStartDate = start.toISOString().split('T')[0];
-    }
-
-    // Enforce maximum date window (server-side safety net)
-    const startObj = new Date(finalStartDate);
-    const endObj = new Date(finalEndDate);
-    const diffMs = endObj.getTime() - startObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays > MAX_RANGE_DAYS) {
-      const clampedStart = new Date(endObj);
-      clampedStart.setDate(clampedStart.getDate() - MAX_RANGE_DAYS);
-      finalStartDate = clampedStart.toISOString().split('T')[0];
-    }
-
-    // Build WHERE clause - use direct date comparison without timezone conversion in JOINs for better performance
-    const whereClause = `toDate(toTimeZone(timestamp, '${timezone}')) >= toDate('${finalStartDate}') AND toDate(toTimeZone(timestamp, '${timezone}')) <= toDate('${finalEndDate}')`;
+    // Build WHERE clause - use created_date_kst for partition pruning
+    const whereClause = `created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
 
     // Fetch all sessions with their complete page journeys
     // TWO-PHASE PATTERN (GA-style): Optimize for LIMIT performance
@@ -53,12 +38,20 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       WITH session_ids AS (
         -- Phase 1: Lightweight - just get session IDs and sort key
         -- LIMIT applies here, so we only process top N sessions later
+        -- Exclude orphaned sessions (sessions with no pageviews)
         SELECT 
           session_id,
           user_id,
           MIN(timestamp) as session_start_ts
         FROM analytics.visit_logs_buffer
         WHERE ${whereClause}
+          AND utm_source != ''
+          AND session_id IN (
+            -- Only include sessions that have at least one pageview
+            SELECT DISTINCT session_id
+            FROM analytics.visit_logs_buffer
+            WHERE event_type = 'pageview'
+          )
         GROUP BY session_id, user_id
         ORDER BY session_start_ts DESC
         LIMIT ${limit}
@@ -89,6 +82,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         FROM analytics.visit_logs_buffer v
         INNER JOIN session_ids si ON v.session_id = si.session_id AND v.user_id = si.user_id
         WHERE ${whereClause}
+          AND v.utm_source != ''
         GROUP BY v.session_id, v.user_id
       ),
       session_pages AS (
@@ -108,6 +102,7 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
         INNER JOIN session_ids si ON v.session_id = si.session_id
         WHERE toDate(toTimeZone(v.timestamp, '${timezone}')) >= toDate('${finalStartDate}') 
           AND toDate(toTimeZone(v.timestamp, '${timezone}')) <= toDate('${finalEndDate}')
+          AND v.utm_source != ''
         ORDER BY v.session_id, v.page_sequence
       )
       SELECT 

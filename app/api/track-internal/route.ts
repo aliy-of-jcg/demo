@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import clickhouse, { insertWithMemoryLimit } from '@/lib/clickhouse';
 import { getSettingsWithDefaults } from '@/lib/system-settings';
+import { parseRequestBody } from '@/lib/utils/parse-request-body';
+import { isTransientInfraError, isLikelyBugOrSchemaError } from '@/lib/utils/db-error-handler';
+import { getCurrentDateKST } from '@/lib/utils/kst-date';
 
 /**
  * Internal Tracking API - For Local Testing Only
@@ -30,13 +33,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await request.json();
+    // Defensive JSON parsing - prevents 500 errors from truncated bodies during deployment
+    const { error, body: data } = await parseRequestBody(request);
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid request body' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     const {
       event_type,
       page_url,
       page_title,
       referrer,
+      referrer_domain,
+      tracking_code,
       utm_source,
       utm_medium,
       utm_campaign,
@@ -98,15 +110,21 @@ export async function POST(request: NextRequest) {
 
     // Insert into ClickHouse visit_logs table
     try {
+      const timestampUTC = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const createdDateKST = getCurrentDateKST();
+      
       await insertWithMemoryLimit({
         table: 'analytics.visit_logs',
         values: [{
-          timestamp: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          timestamp: timestampUTC,
+          created_date_kst: createdDateKST,
           session_id: session_id || '',
           user_id: user_id || '',
           page_url: page_url || '',
           page_title: page_title || '',
           referrer: referrer || '',
+          referrer_domain: referrer_domain || '',
+          tracking_code: tracking_code || '',
           utm_source: normalizedUtmSource,
           utm_medium: utm_medium || '',
           utm_campaign: utm_campaign || '',
@@ -140,16 +158,53 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Internal test tracking recorded'
       }, { headers: corsHeaders });
-    } catch (error) {
-      console.error('Failed to insert internal tracking data:', error);
+    } catch (error: any) {
+      if (isTransientInfraError(error)) {
+        console.warn('⚠️ DB/infra transient error; skipping insert', {
+          code: error?.code,
+          errno: error?.errno,
+          sqlState: error?.sqlState
+        });
+        return NextResponse.json({
+          success: true,
+          warning: 'Data may not have been recorded due to shutdown'
+        }, { headers: corsHeaders });
+      }
+
+      if (isLikelyBugOrSchemaError(error)) {
+        console.error('🚨 DB bug/schema error during insert; investigate', {
+          code: error?.code,
+          errno: error?.errno,
+          sqlState: error?.sqlState,
+          message: error?.message
+        });
+        // Still return success to avoid blocking the user, but log loudly
+        return NextResponse.json({
+          success: true,
+          warning: 'Data may not have been recorded due to database error'
+        }, { headers: corsHeaders });
+      }
+
+      console.error('❗ Unknown error inserting internal tracking data:', error);
       // Still return success to avoid blocking the user
       return NextResponse.json({
         success: true,
         warning: 'Data may not have been recorded'
       }, { headers: corsHeaders });
     }
-  } catch (error) {
-    console.error('Internal tracking endpoint error:', error);
+  } catch (error: any) {
+    if (isTransientInfraError(error)) {
+      console.warn('⚠️ DB/infra transient error in outer catch', {
+        code: error?.code,
+        errno: error?.errno
+      });
+      return NextResponse.json(
+        { success: true, message: 'Request may not have been processed due to shutdown' },
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    console.error('❗ Unknown error in internal tracking endpoint:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500, headers: corsHeaders }

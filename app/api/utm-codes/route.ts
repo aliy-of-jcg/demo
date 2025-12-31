@@ -4,6 +4,7 @@ import clickhouse, { queryWithMemoryLimit } from '@/lib/clickhouse';
 import { requirePermission, type AuthContext } from '@/lib/auth/api-middleware';
 import { RowDataPacket } from 'mysql2';
 import { generateTrackingCode } from '@/lib/utils/tracking-code-generator';
+import { normalizeUtmAttribution } from '@/lib/utils/utm-normalization';
 
 // Helper function to normalize domain (extract domain from URL)
 function normalizeDomain(url: string): string {
@@ -112,6 +113,8 @@ export const GET = requirePermission('utm_codes:read', async (request: NextReque
     }
 
     // Fetch click data from ClickHouse for ALL matching UTMs (not just paginated)
+    // CRITICAL: Use exact attribution matching to prevent historical data inheritance
+    // Group by all attribution fields in ClickHouse for better performance and scalability
     let clickDataMap: { [key: string]: number } = {};
 
     if (allTrackingCodes.length > 0) {
@@ -123,18 +126,33 @@ export const GET = requirePermission('utm_codes:read', async (request: NextReque
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - 90);
         const startDateStr = startDate.toISOString().split('T')[0];
-        
-        // Query buffer table directly for real-time data (includes both pending and flushed data)
-        // Buffer tables automatically include data from both buffer and destination table
+
+        // Group by all attribution fields for exact matching
+        // This ensures clicks are only counted if they match current attribution exactly
+        // Use created_date for filtering (indexed, enables partition pruning)
+        // Query buffer table for real-time data (includes both pending and flushed data)
         const clickQuery = `
           SELECT 
             tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term,
             COUNT(*) as total_clicks
           FROM analytics.tracking_events_buffer
           WHERE tracking_code IN (${escapedCodes})
-            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) >= toDate('${startDateStr}')
-            AND toDate(toTimeZone(timestamp, 'Asia/Seoul')) <= toDate('${endDate}')
-          GROUP BY tracking_code
+            AND created_date >= toDate('${startDateStr}')
+            AND created_date <= toDate('${endDate}')
+          GROUP BY 
+            tracking_code,
+            landing_url,
+            utm_source,
+            utm_medium,
+            utm_campaign,
+            utm_content,
+            utm_term
         `;
 
         const clickData = await queryWithMemoryLimit(clickQuery, {
@@ -143,10 +161,53 @@ export const GET = requirePermission('utm_codes:read', async (request: NextReque
 
         const clickRows = await clickData.json() as any[];
 
+        // Build a map of normalized attribution -> clicks for each tracking code
+        const attributionClickMap = new Map<string, number>();
+
         clickRows.forEach((row: any) => {
-          clickDataMap[row.tracking_code] = parseInt(row.total_clicks) || 0;
+          // Create composite key: tracking_code + normalized attribution
+          const normalizedAttribution = normalizeUtmAttribution({
+            landing_url: row.landing_url || '',
+            utm_source: row.utm_source || '',
+            utm_medium: row.utm_medium || '',
+            utm_campaign: row.utm_campaign || '',
+            utm_content: row.utm_content || '',
+            utm_term: row.utm_term || '',
+          });
+
+          const compositeKey = `${row.tracking_code}::${normalizedAttribution.landing_url}::${normalizedAttribution.utm_source}::${normalizedAttribution.utm_medium}::${normalizedAttribution.utm_campaign}::${normalizedAttribution.utm_content}::${normalizedAttribution.utm_term}`;
+
+          const existingClicks = attributionClickMap.get(compositeKey) || 0;
+          attributionClickMap.set(compositeKey, existingClicks + (parseInt(row.total_clicks) || 0));
         });
+
+        // Map clicks back to tracking codes by matching exact attribution from MySQL
+        // Only count clicks that match current attribution exactly (no fallback)
+        allMatchingUTMs.forEach(utm => {
+          if (!utm.tracking_code || utm.tracking_code === '') {
+            return;
+          }
+
+          // Get current attribution from MySQL (normalized)
+          const currentAttribution = normalizeUtmAttribution({
+            landing_url: utm.landing_url,
+            utm_source: utm.utm_source,
+            utm_medium: utm.utm_medium,
+            utm_campaign: utm.utm_campaign,
+            utm_content: utm.utm_content,
+            utm_term: utm.utm_term,
+          });
+
+          // Build composite key matching MySQL attribution (exact match)
+          const compositeKey = `${utm.tracking_code}::${currentAttribution.landing_url}::${currentAttribution.utm_source}::${currentAttribution.utm_medium}::${currentAttribution.utm_campaign}::${currentAttribution.utm_content}::${currentAttribution.utm_term}`;
+
+          // Only count clicks that match exact current attribution
+          const clicks = attributionClickMap.get(compositeKey) || 0;
+          clickDataMap[utm.tracking_code] = clicks;
+        });
+
       } catch (error) {
+        console.error('Error fetching click data:', error);
         // Silently fail - continue without click data
       }
     }

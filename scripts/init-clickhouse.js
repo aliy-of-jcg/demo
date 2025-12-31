@@ -29,6 +29,7 @@ async function initSchema() {
            CREATE TABLE IF NOT EXISTS analytics.tracking_events (
       id String,
       tracking_code String,
+      landing_url String DEFAULT '',
       campaign_name String,
       utm_source String,
       utm_medium String,
@@ -76,6 +77,9 @@ async function initSchema() {
       page_url String,
       page_title String,
       referrer String,
+      referrer_domain String,
+      tracking_code String DEFAULT '',
+      landing_url String DEFAULT '',
       utm_source String,
       utm_medium String,
       utm_campaign String,
