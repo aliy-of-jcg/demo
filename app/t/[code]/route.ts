@@ -219,6 +219,7 @@ export async function GET(
           values: [{
             id: clickEventId,
             tracking_code: trackingCode,
+            campaign_id: campaign_id, // Campaign ID for efficient querying
             timestamp: timestampUTC, // Format: 'YYYY-MM-DD HH:mm:ss'
             created_date: createdDate, // Explicitly set: 'YYYY-MM-DD'
             landing_url: targetUrl, // Immutable: captured at click time

@@ -146,10 +146,8 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
       // Match by exact attribution for each tracking code
       whereClause = `(${attributionWhereClauses.join(' OR ')})`;
     } else {
-      // Fallback for legacy data without tracking codes
-      const utmCampaigns = Array.from(new Set(trackingCodes.map(tc => tc.utm_campaign))).filter(Boolean);
-      const utmCampaignsList = utmCampaigns.map(c => `'${c.replace(/'/g, "\\'")}'`).join(',');
-      whereClause = `(campaign_id = ${campaignId} OR utm_campaign IN (${utmCampaignsList}))`;
+      // If no tracking codes, use campaign_id only (all data should have tracking_code now)
+      whereClause = `campaign_id = ${campaignId}`;
     }
 
     whereClause += ` AND created_date_kst >= toDate('${finalStartDate}') AND created_date_kst <= toDate('${finalEndDate}')`;
@@ -162,12 +160,17 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     whereClause += ` AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'`;
 
     // 4. Get visitor and conversion metrics
+    // Campaign-level totals should include legacy data (true business performance)
+    // Query by campaign_id to include ALL visitors (including from deleted UTMs)
     const visitMetricsQuery = `
       SELECT 
         countDistinct(user_id) as unique_visitors,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
-      WHERE ${whereClause}
+      WHERE campaign_id = ${campaignId}
+        AND created_date_kst >= toDate('${finalStartDate}') 
+        AND created_date_kst <= toDate('${finalEndDate}')
+        AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
     `;
 
     const visitResult = await queryWithMemoryLimit(visitMetricsQuery, {
@@ -179,38 +182,60 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const conversions = visitData[0]?.conversions || 0;
     const conversionRate = visitors > 0 ? ((conversions / visitors) * 100).toFixed(2) : '0.00';
 
-    // 5. Get click metrics - use exact attribution matching
+    // 5. Get click metrics - campaign-level includes ALL clicks (including legacy from deleted UTMs)
     let clicks = 0;
     let clicksFromLegacyData = 0;
 
-    if (attributionWhereClauses.length > 0) {
-      // Build click WHERE clause using exact attribution for each UTM
-      // Use same attribution clauses for clicks (tracking_events has same schema)
-      const clickAttributionClauses = attributionWhereClauses;
-      
-      let clickWhereClause = `(${clickAttributionClauses.join(' OR ')})`;
-      clickWhereClause += ` AND created_date >= toDate('${finalStartDate}') AND created_date <= toDate('${finalEndDate}')`;
+    // Query ALL clicks by campaign_id (includes deleted UTMs)
+    const clickQuery = `
+      SELECT COUNT(*) as total_clicks
+      FROM analytics.tracking_events_buffer
+      WHERE campaign_id = ${campaignId}
+        AND created_date >= toDate('${finalStartDate}') 
+        AND created_date <= toDate('${finalEndDate}')
+        AND tracking_code != ''
+        AND tracking_code IS NOT NULL
+    `;
 
-      const clickQuery = `
-        SELECT COUNT(*) as total_clicks
-        FROM analytics.tracking_events_buffer
-        WHERE ${clickWhereClause}
-      `;
+    const clickResult = await queryWithMemoryLimit(clickQuery, {
+      format: 'JSONEachRow',
+    });
 
-      const clickResult = await queryWithMemoryLimit(clickQuery, {
-        format: 'JSONEachRow',
-      });
-
-      const clickData = await clickResult.json() as Array<{ total_clicks: number }>;
-      clicks = clickData[0]?.total_clicks || 0;
-    }
-
-    // Legacy data clicks - now deprecated with exact attribution matching
-    // Historical clicks with old attribution are no longer counted (correct behavior)
-    // This ensures metrics reset to 0 when attribution changes
-    clicksFromLegacyData = 0;
+    const clickData = await clickResult.json() as Array<{ total_clicks: number }>;
+    clicks = clickData[0]?.total_clicks || 0;
     
-    // Old legacy clicks query removed - exact attribution eliminates legacy mismatch
+    // Calculate legacy clicks (clicks from tracking codes not in MySQL)
+    if (validTrackingCodes.length > 0) {
+      try {
+        const activeTrackingCodesSet = new Set(validTrackingCodes);
+        const trackingCodesListEscaped = validTrackingCodes.map(code => `'${code.replace(/'/g, "\\'")}'`).join(',');
+        
+        const legacyClickQuery = `
+          SELECT 
+            tracking_code,
+            COUNT(*) as total_clicks
+          FROM analytics.tracking_events_buffer
+          WHERE campaign_id = ${campaignId}
+            AND created_date >= toDate('${finalStartDate}') 
+            AND created_date <= toDate('${finalEndDate}')
+            AND tracking_code != ''
+            AND tracking_code IS NOT NULL
+            AND tracking_code NOT IN (${trackingCodesListEscaped})
+          GROUP BY tracking_code
+        `;
+        
+        const legacyClickResult = await queryWithMemoryLimit(legacyClickQuery, {
+          format: 'JSONEachRow',
+        });
+        
+        const legacyClickData = await legacyClickResult.json() as Array<{ tracking_code: string; total_clicks: number }>;
+        legacyClickData.forEach((row: any) => {
+          clicksFromLegacyData += parseInt(row.total_clicks || '0');
+        });
+      } catch (error) {
+        console.warn('Error calculating legacy clicks:', error);
+      }
+    }
 
     const ctr = clicks > 0 ? ((visitors / clicks) * 100).toFixed(2) : '0.00';
 
@@ -270,13 +295,17 @@ export const GET = requirePermission('analytics:read', async (request: NextReque
     const cpa = conversions > 0 ? Math.round(revenue / conversions) : 0;
 
     // 7. Get daily performance data
+    // Campaign-level daily data includes legacy (query by campaign_id)
     const dailyQuery = `
       SELECT 
         toDate(toTimeZone(timestamp, '${timezone}')) as date,
         countDistinct(user_id) as visitors,
         countIf(event_type = 'conversion') as conversions
       FROM analytics.visit_logs_buffer
-      WHERE ${whereClause}
+      WHERE campaign_id = ${campaignId}
+        AND created_date_kst >= toDate('${finalStartDate}') 
+        AND created_date_kst <= toDate('${finalEndDate}')
+        AND utm_source != '' AND utm_source != 'Direct' AND utm_source != '(direct)'
       GROUP BY date
       ORDER BY date ASC
     `;

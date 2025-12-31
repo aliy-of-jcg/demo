@@ -260,18 +260,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Fallback: if no tracking_code match, try matching by utm_campaign name (legacy data)
-      if (campaign_id === 0 && utm_campaign && utm_campaign !== '') {
-        const [campaignRows] = await pool.execute(
-          'SELECT id, course_id FROM campaigns WHERE name = ? LIMIT 1',
-          [utm_campaign]
-        );
-
-        if ((campaignRows as any[]).length > 0) {
-          campaign_id = (campaignRows as any[])[0].id || 0;
-          course_id = (campaignRows as any[])[0].course_id || 0;
-        }
-      }
     } catch (error) {
       // If lookup fails, continue with 0 values (for direct traffic or unmatched UTMs)
       console.error('Error looking up campaign/course ID:', error);
